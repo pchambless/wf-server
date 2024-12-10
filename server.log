@@ -1,0 +1,10 @@
+2024-12-06T16:24:31.590Z - [server.js] Configuration file generated.
+2024-12-06T16:24:31.592Z - [server.js] Server is running on http://localhost:3001
+::1 - - [06/Dec/2024:16:27:35 +0000] "GET /api/accts/ingredient/ingrType/list?acctID=1 HTTP/1.1" 500 51 "-" "PostmanRuntime/7.43.0"
+::1 - - [06/Dec/2024:16:29:57 +0000] "GET /api/accts/ingredient/ingrType/list?acctID=1 HTTP/1.1" 500 51 "-" "PostmanRuntime/7.43.0"
+::1 - - [06/Dec/2024:16:30:34 +0000] "GET /api/accts/ingredient/ingrType/list?acctID=1 HTTP/1.1" 500 51 "-" "PostmanRuntime/7.43.0"
+2024-12-06T16:50:03.883Z - [server.js] Configuration file generated.
+2024-12-06T16:50:03.885Z - [server.js] Server is running on http://localhost:3001
+::1 - - [06/Dec/2024:16:50:22 +0000] "GET /api/accts/ingredient/ingrType/list?acctID=1 HTTP/1.1" 500 51 "-" "PostmanRuntime/7.43.0"
+::1 - - [06/Dec/2024:16:54:50 +0000] "GET /api/accts/ingredient/ingrType/list.js?acctID=1 HTTP/1.1" 500 51 "-" "PostmanRuntime/7.43.0"
+::1 - - [06/Dec/2024:16:55:04 +0000] "GET /api/accts/ingredient/ingrType/list?acctID=1 HTTP/1.1" 500 51 "-" "PostmanRuntime/7.43.0"
