@@ -9,6 +9,8 @@ node_modules
 .pnp.js
 .env
 
+#Yarn
+.yarn
 # testing
 /coverage
 
