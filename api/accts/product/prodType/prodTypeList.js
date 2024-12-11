@@ -14,7 +14,11 @@ module.exports = async (req, res) => {
     return handleError(res, codeName, `Missing query parameters: ${missingParams.join(', ')}`, 400);
   }
 
-  const query = `null`;
+  const query = `SELECT id, name, account_id
+from  product_types a
+where account_id = ?
+and active = 'Y'
+order by name`;
 
   try {
     const data = await executeQuery(query, [queryParams.acctID], [], res, codeName);

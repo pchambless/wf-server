@@ -18,9 +18,7 @@ module.exports = async (req, res) => {
   const query = `insert into product_types
 (name, description, account_id)
 VALUES
-(
-	?,?,?
-);`;
+(?,?,?);`;
 
   try {
     const data = await executeQuery(query, values, [], res, codeName);

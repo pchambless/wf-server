@@ -1,3 +1,4 @@
+require('module-alias/register');
 const { executeQuery } = require('@utils/dbUtils');
 const { sendResponse, handleError } = require('@utils/responseUtils');
 

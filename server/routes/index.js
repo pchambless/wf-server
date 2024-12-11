@@ -1,17 +1,11 @@
+require('module-alias/register');
 const express = require('express');
 const router = express.Router();
 const path = require('path');
 const eventRoutes = require('@middleware/events/eventRoutes');
 const { executeQuery, sendResponse, handleError } = require('@utils/dbUtils');
-
-// Function to run the endpoint generation script
-const generateEndpoints = () => {
-  const scriptPath = path.join(__dirname, '../../apiTemplates/genEndpoints.js');
-  require(scriptPath);
-};
-
-// Ensure API structure is generated
-generateEndpoints();
+const mapEventTypeController = require('@controller/mapEventType');
+const initializeController = require('@controller/initializeController');
 
 const determineMethod = (method) => {
   switch (method.toUpperCase()) {
@@ -72,6 +66,12 @@ eventRoutes.forEach((route) => {
 
   console.log(`[REGISTER] ${method.toUpperCase()} ${routePath}`);
 });
+
+// Add the mapEventType route
+router.post('/api/mapEventType', mapEventTypeController);
+
+// Add the initialize route
+router.post('/api/initialize', initializeController.initialize);
 
 // Function to initialize routes
 const initializeRoutes = (app) => {

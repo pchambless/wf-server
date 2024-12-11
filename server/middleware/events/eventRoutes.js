@@ -5,7 +5,7 @@ module.exports = [
     "path": "/api/accts/ingredient/ingrType/ingrTypeAdd.js",
     "params": "",
     "bodyCols": "{name}\n{description}\n{acctID}",
-    "qrySQL": "insert into product_types\n(name, description, account_id)\nVALUES\n(\n\t?,?,?\n);",
+    "qrySQL": "insert into product_types\n(name, description, account_id)\nVALUES\n(?,?,?);",
     "parent": "/ingrType"
   },
   {
@@ -40,8 +40,8 @@ module.exports = [
     "method": "GET",
     "path": "/api/accts/product/prodType/prodTypeList.js",
     "params": "{acctID}",
-    "bodyCols": null,
-    "qrySQL": null,
+    "bodyCols": "",
+    "qrySQL": "SELECT id, name, account_id\nfrom  product_types a\nwhere account_id = ?\nand active = 'Y'\norder by name",
     "parent": "/prodType"
   },
   {
@@ -50,7 +50,7 @@ module.exports = [
     "path": "/api/users/userAccts.js",
     "params": "{userEmail}",
     "bodyCols": "",
-    "qrySQL": "select acct_id value, account_name label\nfrom   v_wf_usr_dtl a\nwhere  email = ?\nORDER BY account_name\n\n",
+    "qrySQL": "select acct_id value, account_name label\nfrom   v_wf_usr_dtl a\nwhere  email = ?\nORDER BY account_name",
     "parent": "/users"
   },
   {

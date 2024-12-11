@@ -22,13 +22,20 @@
   },
   "scripts": {
     "test": "jest",
-    "start:wf-server": "node server.js"
+    "start": "nodemon server.js",
+    "dev": "nodemon server.js"
   },
   "_moduleAliases": {
     "@root": ".",
-    "@api": "server/api",
+    "@api": "api",
+    "@apiTemplates": "apiTemplates",
     "@middleware": "server/middleware",
+    "@controller": "server/controller",
+    "@routes": "server/routes",
     "@utils": "server/utils",
     "@db": "server/utils/dbUtils.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
   }
 }

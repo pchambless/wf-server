@@ -1,5 +1,6 @@
 require('module-alias/register');
 const express = require('express');
+const { exec } = require('child_process');
 const { app, port } = require('@root/server/app');
 const mysql = require('mysql2/promise');
 const { genEventTypeFile } = require('@root/server/middleware/events/genEventTypes');
@@ -38,6 +39,19 @@ const initializeServer = async () => {
       });
 
       res.json({ routes });
+    });
+
+    // Add route to restart the server
+    app.post('/api/restart-server', (req, res) => {
+      console.log('Received request to restart the server.'); // Logging the request
+      exec('pm2 restart wf-server', (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error restarting server: ${error}`);
+          return res.status(500).send('Failed to restart the server.');
+        }
+        console.log(`Server restart output: ${stdout}`);
+        res.send('Server restarted successfully.');
+      });
     });
 
     // Start the server

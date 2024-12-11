@@ -1,7 +1,7 @@
 require('module-alias/register');
 const fs = require('fs');
 const path = require('path');
-const eventRoutes = require('@middleware/events/eventRoutes');
+const eventRoutes = require('@events/eventRoutes');
 
 const apiDir = path.join(__dirname, '../api');
 const templatesDir = path.join(__dirname, '../apiTemplates');

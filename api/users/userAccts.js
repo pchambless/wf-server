@@ -17,9 +17,7 @@ module.exports = async (req, res) => {
   const query = `select acct_id value, account_name label
 from   v_wf_usr_dtl a
 where  email = ?
-ORDER BY account_name
-
-`;
+ORDER BY account_name`;
 
   try {
     const data = await executeQuery(query, [queryParams.acctID], [], res, codeName);
