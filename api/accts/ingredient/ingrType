@@ -1,3 +1,4 @@
+require('module-alias/register');
 const { executeQuery } = require('@utils/dbUtils');
 const { sendResponse, handleError } = require('@utils/responseUtils');
 
@@ -9,7 +10,7 @@ module.exports = async (req, res) => {
   console.log(`${codeName} Received request with: ${JSON.stringify(req.body)}`);
 
   // Ensure the required params are present
-  const requiredParam = 'id'.replace(/[{}]/g, '');
+  const requiredParam = 'ingrTypeID'.replace(/[{}]/g, '');
   if (!params[requiredParam]) {
     return handleError(res, codeName, `${requiredParam} is required`, 400);
   }

@@ -1,5 +1,6 @@
 // server/middleware/preprocessing/preprocessFields.js
-const { getCurrentTimestamp, getCurrentUserID } = require('../../utils/timestamp');
+require('module-alias/register');
+const { getCurrentTimestamp, getCurrentUserID } = require('@utils/timestamp');
 
 const preprocessFields = (req, res, next) => {
   const userID = getCurrentUserID(req);

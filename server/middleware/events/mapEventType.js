@@ -1,5 +1,6 @@
 // server/middleware/mapEventType.js
-const eventLookup = require('./eventLookup');
+require('module-alias/register');
+const eventLookup = require('@middleware/events/eventLookup');
 const path = require('path');
 
 const MAX_RECURSIVE_CALLS = 1;

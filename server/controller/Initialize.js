@@ -9,6 +9,7 @@ const generateEndpoints = () => {
 module.exports = {
   initialize: async (req, res) => {
     try {
+      console.log('Starting initialization...');
       generateEndpoints();
       res.status(200).send('Initialization successful');
     } catch (error) {

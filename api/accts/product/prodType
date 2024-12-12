@@ -1,8 +1,9 @@
+require('module-alias/register');
 const { executeQuery } = require('@utils/dbUtils');
 const { sendResponse, handleError } = require('@utils/responseUtils');
 
 module.exports = async (req, res) => {
-  const codeName = '[userAccts.js]';
+  const codeName = '[prodTypeList.js]';
   const queryParams = req.query; // Access query parameters directly
 
   console.log(`${codeName} Received request with: ${JSON.stringify(req.query)}`);
@@ -14,10 +15,11 @@ module.exports = async (req, res) => {
     return handleError(res, codeName, `Missing query parameters: ${missingParams.join(', ')}`, 400);
   }
 
-  const query = `select acct_id value, account_name label
-from   v_wf_usr_dtl a
-where  email = ?
-ORDER BY account_name`;
+  const query = `SELECT id, name, account_id
+from  product_types a
+where account_id = ?
+and active = 'Y'
+order by name`;
 
   try {
     const data = await executeQuery(query, [queryParams.acctID], [], res, codeName);

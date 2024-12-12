@@ -1,5 +1,6 @@
 // server/middleware/preprocessing/softDelete.js
-const { softDelete } = require('../../utils/softDelete');
+require('module-alias/register');
+const { softDelete } = require('@utils/softDelete');
 
 const handleSoftDelete = async (req, res, next) => {
   const { tableName, recordId } = req.body;

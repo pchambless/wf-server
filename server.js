@@ -1,11 +1,15 @@
 require('module-alias/register');
 const express = require('express');
-const { exec } = require('child_process');
-const { app, port } = require('@root/server/app');
 const mysql = require('mysql2/promise');
-const { genEventTypeFile } = require('@root/server/middleware/events/genEventTypes');
-const { initializeRoutes } = require('@root/server/routes/index');
-const eventRoutes = require('@middleware/events/eventRoutes');
+const { app, port } = require('@root/server/app');
+const registerRoutes = require('@routes/registerRoutes');
+const { genEventTypeFile } = require('@controller/fetchEventTypes'); 
+
+// Add middleware to set request timeout
+app.use((req, res, next) => {
+  req.setTimeout(5000); // 5 seconds timeout for testing
+  next();
+});
 
 // Generate event types and initialize routes
 const initializeServer = async () => {
@@ -23,36 +27,10 @@ const initializeServer = async () => {
 
     // Initialize routes after eventRoutes.js is generated
     console.log('[server.js] Initializing routes');
-    initializeRoutes(app);
+    app.use('/', registerRoutes(app)); // Pass the app instance
 
-    // Add route to list all registered routes for debugging
-    app.get('/api/list-routes', (req, res) => {
-      const routes = eventRoutes.map(route => {
-        const methods = [route.method.toUpperCase()];
-        return {
-          path: route.path,
-          methods,
-          params: route.params,
-          bodyCols: route.bodyCols,
-          qrySQL: route.qrySQL
-        };
-      });
-
-      res.json({ routes });
-    });
-
-    // Add route to restart the server
-    app.post('/api/restart-server', (req, res) => {
-      console.log('Received request to restart the server.'); // Logging the request
-      exec('pm2 restart wf-server', (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error restarting server: ${error}`);
-          return res.status(500).send('Failed to restart the server.');
-        }
-        console.log(`Server restart output: ${stdout}`);
-        res.send('Server restarted successfully.');
-      });
-    });
+    // Log after routes are initialized
+    console.log('[server.js] Routes initialized');
 
     // Start the server
     app.listen(port, () => {

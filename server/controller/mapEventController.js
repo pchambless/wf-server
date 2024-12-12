@@ -1,6 +1,5 @@
-// server/controllers/mapEventType.js
 require('module-alias/register');
-const eventRoutes = require('@events/eventRoutes');
+const eventRoutes = require('@middleware/events/eventRoutes');
 const db = require('@utils/dbUtils');
 
 module.exports = async (req, res) => {
@@ -21,13 +20,13 @@ module.exports = async (req, res) => {
     switch (method) {
       case 'GET':
         const params = Object.values(queryParams);
-        [result] = await db.execute(qrySQL, params);
+        result = await db.executeQuery(qrySQL, params);
         break;
       case 'POST':
       case 'PATCH':
       case 'DELETE':
         const bodyValues = Object.values(body);
-        [result] = await db.execute(qrySQL, bodyValues);
+        result = await db.executeQuery(qrySQL, bodyValues);
         break;
       default:
         return res.status(400).send('Unsupported HTTP method');

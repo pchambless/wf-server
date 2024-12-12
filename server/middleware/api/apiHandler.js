@@ -1,6 +1,7 @@
 // server/middleware/apiHandler.js
+require('module-alias/register');
 const axios = require('axios');
-const eventLookup = require('../events/eventLookup');
+const eventLookup = require('@events/eventLookup');
 
 const MAX_RECURSIVE_CALLS = 1;
 

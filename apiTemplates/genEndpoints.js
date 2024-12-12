@@ -1,7 +1,9 @@
 require('module-alias/register');
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const eventRoutes = require('@events/eventRoutes');
+const eventRoutes = require('@middleware/events/eventRoutes');
+const router = express.Router(); // Ensure the router is defined here
 
 const apiDir = path.join(__dirname, '../api');
 const templatesDir = path.join(__dirname, '../apiTemplates');
@@ -55,7 +57,7 @@ const generateFile = (templatePath, outputPath, replacements) => {
 // Generate endpoints
 const generateEndpoints = () => {
   const generatedFiles = [];
-  
+
   eventRoutes.forEach(route => {
     const { eventType, method, path: routePath, params, qrySQL, bodyCols } = route;
     const codeName = `[${eventType}.js]`;
@@ -95,3 +97,5 @@ const generateEndpoints = () => {
 // Clean up the api directory and generate new endpoints
 cleanApiDirectory();
 generateEndpoints();
+
+module.exports = router; // Ensure the router is properly exported

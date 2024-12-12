@@ -21,16 +21,17 @@
     "wf-jspdf": "^1.1.6"
   },
   "scripts": {
-    "test": "jest",
-    "start": "nodemon server.js",
-    "dev": "nodemon server.js"
-  },
+  "test": "jest",
+  "start": "nodemon --config nodemon.json server.js",
+  "dev": "nodemon --config nodemon.json server.js"
+},
   "_moduleAliases": {
     "@root": ".",
     "@api": "api",
     "@apiTemplates": "apiTemplates",
     "@middleware": "server/middleware",
     "@controller": "server/controller",
+    "@events": "server/events",
     "@routes": "server/routes",
     "@utils": "server/utils",
     "@db": "server/utils/dbUtils.js"

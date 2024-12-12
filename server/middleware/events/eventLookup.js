@@ -1,5 +1,6 @@
 // server/middleware/eventLookup.js
-const eventRoutes = require('./eventRoutes');
+require('module-alias/register');
+const eventRoutes = require('@middleware/events/eventRoutes');
 
 const eventLookup = (eventType) => {
   console.log(`[eventLookup] Received eventType: ${eventType}`);

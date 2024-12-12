@@ -5,7 +5,7 @@ const fs = require('fs');
 
 // Initial setup for the PDF document
 const orientation = 'p';
-const docName = 'Whatsfresh API Endpoints'
+const docName = 'Whatsfresh API Virtual Endpoints'
 const title = 'Whatsfresh: ';
 const name = 'Events';
 const descr = "The list of API Events driving the Whatsfresh processing";
@@ -49,20 +49,20 @@ function estimateHeight(text) {
 }
 
 // Create a set of unique paths (minus the file)
-const uniquePaths = new Set(eventRoutes.map(route => route.path.split('/').slice(0, -1).join('/')));
+const uniquePaths = new Set(eventRoutes.map(route => route.path));
 
 console.log('Unique Paths:', Array.from(uniquePaths));
 
 // Loop through each unique path and generate the document
-uniquePaths.forEach(pathWithoutFile => {
-  console.log('Processing path:', pathWithoutFile);
+uniquePaths.forEach(path => {
+  console.log('Processing path:', path);
 
   // Generate a table header for each unique path
-  result = genTblHeader(result.doc, pathWithoutFile, result.finalY);
+  result = genTblHeader(result.doc, path, result.finalY);
 
   // Extract the data for the current path
   const tableData = eventRoutes
-    .filter(route => route.path.startsWith(pathWithoutFile))
+    .filter(route => route.path)
     .map(route => ({
       'Event Type': route.eventType,
       'Method': route.method,
@@ -72,7 +72,6 @@ uniquePaths.forEach(pathWithoutFile => {
     }));
 
   // Log table data for debugging
-  console.log('Table Data:', tableData);
 
   // Generate a single table for the group with transformed data
   result = genTable(result.doc, tableData, columnStyles, result.finalY);
