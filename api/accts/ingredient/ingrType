@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
   console.log(`${codeName} Received request with: ${JSON.stringify(req.body)}`);
 
   // Ensure the required params are present
-  const requiredParam = 'ingrTypeID'.replace(/[{}]/g, '');
+  const requiredParam = '[object Object]'.replace(/[{}]/g, '');
   if (!params[requiredParam]) {
     return handleError(res, codeName, `${requiredParam} is required`, 400);
   }

@@ -27,7 +27,7 @@ module.exports = (app) => {
   router.post('/api/util/restart-server', restartServerController.restartServer);
   
   // Add the new endpoint for fetching event types
-  router.get('/api/util/event-types', fetchEventTypes); // Ensure this is a function
+  router.get('/api/util/fetchEventTypes', fetchEventTypes); // Ensure this is a function
 
   // Register dynamic routes
   router.use(dynamicRouter);

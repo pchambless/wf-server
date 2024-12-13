@@ -3,33 +3,9 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const eventRoutes = require('@middleware/events/eventRoutes');
-const router = express.Router(); // Ensure the router is defined here
+const router = express.Router();
 
-const apiDir = path.join(__dirname, '../api');
 const templatesDir = path.join(__dirname, '../apiTemplates');
-
-// Helper function to delete all files and folders under a directory
-const deleteAllFilesAndFolders = (dirPath) => {
-  if (fs.existsSync(dirPath)) {
-    fs.readdirSync(dirPath).forEach((file) => {
-      const currentPath = path.join(dirPath, file);
-      if (fs.lstatSync(currentPath).isDirectory()) {
-        deleteAllFilesAndFolders(currentPath); // Recursively delete contents
-      } else {
-        fs.unlinkSync(currentPath);
-      }
-    });
-    fs.rmdirSync(dirPath); // Remove the empty directory itself
-    console.log(`[DELETE] Removed directory: ${dirPath}`);
-  }
-};
-
-// Clean up the entire api directory
-const cleanApiDirectory = () => {
-  deleteAllFilesAndFolders(apiDir);
-  fs.mkdirSync(apiDir); // Recreate the base api directory
-  console.log(`[CREATE] Recreated base directory: ${apiDir}`);
-};
 
 // Helper function to ensure directory exists
 const ensureDirectoryExistence = (filePath) => {
@@ -56,20 +32,17 @@ const generateFile = (templatePath, outputPath, replacements) => {
 
 // Generate endpoints
 const generateEndpoints = () => {
-  const generatedFiles = [];
-
   eventRoutes.forEach(route => {
     const { eventType, method, path: routePath, params, qrySQL, bodyCols } = route;
     const codeName = `[${eventType}.js]`;
     const replacements = {
       eventType,
-      params: params.replace(/[{}`\n]/g, ''),
+      params: JSON.parse(params), // Assuming params is a valid JSON string
       qrySQL,
-      bodyCols: bodyCols ? bodyCols.replace(/[{}`\n]/g, '').split(' ').join(', ') : ''
+      bodyCols: JSON.parse(bodyCols) // Assuming bodyCols is a valid JSON string
     };
 
     const outputPath = path.join(__dirname, '../', routePath);
-    generatedFiles.push(routePath);
 
     console.log(`${codeName} Processing route: ${method} ${routePath}`);
 
@@ -94,8 +67,7 @@ const generateEndpoints = () => {
   });
 };
 
-// Clean up the api directory and generate new endpoints
-cleanApiDirectory();
+// Generate the endpoints
 generateEndpoints();
 
-module.exports = router; // Ensure the router is properly exported
+module.exports = router;

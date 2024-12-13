@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
       case 'POST':
       case 'PATCH':
       case 'DELETE':
-        const bodyValues = Object.values(body);
+        const bodyValues = Object.values(bodyCols);
         result = await db.executeQuery(qrySQL, bodyValues);
         break;
       default:
