@@ -17,8 +17,8 @@ module.exports = async (req, res) => {
 
   const query = `update ingredient_types
 set deleted_at = Now(),
-deleted_by = ?
-where id = ?`;
+deleted_by = :userID
+where id = :ingrTypeID`;
 
   try {
     const data = await executeQuery(query, [userId, params[requiredParam]], [], res, codeName);

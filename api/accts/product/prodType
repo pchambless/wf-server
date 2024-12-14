@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
 
   const query = `SELECT id, name, account_id
 from  product_types a
-where account_id = ?
+where account_id = :acctID
 and active = 'Y'
 order by name`;
 

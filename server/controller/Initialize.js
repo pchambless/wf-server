@@ -1,16 +1,10 @@
 require('module-alias/register');
-const path = require('path');
-
-const generateEndpoints = () => {
-  const scriptPath = path.join(__dirname, '../../apiTemplates/genEndpoints.js');
-  require(scriptPath);
-};
 
 module.exports = {
   initialize: async (req, res) => {
     try {
       console.log('Starting initialization...');
-      generateEndpoints();
+      // Any other initialization logic can go here
       res.status(200).send('Initialization successful');
     } catch (error) {
       console.error('Error during initialization:', error);

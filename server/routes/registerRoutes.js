@@ -4,36 +4,43 @@ const mapEventTypeController = require('@controller/mapEventController');
 const initializeController = require('@controller/initialize');
 const listRoutesController = require('@controller/listRegisteredRoutes');
 const restartServerController = require('@controller/restartServer');
-const { fetchEventTypes } = require('@controller/fetchEventTypes'); // Destructure to get fetchEventTypes function
-const dynamicRouter = require('@apiTemplates/genEndpoints'); 
+const { fetchEventTypes } = require('@controller/fetchEventTypes');
+const { getApiColumns } = require('@controller/apiColumnsController');
 const codeName = '[registerRoutes]: ';
 
 module.exports = (app) => {
-  console.log(codeName + 'Started');
+  console.log(`${codeName} Started`);
+
   const router = express.Router();
 
-  console.log(codeName + '/api/mapEventType');
-  router.post('/api/mapEventType', (req, res) => {
-    mapEventTypeController(req, res);
-  });
+  // Register routes
+  router.post('/api/mapEventType', mapEventTypeController);
+  console.log(`${codeName} /api/mapEventType registered`);
 
   router.post('/api/initialize', initializeController.initialize);
-  
+  console.log(`${codeName} /api/initialize registered`);
+
   router.get('/api/util/list-routes', (req, res) => {
-    console.log('Entering /api/util/list-routes'); // Log for debugging
+    console.log(`${codeName} Entering /api/util/list-routes`);
     listRoutesController.listRoutes(app)(req, res);
   });
-  
+  console.log(`${codeName} /api/util/list-routes registered`);
+
   router.post('/api/util/restart-server', restartServerController.restartServer);
-  
-  // Add the new endpoint for fetching event types
-  router.get('/api/util/fetchEventTypes', fetchEventTypes); // Ensure this is a function
+  console.log(`${codeName} /api/util/restart-server registered`);
 
-  // Register dynamic routes
-  router.use(dynamicRouter);
+  router.get('/api/util/fetchEventTypes', fetchEventTypes);
+  console.log(`${codeName} /api/util/fetchEventTypes registered`);
 
-  // Log to confirm route registration
-  console.log('Routes registered');
+  router.get('/api/util/apiColumns', getApiColumns);
+  console.log(`${codeName} /api/util/apiColumns registered`);
 
+  // Middleware registration log
+  app.use((req, res, next) => {
+//    console.log(`${codeName} Processing ${req.method} ${req.path}`);
+    next();
+  });
+
+  console.log(`${codeName} Routes setup complete`);
   return router;
 };

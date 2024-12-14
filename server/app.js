@@ -2,6 +2,7 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const registerRoutes = require('./routes/registerRoutes');
 
 dotenv.config();
 
@@ -15,6 +16,15 @@ app.use(cors({
 app.use(express.json());
 
 console.log('[app.js] entered app.js');
+
+// Log middleware to track initialization
+app.use((req, res, next) => {
+  console.log(`[app.js] Processing ${req.method} ${req.path}`);
+  next();
+});
+
+// Register routes
+registerRoutes(app);
 
 module.exports = {
   app,

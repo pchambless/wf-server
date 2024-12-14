@@ -3,7 +3,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const { app, port } = require('@root/server/app');
 const registerRoutes = require('@routes/registerRoutes');
-const { genEventTypeFile } = require('@controller/fetchEventTypes'); 
+const { genEventTypeFile } = require('@controller/fetchEventTypes');
 
 // Add middleware to set request timeout
 app.use((req, res, next) => {
@@ -27,12 +27,16 @@ const initializeServer = async () => {
 
     // Initialize routes after eventRoutes.js is generated
     console.log('[server.js] Initializing routes');
-    app.use('/', registerRoutes(app)); // Pass the app instance
+    const router = registerRoutes(app);
+    console.log('[server.js] Router returned from registerRoutes:', typeof router); // Log router type
+
+    app.use('/', router); // Pass the app instance
 
     // Log after routes are initialized
     console.log('[server.js] Routes initialized');
 
     // Start the server
+    console.log('[server.js] Attempting to start server on port', port);
     app.listen(port, () => {
       console.log(`[server.js] Server is running on http://localhost:${port}`);
     });

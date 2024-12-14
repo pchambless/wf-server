@@ -1,39 +1,25 @@
 require('module-alias/register');
 const eventRoutes = require('@middleware/events/eventRoutes');
 const db = require('@utils/dbUtils');
+const codeName = '[mapEventController] ';
 
 module.exports = async (req, res) => {
   const { eventType, queryParams, body } = req.body;
 
-  // Find the route definition based on eventType
   const eventRoute = eventRoutes.find(route => route.eventType === eventType);
   if (!eventRoute) {
     return res.status(400).send('Invalid eventType');
   }
 
-  // Extract necessary information from the route definition
   const { method, qrySQL } = eventRoute;
 
   try {
-    let result;
-    // Handle different HTTP methods
-    switch (method) {
-      case 'GET':
-        const params = Object.values(queryParams);
-        result = await db.executeQuery(qrySQL, params);
-        break;
-      case 'POST':
-      case 'PATCH':
-      case 'DELETE':
-        const bodyValues = Object.values(bodyCols);
-        result = await db.executeQuery(qrySQL, bodyValues);
-        break;
-      default:
-        return res.status(400).send('Unsupported HTTP method');
-    }
+    const params = method === 'GET' ? queryParams : body;
+    const result = await db.executeQuery(qrySQL, params);
+    console.log(codeName,`eventType -> '`,eventType,`': Successful`)
     res.status(200).json(result);
   } catch (error) {
-    console.error('Error processing event:', error);
+    console.error(codeName + `eventType -> ` + eventType + 'Failed:', error);
     res.status(500).send('Internal server error');
   }
 };

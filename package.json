@@ -10,7 +10,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "jest": "^29.7.0",
     "jsonwebtoken": "^9.0.2",
     "module-alias": "^2.2.2",
     "morgan": "^1.10.0",
@@ -21,10 +20,9 @@
     "wf-jspdf": "^1.1.6"
   },
   "scripts": {
-  "test": "jest",
-  "start": "nodemon --config nodemon.json server.js",
-  "dev": "nodemon --config nodemon.json server.js"
-},
+    "start": "nodemon --config nodemon.json server.js",
+    "dev": "nodemon --config nodemon.json server.js"
+  },
   "_moduleAliases": {
     "@root": ".",
     "@api": "api",
