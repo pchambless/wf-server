@@ -1,9 +1,8 @@
 require('module-alias/register');
 const { createRequestBody } = require('@utils/queryResolver'); // Import createRequestBody function
-const eventRoutes = require('@middleware/events/eventRoutes');
+const eventRoutes = require('@middleware/eventRoutes');
 const { executeQuery } = require('@utils/dbUtils');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[execEventType.js] `;
 
 module.exports = async (req, res) => {
   console.log(codeName, '[Request]', {

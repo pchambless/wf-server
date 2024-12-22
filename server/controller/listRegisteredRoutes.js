@@ -1,6 +1,5 @@
 require('module-alias/register');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[listRegisteredRoutes.js] `;
 
 module.exports = {
   listRoutes: (app) => (_, res) => {

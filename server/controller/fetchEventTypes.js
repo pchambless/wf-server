@@ -1,7 +1,7 @@
 require('module-alias/register');
 const fs = require('fs');
 const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[fetchEventTypes.js] `;
 
 const genEventTypeFile = async (connection) => {
   try {
@@ -10,7 +10,7 @@ const genEventTypeFile = async (connection) => {
                                             ' ORDER BY path, eventType');
     console.log(codeName + '.genEventTypeFile: EventType count loaded from database:', rows.length);
 
-    const eventRoutesPath = path.join(__dirname, '../middleware/events/eventRoutes.js');
+    const eventRoutesPath = path.join(__dirname, '../middleware/eventRoutes.js');
     const eventRoutesContent = `module.exports = ${JSON.stringify(rows, null, 2)};`;
 
     fs.writeFileSync(eventRoutesPath, eventRoutesContent);

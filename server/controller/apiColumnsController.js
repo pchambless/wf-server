@@ -2,7 +2,7 @@ require('module-alias/register');
 const fs = require('fs');
 const path = require('path');
 const { executeQuery } = require('@utils/dbUtils'); // Assuming executeQuery is a function to run SQL queries
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[apiColumnsController.js] `;
 
 // Function to generate apiColumns file by running a direct SQL query
 const genApiColumnFile = async (connection) => {
@@ -10,7 +10,7 @@ const genApiColumnFile = async (connection) => {
     const [rows] = await connection.execute('SELECT * FROM apiColumns');
     console.log(codeName + '.genApiColumnFile: apiColumns count loaded from database:', rows.length);
 
-    const apiColumnsPath = path.join(__dirname, '../middleware/api/apiColumns.js');
+    const apiColumnsPath = path.join(__dirname, '../middleware/apiColumns.js');
     const apiColumnsContent = `module.exports = ${JSON.stringify(rows, null, 2)};`;
 
     fs.writeFileSync(apiColumnsPath, apiColumnsContent);

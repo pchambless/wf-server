@@ -1,5 +1,4 @@
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[queryResolver.js] `;
 
 const convertQuery = (qrySQL, params) => {
   try {

@@ -4,8 +4,7 @@ const { app, port } = require('@root/server/app');
 const registerRoutes = require('@routes/registerRoutes');
 const { genEventTypeFile } = require('@controller/fetchEventTypes');
 const { genApiColumnFile } = require('@controller/apiColumnsController');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[server.js] `;
 
 // Add middleware to set request timeout
 app.use((req, res, next) => {

@@ -1,6 +1,5 @@
 require('module-alias/register');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[index.js] `;
 
 console.log(codeName, 'Entering Index')
 const router = require('@routes/registerRoutes'); // Import the centralized routes

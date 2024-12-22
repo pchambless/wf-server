@@ -1,0 +1,4 @@
+{
+  "ignores": ["webpack", "babel-*"],
+  "skipMissing": true
+}

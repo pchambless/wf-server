@@ -1,7 +1,6 @@
 require('dotenv').config(); // Load environment variables from .env file
 const mysql = require('mysql2/promise');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[dbConfig.js] `;
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,

@@ -1,8 +1,7 @@
 require('module-alias/register');
-const eventRoutes = require('@middleware/events/eventRoutes');
+const eventRoutes = require('@middleware/eventRoutes');
 const dbUtils = require('@utils/dbUtils');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `queryResolver.js `;
 
 module.exports = async (req, res) => {
   // Log the incoming request

@@ -2,8 +2,7 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[app.js] `;
 
 dotenv.config();
 

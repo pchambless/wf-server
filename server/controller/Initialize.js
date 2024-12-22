@@ -1,6 +1,5 @@
 require('module-alias/register');
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[initialize.js] `;
 
 module.exports = {
   initialize: async (req, res) => {

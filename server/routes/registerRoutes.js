@@ -6,9 +6,7 @@ const listRoutesController = require('@controller/listRegisteredRoutes');
 const restartServerController = require('@controller/restartServer');
 const { fetchEventTypes } = require('@controller/fetchEventTypes');
 const { fetchApiColumns } = require('@controller/apiColumnsController'); 
-
-const path = require('path');
-const codeName = `[${path.basename(__filename)}] `;
+const codeName = `[registerRoutes.js] `;
 
 module.exports = (app) => {
   console.log(`${codeName} Started`);
