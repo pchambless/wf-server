@@ -1,12 +1,14 @@
 require('module-alias/register');
 const express = require('express');
-const mapEventTypeController = require('@controller/mapEventController');
+const execEventType = require('@controller/execEventType');
 const initializeController = require('@controller/initialize');
 const listRoutesController = require('@controller/listRegisteredRoutes');
 const restartServerController = require('@controller/restartServer');
 const { fetchEventTypes } = require('@controller/fetchEventTypes');
-const { getApiColumns } = require('@controller/apiColumnsController');
-const codeName = '[registerRoutes]: ';
+const { fetchApiColumns } = require('@controller/apiColumnsController'); 
+
+const path = require('path');
+const codeName = `[${path.basename(__filename)}] `;
 
 module.exports = (app) => {
   console.log(`${codeName} Started`);
@@ -14,8 +16,8 @@ module.exports = (app) => {
   const router = express.Router();
 
   // Register routes
-  router.post('/api/mapEventType', mapEventTypeController);
-  console.log(`${codeName} /api/mapEventType registered`);
+  router.post('/api/execEventType', execEventType);
+  console.log(`${codeName} /api/execEventType registered`);
 
   router.post('/api/initialize', initializeController.initialize);
   console.log(`${codeName} /api/initialize registered`);
@@ -32,15 +34,12 @@ module.exports = (app) => {
   router.get('/api/util/fetchEventTypes', fetchEventTypes);
   console.log(`${codeName} /api/util/fetchEventTypes registered`);
 
-  router.get('/api/util/apiColumns', getApiColumns);
+  router.get('/api/util/apiColumns', fetchApiColumns);
   console.log(`${codeName} /api/util/apiColumns registered`);
 
-  // Middleware registration log
-  app.use((req, res, next) => {
-//    console.log(`${codeName} Processing ${req.method} ${req.path}`);
-    next();
-  });
+  // Use the router in the app instance
+  app.use('/', router);
 
   console.log(`${codeName} Routes setup complete`);
-  return router;
 };
+

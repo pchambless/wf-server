@@ -1,23 +1,20 @@
 require('module-alias/register');
 const fs = require('fs');
 const path = require('path');
-const codeName = '[fetchEventTypes] '
+const codeName = `[${path.basename(__filename)}] `;
 
 const genEventTypeFile = async (connection) => {
   try {
     const [rows] = await connection.execute('SELECT * ' +
                                             ' FROM v_apiEventsLoad ' +
-                                            ' ORDER BY path');
-    console.log(codeName + 'Loaded event types from database:', rows);
+                                            ' ORDER BY path, eventType');
+    console.log(codeName + '.genEventTypeFile: EventType count loaded from database:', rows.length);
 
     const eventRoutesPath = path.join(__dirname, '../middleware/events/eventRoutes.js');
-    console.log(codeName + '.genEventTypeFile:  eventRoutesPath:', eventRoutesPath);
-
     const eventRoutesContent = `module.exports = ${JSON.stringify(rows, null, 2)};`;
-//    console.log(codeName + '.genEventTypeFile: Writing to eventRoutes.js with content:', eventRoutesContent);
 
     fs.writeFileSync(eventRoutesPath, eventRoutesContent);
-    console.log(codeName + '.genEventTypeFile: server/middleware/events/eventRoutes.js file generated.');
+    console.log(codeName,'.genEventTypeFile: eventRoutes.js file generated.');
 
     return rows;
   } catch (error) {

@@ -2,7 +2,8 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const registerRoutes = require('./routes/registerRoutes');
+const path = require('path');
+const codeName = `[${path.basename(__filename)}] `;
 
 dotenv.config();
 
@@ -15,16 +16,13 @@ app.use(cors({
 }));
 app.use(express.json());
 
-console.log('[app.js] entered app.js');
+console.log(codeName, 'entered app.js');
 
 // Log middleware to track initialization
 app.use((req, res, next) => {
-  console.log(`[app.js] Processing ${req.method} ${req.path}`);
+  console.log(codeName, `Processing ${req.method} ${req.path}`);
   next();
 });
-
-// Register routes
-registerRoutes(app);
 
 module.exports = {
   app,

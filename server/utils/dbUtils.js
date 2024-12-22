@@ -1,31 +1,38 @@
-const pool = require('../../db');
-const mysql = require('mysql2/promise'); // Ensure mysql is imported
-const codeName = '[dbUtils] ';
-
-const replaceNamedParams = (query, params) => {
-  const keys = Object.keys(params);
-  keys.forEach(key => {
-    query = query.replace(new RegExp(':' + key, 'g'), mysql.escape(params[key]));
-  });
-  return query;
-};
-
-const executeQuery = async (query, params, res) => {
+const executeQuery = async (query, params, method) => {
   try {
-    const connection = await pool.getConnection();
+    console.log(`[executeQuery] Executing query: ${query}`);
+    console.log(`[executeQuery] With params: ${JSON.stringify(params)}`);
+    console.log(`[executeQuery] Method: ${method}`);
 
-    // Replace named parameters with their corresponding values
-    const formattedQuery = replaceNamedParams(query, params);
+    let results;
 
-    // Log the formatted query
-    console.log(codeName + `[executeQuery]  ${formattedQuery}`);
+    // Handle method-specific logic
+    if (method === 'POST') {
+      console.log('[executeQuery] Handling POST-specific logic');
+      // Begin transaction for POST requests
+      await db.beginTransaction();
+      results = await db.query(query, params);
+      await db.commit();
+    } else if (method === 'PATCH') {
+      console.log('[executeQuery] Handling PATCH-specific logic');
+      // Update existing data
+      results = await db.query(query, params);
+    } else if (method === 'GET') {
+      console.log('[executeQuery] Handling GET-specific logic');
+      // Retrieve data
+      results = await db.query(query, params);
+    } else {
+      throw new Error(`Unsupported method: ${method}`);
+    }
 
-    const [rows] = await connection.execute(formattedQuery);
-    connection.release();
-    return rows;
+    return results;
   } catch (error) {
-    console.error(codeName + `[executeQuery] ${codeName} Error executing query: ${error.message}`);
-    throw new Error(`${codeName} Error executing query: ${error.message}`);
+    console.error('[executeQuery] Error executing query:', error);
+    // Rollback if a transaction was started for a POST request
+    if (method === 'POST') {
+      await db.rollback();
+    }
+    throw new Error(`Error executing query: ${error.message}`);
   }
 };
 

@@ -1,4 +1,6 @@
 require('module-alias/register');
+const path = require('path');
+const codeName = `[${path.basename(__filename)}] `;
 
 module.exports = {
   listRoutes: (app) => (_, res) => {
@@ -11,7 +13,7 @@ module.exports = {
           path: middleware.route.path,
           methods: methods.map(method => method.toUpperCase()),
         });
-        console.log(`Added route: ${middleware.route.path}`); // Log added route
+        console.log(codeName, `Added route: ${middleware.route.path}`); // Log added route
       } else if (middleware.name === 'router') { // Routes added as router middleware
         middleware.handle.stack.forEach((handler, handlerIndex) => {
           if (handler.route) { // Ensure handler has route property
@@ -20,13 +22,13 @@ module.exports = {
               path: handler.route.path,
               methods: methods.map(method => method.toUpperCase()),
             });
-            console.log(`Added handler route ${handlerIndex}: ${handler.route.path}`); // Log added handler route
+            console.log(codeName,`Added handler route ${handlerIndex}: ${handler.route.path}`); 
           }
         });
       }
     });
-    console.log('Completed processing routes'); // Log completion
+    console.log(codeName, 'Completed processing routes'); // Log completion
     res.json({ routes });
-    console.log('Response sent'); // Log response sent
+    console.log(codeName,'Response sent'); // Log response sent
   }
 };

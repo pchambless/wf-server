@@ -1,15 +1,41 @@
-const { executeQuery } = require('../utils/dbUtils');
+require('module-alias/register');
+const fs = require('fs');
+const path = require('path');
+const { executeQuery } = require('@utils/dbUtils'); // Assuming executeQuery is a function to run SQL queries
+const codeName = `[${path.basename(__filename)}] `;
 
-const getApiColumns = async (req, res) => {
-  const query = 'SELECT * FROM apiColumns';
-  
+// Function to generate apiColumns file by running a direct SQL query
+const genApiColumnFile = async (connection) => {
   try {
-    const result = await executeQuery(query, {});
-    res.status(200).json(result);
+    const [rows] = await connection.execute('SELECT * FROM apiColumns');
+    console.log(codeName + '.genApiColumnFile: apiColumns count loaded from database:', rows.length);
+
+    const apiColumnsPath = path.join(__dirname, '../middleware/api/apiColumns.js');
+    const apiColumnsContent = `module.exports = ${JSON.stringify(rows, null, 2)};`;
+
+    fs.writeFileSync(apiColumnsPath, apiColumnsContent);
+    console.log(codeName + '.genApiColumnFile: apiColumns.js file generated.');
+
+    return rows;
   } catch (error) {
-    console.error('[apiColumnsController] Error fetching apiColumns:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error(codeName + '.genApiColumnFile: Error generating apiColumns.js:', error.message);
   }
 };
 
-module.exports = { getApiColumns };
+// Function to fetch apiColumns from the file
+const fetchApiColumns = async (req, res) => {
+  try {
+    const apiColumnsPath = path.resolve(__dirname, '../middleware/api/apiColumns.js');
+    const apiColumns = require(apiColumnsPath);
+
+    res.status(200).json({
+      message: 'apiColumns retrieved successfully',
+      apiColumns: apiColumns
+    });
+  } catch (error) {
+    console.error(codeName + 'Error fetching apiColumns:', error);
+    res.status(500).send('Internal server error');
+  }
+};
+
+module.exports = { genApiColumnFile, fetchApiColumns };
