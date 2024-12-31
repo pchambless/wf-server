@@ -32,6 +32,14 @@ module.exports = async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     console.error(codeName, `eventType -> ${eventType} Failed:`, error);
-    res.status(500).send('Internal server error');
-  }
+  
+    // Send detailed error response
+    const errorDetails = {
+      message: 'Internal server error',
+      error: error.message,
+      stack: error.stack,
+      type: 'execution_error'
+    };
+    res.status(500).json(errorDetails);
+  }  
 };

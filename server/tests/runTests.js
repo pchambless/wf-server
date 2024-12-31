@@ -139,8 +139,20 @@ async function runEventTypeTests(eventType) {
         status = 'failed';
       }
 
-      if (!isValidJson(details)) {
-        details = JSON.stringify('Internal server error');
+      // Parse the response to get error details if present
+      let responseDetails;
+      try {
+        responseDetails = JSON.parse(stdout);
+      } catch (parseError) {
+        console.error(`[runTests.js] Failed to parse response:`, parseError);
+        responseDetails = { message: 'Failed to parse response', error: parseError.message };
+      }
+
+      if (responseDetails.error) {
+        status = 'failed';
+        details = responseDetails.error; // Capture detailed error message
+      } else if (responseDetails.message) {
+        details = responseDetails.message; // Capture error message if available
       }
 
       console.log(`[runTests.js] Curl completed with status: ${status} and details: ${details}`);
@@ -149,7 +161,7 @@ async function runEventTypeTests(eventType) {
   });
 }
 
-// Function to log the event type result
+
 async function logEventTypeResult(eventType, status, details) {
   const query = `
     INSERT INTO apiTests (eventType, status, details)
@@ -167,6 +179,7 @@ async function logEventTypeResult(eventType, status, details) {
     console.error(`[runTests.js] Error logging event type result: ${error.message}`);
   }
 }
+
 
 // Main function to run tests for all eventTypes
 async function runTests() {
