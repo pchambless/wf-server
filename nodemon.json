@@ -1,8 +1,8 @@
 {
-  "watch": ["server/controllers", "server/routes", "server/middleware", "server/utils", "server/app.js"],
-  "ignore": ["node_modules", "logs", "*.log", "apiTemplates",
-   "registry", "api", "server/middleware/eventRoutes.js", "server/middleware/apiColumns.js"],
+  "watch": ["server"], 
+  "ignore": ["node_modules", "logs", "*.log",
+   "registry","server/middleware/eventRoutes.js", "server/middleware/apiColumns.js"],
   "ext": "js,json",
-  "exec": "node server.js",
+  "exec": "node server/server.js",
   "delay": "10"
 }

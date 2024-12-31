@@ -7,7 +7,7 @@ const genEventTypeFile = async (connection) => {
   try {
     const [rows] = await connection.execute('SELECT * ' +
                                             ' FROM v_apiEventsLoad ' +
-                                            ' ORDER BY path, eventType');
+                                            ' ORDER BY parent, eventType');
     console.log(codeName + '.genEventTypeFile: EventType count loaded from database:', rows.length);
 
     const eventRoutesPath = path.join(__dirname, '../middleware/eventRoutes.js');
@@ -24,7 +24,7 @@ const genEventTypeFile = async (connection) => {
 
 const fetchEventTypes = (req, res) => {
   try {
-    const eventRoutesPath = path.resolve(__dirname, '../middleware/events/eventRoutes.js');
+    const eventRoutesPath = path.resolve(__dirname, '../middleware/eventRoutes.js');
     const eventRoutes = require(eventRoutesPath);
 
     res.status(200).json({

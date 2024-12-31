@@ -2,7 +2,7 @@ require('module-alias/register');
 const fs = require('fs');
 const path = require('path');
 const { executeQuery } = require('@utils/dbUtils'); // Assuming executeQuery is a function to run SQL queries
-const codeName = `[apiColumnsController.js] `;
+const codeName = `[fetchApiColumns.js.js] `;
 
 // Function to generate apiColumns file by running a direct SQL query
 const genApiColumnFile = async (connection) => {
@@ -25,7 +25,7 @@ const genApiColumnFile = async (connection) => {
 // Function to fetch apiColumns from the file
 const fetchApiColumns = async (req, res) => {
   try {
-    const apiColumnsPath = path.resolve(__dirname, '../middleware/api/apiColumns.js');
+    const apiColumnsPath = path.resolve(__dirname, '../middleware/apiColumns.js');
     const apiColumns = require(apiColumnsPath);
 
     res.status(200).json({

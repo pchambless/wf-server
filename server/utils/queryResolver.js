@@ -2,14 +2,20 @@ const codeName = `[queryResolver.js] `;
 
 const convertQuery = (qrySQL, params) => {
   try {
-    console.log(codeName, 'Original query:', qrySQL);
+    console.log(codeName, 'Original qrySQL:', qrySQL);
     console.log(codeName, 'Original params:', params);
 
-    // Check if params is an array and map to an object with placeholders as keys
+    // Ensure params are correctly formatted
     if (Array.isArray(params)) {
-      const placeholders = qrySQL.match(/:\w+/g);
-      params = placeholders.reduce((acc, placeholder, index) => {
-        acc[placeholder] = params[index];
+      params = params.reduce((acc, paramObj) => {
+        Object.entries(paramObj).forEach(([key, value]) => {
+          acc[`:${key}`] = typeof value === 'string' ? `'${value}'` : value;
+        });
+        return acc;
+      }, {});
+    } else {
+      params = Object.entries(params).reduce((acc, [key, value]) => {
+        acc[`:${key}`] = typeof value === 'string' ? `'${value}'` : value;
         return acc;
       }, {});
     }
@@ -20,7 +26,7 @@ const convertQuery = (qrySQL, params) => {
       qrySQL = qrySQL.replace(regex, value);
     }
 
-    console.log(codeName, 'Converted query:', qrySQL);
+    console.log(codeName, 'qryMod:', qrySQL);
     return qrySQL;
   } catch (error) {
     console.error(codeName, 'Error converting query:', error);

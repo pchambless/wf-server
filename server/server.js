@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 const { app, port } = require('@root/server/app');
 const registerRoutes = require('@routes/registerRoutes');
 const { genEventTypeFile } = require('@controller/fetchEventTypes');
-const { genApiColumnFile } = require('@controller/apiColumnsController');
+const { genApiColumnFile } = require('@controller/fetchApiColumns');
 const codeName = `[server.js] `;
 
 // Add middleware to set request timeout

@@ -9,7 +9,7 @@ module.exports = {
       res.status(200).send(codeName, 'Initialization successful');
     } catch (error) {
       console.error(codeName, 'Error during initialization:', error);
-      res.status(500).send(codeName, 'Initialization failed');
+      res.status(500).send(codeName, 'Initialization failed'); 
     }
   }
 };

@@ -1,7 +1,7 @@
 const nodemon = require('nodemon');
 
 nodemon({
-  script: 'server.js',
+  script: '/server/server.js',
   watch: ['server/controllers', 'server/routes', 'server/middleware', 'server/utils', 'server/app.js'],
   ignore: ['node_modules', 'logs', '*.log', 'apiTemplates', 'registry', 'api'],
   ext: 'js,json',

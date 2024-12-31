@@ -21,7 +21,7 @@ const checkPort = (port) => {
 
 checkPort(3002).then(() => {
   console.log('Port 3002 is available.');
-  require('./server'); // Start your server
+  require('./server/server'); // Start your server
 }).catch((err) => {
   console.error('Port 3002 is in use:', err);
 });

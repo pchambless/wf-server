@@ -5,7 +5,7 @@ const initializeController = require('@controller/initialize');
 const listRoutesController = require('@controller/listRegisteredRoutes');
 const restartServerController = require('@controller/restartServer');
 const { fetchEventTypes } = require('@controller/fetchEventTypes');
-const { fetchApiColumns } = require('@controller/apiColumnsController'); 
+const { fetchApiColumns } = require('@controller/fetchApiColumns'); 
 const codeName = `[registerRoutes.js] `;
 
 module.exports = (app) => {
@@ -32,8 +32,8 @@ module.exports = (app) => {
   router.get('/api/util/fetchEventTypes', fetchEventTypes);
   console.log(`${codeName} /api/util/fetchEventTypes registered`);
 
-  router.get('/api/util/apiColumns', fetchApiColumns);
-  console.log(`${codeName} /api/util/apiColumns registered`);
+  router.get('/api/util/fetchApiColumns', fetchApiColumns);
+  console.log(`${codeName} /api/util/fetchApiColumns registered`);
 
   // Use the router in the app instance
   app.use('/', router);
