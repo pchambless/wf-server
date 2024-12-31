@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
   console.log(codeName, '[Request Body]', JSON.stringify(requestBody, null, 2));
 
   try {
-    const result = await executeQuery(requestBody.qryMod, params, method); // Pass method along with qryMod and params
+    const result = await executeQuery(requestBody.qryMod, method); // Pass method along with qryMod and params
     console.log(codeName, `eventType -> '${eventType}' [${method}]: Successful`, JSON.stringify(result, null, 2));
     res.status(200).json(result);
   } catch (error) {
