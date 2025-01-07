@@ -1,6 +1,6 @@
 require('module-alias/register');
 const { createRequestBody } = require('@utils/queryResolver'); // Import createRequestBody function
-const eventRoutes = require('@middleware/eventRoutes');
+const eventTypes = require('@middleware/eventTypes');
 const { executeQuery } = require('@utils/dbUtils');
 const codeName = `[execEventType.js] `;
 
@@ -14,7 +14,7 @@ module.exports = async (req, res) => {
 
   const { eventType, params } = req.body;
 
-  const eventRoute = eventRoutes.find(route => route.eventType === eventType);
+  const eventRoute = eventTypes.find(route => route.eventType === eventType);
   if (!eventRoute) {
     console.error(codeName, `Invalid eventType: ${eventType}`);
     return res.status(400).send('Invalid eventType');

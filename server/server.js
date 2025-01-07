@@ -18,6 +18,8 @@ app.get('/test-route', (req, res) => {
 });
 
 const initializeServer = async () => {
+  let server;
+
   try {
     const connection = await mysql.createConnection({
       host: process.env.DB_HOST,
@@ -30,14 +32,18 @@ const initializeServer = async () => {
     await genEventTypeFile(connection);
     await genApiColumnFile(connection);
 
-    // Initialize routes after eventRoutes.js is generated
     console.log(codeName, 'Initializing routes');
-    registerRoutes(app); // Register routes
+    registerRoutes(app);
     console.log(codeName, 'Routes initialized');
 
-    // Start the server
+    // Handle duplicate start
+    if (process.env.NODENAME && process.env.NODENAME === 'nodemon') {
+      console.log(codeName, 'Running under nodemon, avoiding duplicate start...');
+      return;
+    }
+
     console.log(codeName, 'Attempting to start server on port', port);
-    app.listen(port, () => {
+    server = app.listen(port, () => {
       console.log(codeName, `Server is running on http://localhost:${port}`);
     });
 
@@ -45,7 +51,14 @@ const initializeServer = async () => {
       try {
         await connection.end();
         console.log(codeName, 'Connection closed.');
-        process.exit(0);
+        if (server) {
+          server.close(() => {
+            console.log(codeName, 'Process terminated');
+            process.exit(0);
+          });
+        } else {
+          process.exit(0);
+        }
       } catch (error) {
         console.error(codeName, 'Error during shutdown:', error);
         process.exit(1);
@@ -59,5 +72,6 @@ const initializeServer = async () => {
     process.exit(1);
   }
 };
+
 
 initializeServer();

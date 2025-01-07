@@ -21,7 +21,7 @@ module.exports = [
     "id": 5,
     "parentID": 2,
     "variableName": ":prodTypeID",
-    "value": "0"
+    "value": "172"
   },
   {
     "id": 6,
@@ -45,7 +45,7 @@ module.exports = [
     "id": 10,
     "parentID": 13,
     "variableName": ":ingrID",
-    "value": "0"
+    "value": "29"
   },
   {
     "id": 14,
@@ -94,5 +94,35 @@ module.exports = [
     "parentID": 9,
     "variableName": ":prodDesc",
     "value": "Product Description"
+  },
+  {
+    "id": 27,
+    "parentID": 8,
+    "variableName": ":measUnitID",
+    "value": "27"
+  },
+  {
+    "id": 28,
+    "parentID": 11,
+    "variableName": ":wrkrID",
+    "value": "24"
+  },
+  {
+    "id": 30,
+    "parentID": 3,
+    "variableName": ":acctName",
+    "value": "Dummy Account"
+  },
+  {
+    "id": 31,
+    "parentID": 10,
+    "variableName": ":brndID",
+    "value": "0"
+  },
+  {
+    "id": 33,
+    "parentID": 10,
+    "variableName": ":brndName",
+    "value": "0"
   }
 ];

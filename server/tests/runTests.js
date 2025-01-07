@@ -26,7 +26,7 @@ const pool = mysql.createPool({
 const executeQuery = async (query) => {
   let connection;
   try {
-    console.log(`[runTests.js] Executing query: ${query}`);
+//    console.log(`[runTests.js] Executing query: ${query}`);
     let results;
     connection = await pool.getConnection();
 
@@ -55,7 +55,7 @@ const escapeString = (value) => {
 };
 
 // Paths to your JavaScript modules in the middleware
-const eventTypesPath = path.join(__dirname, '../middleware/eventRoutes');
+const eventTypesPath = path.join(__dirname, '../middleware/eventTypes');
 const apiColumnsPath = path.join(__dirname, '../middleware/apiColumns');
 
 // Actual base URL
@@ -75,7 +75,7 @@ function getValueForVariable(variableName) {
 function resolveParams(eventType) {
   const resolvedParams = {};
 
-  // Look in the params from eventRoutes
+  // Look in the params from eventTypes
   const eventRoute = eventTypes.find(route => route.eventType === eventType.eventType);
   if (eventRoute) {
     const routeParams = JSON.parse(eventRoute.params); // Parse the params JSON string
@@ -126,8 +126,11 @@ async function runEventTypeTests(eventType) {
     params: resolvedParams,
   };
 
+
   return new Promise((resolve, reject) => {
     const jsonPayload = JSON.stringify(eventTypeDetails).replace(/\\/g, '\\\\').replace(/"/g, '\\"'); // Escape special characters and double quotes
+    console.log(`[runTests.js] requestBody: `, jsonPayload);
+    
     exec(`curl -X POST ${baseUrl} -H "Content-Type: application/json" -d "${jsonPayload}"`, (error, stdout, stderr) => {
       let details = stdout;
       let status = 'success';
@@ -163,15 +166,16 @@ async function runEventTypeTests(eventType) {
 
 
 async function logEventTypeResult(eventType, status, details) {
+  // Limit details to the leftmost 500 bytes
+  const limitedDetails = details.slice(0, 500);
+
   const query = `
     INSERT INTO apiTests (eventType, status, details)
-    VALUES ('${eventType.eventType}', '${status}', '${escapeString(details)}')
+    VALUES ('${eventType.eventType}', '${status}', '${escapeString(limitedDetails)}')
     ON DUPLICATE KEY UPDATE 
       status = '${status}', 
-      details = '${escapeString(details)}', 
+      details = '${escapeString(limitedDetails)}', 
       lastTest = CURRENT_TIMESTAMP`;
-
-  console.log(`[runTests.js] Executing SQL Query: ${query}`);
 
   try {
     await executeQuery(query);
@@ -179,6 +183,7 @@ async function logEventTypeResult(eventType, status, details) {
     console.error(`[runTests.js] Error logging event type result: ${error.message}`);
   }
 }
+
 
 
 // Main function to run tests for all eventTypes

@@ -2,6 +2,7 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const userLogin = require('./controller/userLogin'); // Import the userLogin controller
 const codeName = `[app.js] `;
 
 dotenv.config();
@@ -22,6 +23,14 @@ app.use((req, res, next) => {
   console.log(codeName, `Processing ${req.method} ${req.path}`);
   next();
 });
+
+// Define the GET route for login
+app.get('/api/auth/login', userLogin); // Ensure this line is present
+
+// Remove the server listening part
+// app.listen(port, () => {
+//   console.log(`Server running on port ${port}`);
+// });
 
 module.exports = {
   app,

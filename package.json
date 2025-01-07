@@ -17,8 +17,8 @@
     "mysql2": "^3.11.5"
   },
   "scripts": {
-    "start": "nodemon --config nodemon.json /server/server.js",
-    "dev": "nodemon --config nodemon.json /server/server.js"
+    "start": "nodemon server/server.js",
+    "dev": "nodemon server/server.js"
   },
   "_moduleAliases": {
     "@root": ".",

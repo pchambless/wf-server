@@ -5,7 +5,8 @@ const initializeController = require('@controller/initialize');
 const listRoutesController = require('@controller/listRegisteredRoutes');
 const restartServerController = require('@controller/restartServer');
 const { fetchEventTypes } = require('@controller/fetchEventTypes');
-const { fetchApiColumns } = require('@controller/fetchApiColumns'); 
+const { fetchApiColumns } = require('@controller/fetchApiColumns');
+const userLogin = require('@controller/userLogin'); // Import userLogin controller
 const codeName = `[registerRoutes.js] `;
 
 module.exports = (app) => {
@@ -35,9 +36,11 @@ module.exports = (app) => {
   router.get('/api/util/fetchApiColumns', fetchApiColumns);
   console.log(`${codeName} /api/util/fetchApiColumns registered`);
 
+  router.post('/api/auth/login', userLogin); // Register userLogin endpoint
+  console.log(`${codeName} /api/auth/login registered`);
+
   // Use the router in the app instance
   app.use('/', router);
 
   console.log(`${codeName} Routes setup complete`);
 };
-

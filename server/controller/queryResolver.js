@@ -1,5 +1,5 @@
 require('module-alias/register');
-const eventRoutes = require('@middleware/eventRoutes');
+const eventTypes = require('@middleware/eventTypes');
 const dbUtils = require('@utils/dbUtils');
 const codeName = `queryResolver.js `;
 
@@ -14,7 +14,7 @@ module.exports = async (req, res) => {
 
   const { eventType, queryParams } = req.body;
 
-  const eventRoute = eventRoutes.find(route => route.eventType === eventType);
+  const eventRoute = eventTypes.find(route => route.eventType === eventType);
   if (!eventRoute) {
     console.error(codeName, `Invalid eventType: ${eventType}`);
     return res.status(400).send('Invalid eventType');

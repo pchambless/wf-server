@@ -1,28 +1,52 @@
-require('module-alias/register');
+// userLogin.js
 const bcrypt = require('bcrypt');
-const db = require('@utils/dbUtils'); // Ensure this is your DB utility module
+const { executeQuery } = require('@utils/dbUtils');
+const codeName = `[userLogin] `;
 
 module.exports = async (req, res) => {
-  const { userEmail, password } = req.body;
-
   try {
-    const query = 'SELECT id, password FROM users WHERE email = ?';
-    const [results] = await db.executeQuery(query, [userEmail]);
+    console.log(`${codeName} Login attempt started`);
+
+    // Extract userEmail and password from the request body
+    const { userEmail, password } = req.body;
+
+    if (!userEmail || !password) {
+      console.log(`${codeName} Missing email or password`);
+      return res.status(400).send({ message: 'Email and password are required' });
+    }
+
+    // Construct the query to get the user by email
+    const query = `SELECT id, password, role, default_account_id FROM users WHERE email = '${userEmail}'`;
+    console.log(`${codeName} Executing query: ${query}`);
+
+    const results = await executeQuery(query, 'GET');
 
     if (results.length === 0) {
-      return res.status(401).send('Unauthorized: Invalid email or password');
+      console.log(`${codeName} Email not found`);
+      return res.status(401).send({ message: 'Unauthorized' });
     }
 
     const user = results[0];
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const storedPassword = user.password;
+//    console.log(`${codeName} Retrieved user:`, user);
 
-    if (!isPasswordValid) {
-      return res.status(401).send('Unauthorized: Invalid email or password');
+    // Adjust prefix if needed
+    const adjustedStoredPassword = storedPassword.replace('$2y$', '$2b$');
+
+    // Use bcrypt to compare the provided password with the stored hashed password
+    const passwordMatch = await bcrypt.compare(password, adjustedStoredPassword);
+    console.log(`${codeName} Password match:`, passwordMatch);
+
+    if (!passwordMatch) {
+      console.log(`${codeName} Invalid password`);
+      return res.status(401).send({ message: 'Unauthorized' });
     }
 
-    res.status(200).json({ message: 'Login successful', userId: user.id });
+    const response = { success: true, data: { userId: user.id, userEmail, roleID: user.role, dfltAcctID: user.default_account_id } };
+    console.log(`${codeName} Sending response:`, response);
+    res.status(200).send(response);
   } catch (error) {
-    console.error('Error processing login:', error);
-    res.status(500).send('Internal server error');
+    console.error(`${codeName} Error processing login:`, error);
+    res.status(500).send({ message: 'Internal Server Error' });
   }
 };

@@ -10,26 +10,26 @@ const genEventTypeFile = async (connection) => {
                                             ' ORDER BY parent, eventType');
     console.log(codeName + '.genEventTypeFile: EventType count loaded from database:', rows.length);
 
-    const eventRoutesPath = path.join(__dirname, '../middleware/eventRoutes.js');
-    const eventRoutesContent = `module.exports = ${JSON.stringify(rows, null, 2)};`;
+    const eventTypesPath = path.join(__dirname, '../middleware/eventTypes.js');
+    const eventTypesContent = `module.exports = ${JSON.stringify(rows, null, 2)};`;
 
-    fs.writeFileSync(eventRoutesPath, eventRoutesContent);
-    console.log(codeName,'.genEventTypeFile: eventRoutes.js file generated.');
+    fs.writeFileSync(eventTypesPath, eventTypesContent);
+    console.log(codeName,'.genEventTypeFile: eventTypes.js file generated.');
 
     return rows;
   } catch (error) {
-    console.error(codeName + '.genEventTypeFile: Error generating eventRoutes.js:', error.message);
+    console.error(codeName + '.genEventTypeFile: Error generating eventTypes.js:', error.message);
   }
 };
 
 const fetchEventTypes = (req, res) => {
   try {
-    const eventRoutesPath = path.resolve(__dirname, '../middleware/eventRoutes.js');
-    const eventRoutes = require(eventRoutesPath);
+    const eventTypesPath = path.resolve(__dirname, '../middleware/eventTypes.js');
+    const eventTypes = require(eventTypesPath);
 
     res.status(200).json({
       message: 'Event types retrieved successfully',
-      eventTypes: eventRoutes
+      eventTypes: eventTypes
     });
   } catch (error) {
     console.error('Error fetching event types:', error);
