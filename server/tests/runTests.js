@@ -68,7 +68,7 @@ const apiColumns = require(apiColumnsPath);
 // Helper function to get the value for a given variable name
 function getValueForVariable(variableName) {
   const column = apiColumns.find(col => col.variableName === variableName);
-  return column ? column.value : null;
+  return column ? column.value : null; 
 }
 
 // Function to resolve parameters with values from apiColumns and qrySQL
@@ -82,9 +82,9 @@ function resolveParams(eventType) {
     routeParams.forEach(param => {
       const value = getValueForVariable(param);
       if (value !== undefined && value !== null) {
-        resolvedParams[param.slice(1)] = value;
+        resolvedParams[param] = value;
       } else {
-        resolvedParams[param.slice(1)] = param;
+        resolvedParams[param] = param;
       }
     });
   }
@@ -95,9 +95,9 @@ function resolveParams(eventType) {
     paramMatches.forEach(param => {
       const value = getValueForVariable(param);
       if (value !== undefined && value !== null) {
-        resolvedParams[param.slice(1)] = value;
+        resolvedParams[param] = value;
       } else {
-        resolvedParams[param.slice(1)] = param;
+        resolvedParams[param] = param;
       }
     });
   }

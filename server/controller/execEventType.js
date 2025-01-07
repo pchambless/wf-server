@@ -2,7 +2,7 @@ require('module-alias/register');
 const { createRequestBody } = require('@utils/queryResolver'); // Import createRequestBody function
 const eventTypes = require('@middleware/eventTypes');
 const { executeQuery } = require('@utils/dbUtils');
-const codeName = `[execEventType.js] `;
+const codeName = `[execEventType.js]`;
 
 module.exports = async (req, res) => {
   console.log(codeName, '[Request]', {
@@ -14,6 +14,9 @@ module.exports = async (req, res) => {
 
   const { eventType, params } = req.body;
 
+  // Log the received parameters
+  console.log(codeName, '[Parameters]', params);
+
   const eventRoute = eventTypes.find(route => route.eventType === eventType);
   if (!eventRoute) {
     console.error(codeName, `Invalid eventType: ${eventType}`);
@@ -22,17 +25,25 @@ module.exports = async (req, res) => {
 
   const { qrySQL, method } = eventRoute; // Retrieve the method from eventRoute
 
-  const requestBody = createRequestBody(qrySQL, params);
-
-  console.log(codeName, '[Request Body]', JSON.stringify(requestBody, null, 2));
-
   try {
-    const result = await executeQuery(requestBody.qryMod, method); // Pass method along with qryMod and params
+    // Create the request body and ensure parameters are correctly replaced in the query
+    const requestBody = createRequestBody(qrySQL, params);
+    console.log(codeName, '[Request Body]', JSON.stringify(requestBody, null, 2));
+
+    // Check for unresolved parameters and log warnings
+    const unresolvedParams = requestBody.qryMod.match(/:[a-zA-Z0-9_]+/g);
+    if (unresolvedParams) {
+      console.warn(codeName, 'Unresolved parameters found in query:', unresolvedParams);
+      return res.status(400).send(`Unresolved parameters: ${unresolvedParams.join(', ')}`);
+    }
+
+    // Execute the query
+    const result = await executeQuery(requestBody.qryMod, method);
     console.log(codeName, `eventType -> '${eventType}' [${method}]: Successful`, JSON.stringify(result, null, 2));
     res.status(200).json(result);
   } catch (error) {
     console.error(codeName, `eventType -> ${eventType} Failed:`, error);
-  
+
     // Send detailed error response
     const errorDetails = {
       message: 'Internal server error',
@@ -41,5 +52,5 @@ module.exports = async (req, res) => {
       type: 'execution_error'
     };
     res.status(500).json(errorDetails);
-  }  
+  }
 };

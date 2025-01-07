@@ -76,7 +76,7 @@ module.exports = [
     "method": "PATCH",
     "params": "[\n  \":brndName\",\n  \":userID\",\n  \":brndID\"\n]",
     "parent": "0.3.3-Brands",
-    "qrySQL": "UPDATE brands\nset name = :brndName\nupdated_by = :userID\nupdated_at = Now()\nwhere id = :brndID",
+    "qrySQL": "UPDATE brands\nset name = :brndName,\nupdated_by = :userID,\nupdated_at = Now()\nwhere id = :brndID",
     "purpose": "Edit the Brand name."
   },
   {
