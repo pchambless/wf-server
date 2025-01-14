@@ -4,7 +4,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":userEmail\"\n]",
     "parent": "0.0.1-Users",
-    "qrySQL": "select acct_id, account_name\nfrom   v_wf_usr_dtl a\nwhere  email = :userEmail\nORDER BY account_name",
+    "qrySQL": "select acctID, acctName\nfrom   v_wf_usr_dtl a\nwhere  email = :userEmail\nORDER BY acctName",
     "purpose": "Get the list of Accounts the user has privelages for."
   },
   {

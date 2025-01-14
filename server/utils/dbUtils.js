@@ -1,12 +1,22 @@
 require('module-alias/register');
 require('dotenv').config(); // Load environment variables from .env file
 const mysql = require('mysql2/promise');
-const codeName = '[dbUtils.js] ';
+const fileName = '[dbUtils.js] ';
 
+/**
+ * Executes a database query based on the specified HTTP method.
+ * Handles connection creation, transaction management, and error handling.
+ *
+ * @async
+ * @param {string} query - The SQL query to execute.
+ * @param {string} method - The HTTP method (GET, POST, PATCH, DELETE) associated with the query.
+ * @returns {Promise<*>} The results of the query execution.
+ * @throws {Error} If there's an error during query execution or if the method is unsupported.
+ */
 const executeQuery = async (query, method) => {
   let connection;
   try {
-    console.log(`${codeName} Executing ${method} query: ${query}`);
+    console.log(`${fileName}Executing ${method} query: ${query}`);
 
     let results;
 
@@ -20,30 +30,30 @@ const executeQuery = async (query, method) => {
     });
 
     if (['POST', 'PATCH', 'DELETE'].includes(method)) {
-      console.log(`${codeName} handling ${method}-specific logic`);
+      console.log(`${fileName}Handling ${method}-specific logic`);
       await connection.beginTransaction();
       results = await connection.query(query);
       await connection.commit();
     } else if (method === 'GET') {
-      console.log(`${codeName} handling GET-specific logic`);
+      console.log(`${fileName}Handling GET-specific logic`);
       const [rows] = await connection.execute(query);
-      console.log(`${codeName} Query executed, rows fetched: ${rows.length}`);
+      console.log(`${fileName}Query executed, rows fetched: ${rows.length}`);
       results = rows;
     } else {
-      throw new Error(`${codeName} Unsupported method: ${method}`);
+      throw new Error(`${fileName}Unsupported method: ${method}`);
     }
 
     return results;
   } catch (error) {
-    console.error(`${codeName} Error executing query: ${error}`);
+    console.error(`${fileName}Error executing query: ${error}`);
     if (['POST', 'PATCH', 'DELETE'].includes(method) && connection) {
       await connection.rollback();
     }
-    throw new Error(`${codeName} Error executing query: ${error.message}`);
+    throw new Error(`${fileName}Error executing query: ${error.message}`);
   } finally {
     if (connection) {
       await connection.end(); // Ensure connection is closed
-      console.log(`${codeName} Connection closed`);
+      console.log(`${fileName}Connection closed`);
     }
   }
 };

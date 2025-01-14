@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     }
 
     // Construct the query to get the user by email
-    const query = `SELECT id, password, role, default_account_id FROM users WHERE email = '${userEmail}'`;
+    const query = `SELECT  userID, password, roleID, acctID, acctName, userEmail FROM v_userLogin WHERE userEmail = '${userEmail}'`;
     console.log(`${codeName} Executing query: ${query}`);
 
     const results = await executeQuery(query, 'GET');
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
       return res.status(401).send({ message: 'Unauthorized' });
     }
 
-    const response = { success: true, data: { userId: user.id, userEmail, roleID: user.role, dfltAcctID: user.default_account_id } };
+    const response = { success: true, data: { user } };
     console.log(`${codeName} Sending response:`, response);
     res.status(200).send(response);
   } catch (error) {
