@@ -1,4 +1,4 @@
 {
-  "ignores": ["webpack", "babel-*"],
+  "ignores": [ "webpack", "babel-*", "eslint", "jest" ],
   "skipMissing": true
 }

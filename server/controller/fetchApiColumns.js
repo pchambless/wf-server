@@ -7,7 +7,7 @@ const codeName = `[fetchApiColumns.js.js] `;
 // Function to generate apiColumns file by running a direct SQL query
 const genApiColumnFile = async (connection) => {
   try {
-    const [rows] = await connection.execute('SELECT * FROM apiColumns');
+    const [rows] = await connection.execute('SELECT * FROM api_wf.apiColumns');
     console.log(codeName + '.genApiColumnFile: apiColumns count loaded from database:', rows.length);
 
     const apiColumnsPath = path.join(__dirname, '../middleware/apiColumns.js');

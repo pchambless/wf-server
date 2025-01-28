@@ -4,7 +4,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":userEmail\"\n]",
     "parent": "0.0.1-Users",
-    "qrySQL": "select acctID, acctName\nfrom   v_wf_usr_dtl a\nwhere  email = :userEmail\nORDER BY acctName",
+    "qrySQL": "select acctID, acctName\nfrom   api_wf.userAccts\nwhere  userEmail = :userEmail\nORDER BY acctName",
     "purpose": "Get the list of Accounts the user has privelages for."
   },
   {
@@ -12,7 +12,7 @@ module.exports = [
     "method": "GET",
     "params": "[]",
     "parent": "0.0.1-Users",
-    "qrySQL": "select *\nfrom v_userList",
+    "qrySQL": "select *\nfrom api_wf.userList",
     "purpose": "The list of Whatsfresh Users."
   },
   {
@@ -20,7 +20,7 @@ module.exports = [
     "method": "GET",
     "params": "[]",
     "parent": "0.0.3-Accounts",
-    "qrySQL": "select *\nfrom v_acctList",
+    "qrySQL": "select *\nfrom api_wf.acctList",
     "purpose": "Get the list of WF Accounts"
   },
   {
@@ -44,7 +44,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":acctID\"\n]",
     "parent": "0.3.1-Ingredient Types",
-    "qrySQL": "SELECT name, description, id \nFROM ingredient_types \nWHERE account_id = :acctID \nAND active = \"Y\" \nORDER BY name",
+    "qrySQL": "SELECT *\nFROM api_wf.ingrTypeList \nWHERE acctID = :acctID \nORDER BY ingrTypeName",
     "purpose": "List all the ingredient types for the selected Account"
   },
   {
@@ -68,7 +68,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":acctID\"\n]",
     "parent": "0.3.2-Product Types",
-    "qrySQL": "SELECT name, id\nfrom  product_types a\nwhere account_id = :acctID\nand active = 'Y'\norder by name",
+    "qrySQL": "SELECT *\nfrom  api_wf.prodTypeList a\nwhere acctID = :acctID\norder by prodTypeName",
     "purpose": "List the Prod Types"
   },
   {
@@ -84,7 +84,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":acctID\"\n]",
     "parent": "0.3.3-Brands",
-    "qrySQL": "SELECT *\nfrom  v_brandList\nwhere account_id = :acctID",
+    "qrySQL": "SELECT *\nfrom  api_wf.brndList\nwhere acctID = :acctID",
     "purpose": "the List of Brands."
   },
   {
@@ -92,7 +92,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":ingrTypeID\"\n]",
     "parent": "3.1.2-Ingredients",
-    "qrySQL": "select ingr_code, ingr_name, ingr_desc, dflt_meas, dflt_vndr, ingr_id\nfrom v_ingr_list\nwhere ingr_type_id = :ingrTypeID",
+    "qrySQL": "select *\nfrom api_wf.ingrList\nwhere ingrTypeID = :ingrTypeID",
     "purpose": "List of Ingredients"
   },
   {
@@ -100,7 +100,7 @@ module.exports = [
     "method": "GET",
     "params": "[\n  \":prodTypeID\"\n]",
     "parent": "3.2.1-Products",
-    "qrySQL": "select prodCode, prodName, prodDesc, bestByDays, location, prodMeas, prodID\nfrom v_prodList\nwhere prodTypeID = :prodTypeID\norder by prodName",
+    "qrySQL": "select *\nfrom api_wf.prodList\nwhere prodTypeID = :prodTypeID\norder by prodName",
     "purpose": "GET the list of Products for a Product Type"
   }
 ];

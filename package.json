@@ -32,6 +32,7 @@
     "@db": "server/utils/db.js"
   },
   "devDependencies": {
+    "eslint": "^9.19.0",
     "nodemon": "^3.1.7"
   }
 }

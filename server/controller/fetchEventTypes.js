@@ -6,7 +6,7 @@ const codeName = `[fetchEventTypes.js] `;
 const genEventTypeFile = async (connection) => {
   try {
     const [rows] = await connection.execute('SELECT * ' +
-                                            ' FROM v_apiEventsLoad ' +
+                                            ' FROM api_wf.v_apiEventsLoad ' +
                                             ' ORDER BY parent, eventType');
     console.log(codeName + '.genEventTypeFile: EventType count loaded from database:', rows.length);
 
@@ -18,7 +18,7 @@ const genEventTypeFile = async (connection) => {
 
     return rows;
   } catch (error) {
-    console.error(codeName + '.genEventTypeFile: Error generating eventTypes.js:', error.message);
+    console.error(codeName + '.genEventTypeFile: Error generating eventTypes.js:', error.message );
   }
 };
 
