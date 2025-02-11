@@ -6,8 +6,7 @@ const codeName = `[fetchEventTypes.js] `;
 const genEventTypeFile = async (connection) => {
   try {
     const [rows] = await connection.execute('SELECT * ' +
-                                            ' FROM api_wf.v_apiEventsLoad ' +
-                                            ' ORDER BY parent, eventType');
+                                            ' FROM api_wf.apiEventList');
     console.log(codeName + '.genEventTypeFile: EventType count loaded from database:', rows.length);
 
     const eventTypesPath = path.join(__dirname, '../middleware/eventTypes.js');
@@ -28,12 +27,12 @@ const fetchEventTypes = (req, res) => {
     const eventTypes = require(eventTypesPath);
 
     res.status(200).json({
-      message: 'Event types retrieved successfully',
+      message: 'Event types retrieved successfully', 
       eventTypes: eventTypes
     });
-  } catch (error) {
-    console.error('Error fetching event types:', error);
-    res.status(500).send('Internal server error');
+  } catch (error) { 
+    console.error('Error fetching event types:', error); 
+    res.status(500).send('Internal server error'); 
   }
 };
 

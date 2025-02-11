@@ -8,4 +8,4 @@ const initializeRoutes = (app) => {
   app.use('/', router);
 };
 
-module.exports = { initializeRoutes };
+module.exports = { initializeRoutes }; 

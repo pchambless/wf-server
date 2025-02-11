@@ -23,7 +23,7 @@ const convertQuery = (qrySQL, params) => {
 
     console.log(codeName, 'qryMod:', qrySQL);
     return qrySQL;
-  } catch (error) {
+  } catch (error) { 
     console.error(codeName, 'Error converting query:', error);
     throw new Error(`${codeName} Failed to convert query`);
   }

@@ -12,14 +12,14 @@ module.exports = async (req, res) => {
     body: JSON.stringify(req.body, null, 2) // Ensure nested objects are correctly logged
   });
 
-  const { eventType, params } = req.body;
+  const { eventType, params } = req.body; 
 
   // Log the received parameters
   console.log(codeName, '[Parameters]', params);
 
   const eventRoute = eventTypes.find(route => route.eventType === eventType);
-  if (!eventRoute) {
-    console.error(codeName, `Invalid eventType: ${eventType}`);
+  if (!eventType) {
+    console.error(codeName, `Invalid eventType: ${eventType}`); 
     return res.status(400).send('Invalid eventType');
   }
 
@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
     console.log(codeName, '[Request Body]', JSON.stringify(requestBody, null, 2));
 
     // Check for unresolved parameters and log warnings
-    const unresolvedParams = requestBody.qryMod.match(/:[a-zA-Z0-9_]+/g);
+    const unresolvedParams = requestBody.qryMod.match(/:[a-zA-Z0-9_]+/g); 
     if (unresolvedParams) {
       console.warn(codeName, 'Unresolved parameters found in query:', unresolvedParams);
       return res.status(400).send(`Unresolved parameters: ${unresolvedParams.join(', ')}`);
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
     console.log(codeName, `eventType -> '${eventType}' [${method}]: Successful`, JSON.stringify(result, null, 2));
     res.status(200).json(result);
   } catch (error) {
-    console.error(codeName, `eventType -> ${eventType} Failed:`, error);
+    console.error(codeName, `eventType -> ${eventType} Failed:`, error); 
 
     // Send detailed error response
     const errorDetails = {

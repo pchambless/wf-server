@@ -1,5 +1,8 @@
 const nodemon = require('nodemon');
 
+// Set the process title for better identification
+process.title = 'Node Server';
+
 nodemon({
   script: '/server/server.js',
   watch: ['server/controllers', 'server/routes', 'server/middleware', 'server/utils', 'server/app.js'],
