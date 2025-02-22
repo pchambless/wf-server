@@ -11,7 +11,7 @@ module.exports = {
         return res.status(500).send(`${codeName} Failed to restart the server.`);
       }
       console.log(`Server restart output: ${stdout}`);
-      res.send('Server restarted successfully.');
+      res.send('Server restarted successfully.');  
     });
   }
 };

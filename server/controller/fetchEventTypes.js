@@ -31,7 +31,7 @@ const fetchEventTypes = (req, res) => {
       eventTypes: eventTypes
     });
   } catch (error) { 
-    console.error('Error fetching event types:', error); 
+    console.error('Error fetching event types:', error);  
     res.status(500).send('Internal server error'); 
   }
 };

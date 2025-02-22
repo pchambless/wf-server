@@ -5,7 +5,7 @@ const codeName = `[userLogin] `;
 
 module.exports = async (req, res) => {
   try {
-    console.log(`${codeName} Login attempt started`);
+    console.log(`${codeName} Login attempt started`); 
 
     // Extract userEmail and password from the request body
     const { userEmail, password } = req.body;
@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     }
 
     // Construct the query to get the user by email
-    const query = `SELECT  userID, password, roleID, acctID, acctName, userEmail FROM v_userLogin WHERE userEmail = '${userEmail}'`;
+    const query = `SELECT  userID, password, roleID, acctID, acctName, userEmail FROM v_userLogin WHERE userEmail = '${userEmail}'`;  
     console.log(`${codeName} Executing query: ${query}`);
 
     const results = await executeQuery(query, 'GET');

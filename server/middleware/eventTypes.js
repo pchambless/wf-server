@@ -56,6 +56,30 @@ module.exports = [
     "purpose": "List all the ingredient types for the selected Account"
   },
   {
+    "eventID": 99,
+    "eventType": "measList",
+    "method": "GET",
+    "qrySQL": "SELECT *\nFROM api_wf.measList\nORDER BY name",
+    "params": "[]",
+    "purpose": "Globally available list of measure units"
+  },
+  {
+    "eventID": 100,
+    "eventType": "pageList",
+    "method": "GET",
+    "qrySQL": "SELECT * from api_wf.pageList",
+    "params": "[]",
+    "purpose": "The list of Whatsfresh Pages."
+  },
+  {
+    "eventID": 101,
+    "eventType": "prodBtchList",
+    "method": "GET",
+    "qrySQL": "SELECT * FROM api_wf.prodBtchList\nWHERE prodID = :prodID\nLIMIT 25",
+    "params": "[\n  \":prodID\"\n]",
+    "purpose": "Get the List of Product Batches."
+  },
+  {
     "eventID": 94,
     "eventType": "prodList",
     "method": "GET",
@@ -83,7 +107,7 @@ module.exports = [
     "eventID": 95,
     "eventType": "taskList",
     "method": "GET",
-    "qrySQL": "SELECT  *\nFROM api_wf.taskList\nWHERE prodTypeID = :prodTypeID\nAND active = 'Y'\nORDER BY ordr",
+    "qrySQL": "SELECT  *\nFROM api_wf.taskList\nWHERE prodTypeID = :prodTypeID\nORDER BY taskOrder",
     "params": "[\n  \":prodTypeID\"\n]",
     "purpose": "Fetch tasks associated to a Product Type"
   },
@@ -107,7 +131,7 @@ module.exports = [
     "eventID": 40,
     "eventType": "vndrList",
     "method": "GET",
-    "qrySQL": "SELECT *\nFROM vndrList\nWHERE acctID = :acctID\nORDER BY vndrName",
+    "qrySQL": "SELECT *\nFROM api_wf.vndrList\nWHERE acctID = :acctID\nORDER BY vndrName",
     "params": "[\n  \":acctID\"\n]",
     "purpose": "Get the List of Vendors"
   },

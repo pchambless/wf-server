@@ -33,7 +33,7 @@ const fetchApiColumns = async (req, res) => {
       apiColumns: apiColumns
     });
   } catch (error) {
-    console.error(codeName + 'Error fetching apiColumns:', error);
+    console.error(codeName + 'Error fetching apiColumns:', error); 
     res.status(500).send('Internal server error');
   }
 };

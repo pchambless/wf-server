@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
   // Log the received parameters
   console.log(codeName, '[Parameters]', params);
 
-  const eventRoute = eventTypes.find(route => route.eventType === eventType);
+  const eventRoute = eventTypes.find(route => route.eventType === eventType); 
   if (!eventType) {
     console.error(codeName, `Invalid eventType: ${eventType}`); 
     return res.status(400).send('Invalid eventType');
