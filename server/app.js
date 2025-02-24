@@ -13,7 +13,7 @@ const port = process.env.PORT || 3001;
 app.use(morgan('combined'));
 app.use(cors({
   origin: ['http://localhost:3000',
-  'https://972d-2600-1700-8ea6-c000-8001-ba31-1a04-7686.ngrok-free.app']
+  'https://crisp-sharply-mutt.ngrok-free.app']
 }));
 app.use(express.json());
 
