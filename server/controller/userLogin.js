@@ -1,7 +1,21 @@
-// userLogin.js
 const bcrypt = require('bcrypt');
 const { executeQuery } = require('@utils/dbUtils');
 const codeName = `[userLogin] `;
+
+const rehashPassword = async (userEmail, plaintextPassword) => {
+  try {
+    // Generate a new hash for the plaintext password
+    const newHash = await bcrypt.hash(plaintextPassword, 10);
+    console.log(`${codeName} New hashed password:`, newHash);
+
+    // Update the database with the new hash
+    const updateQuery = `UPDATE users SET password = '${newHash}' WHERE userEmail = '${userEmail}'`;
+    await executeQuery(updateQuery, 'UPDATE');
+    console.log(`${codeName} Password rehashed and updated for email:`, userEmail);
+  } catch (error) {
+    console.error(`${codeName} Error rehashing password:`, error);
+  }
+};
 
 module.exports = async (req, res) => {
   try {
@@ -16,7 +30,7 @@ module.exports = async (req, res) => {
     }
 
     // Construct the query to get the user by email
-    const query = `SELECT  userID, password, roleID, acctID, acctName, userEmail FROM v_userLogin WHERE userEmail = '${userEmail}'`;  
+    const query = `SELECT userID, password, roleID, acctID, acctName, userEmail FROM v_userLogin WHERE userEmail = '${userEmail}'`;  
     console.log(`${codeName} Executing query: ${query}`);
 
     const results = await executeQuery(query, 'GET');
@@ -28,7 +42,6 @@ module.exports = async (req, res) => {
 
     const user = results[0];
     const storedPassword = user.password;
-//    console.log(`${codeName} Retrieved user:`, user);
 
     // Adjust prefix if needed
     const adjustedStoredPassword = storedPassword.replace('$2y$', '$2b$');
@@ -40,6 +53,12 @@ module.exports = async (req, res) => {
     if (!passwordMatch) {
       console.log(`${codeName} Invalid password`);
       return res.status(401).send({ message: 'Unauthorized' });
+    }
+
+    // Check if the password needs to be rehashed
+    const needsRehash = adjustedStoredPassword.startsWith('$2b$') && adjustedStoredPassword.length !== 60;
+    if (needsRehash) {
+      await rehashPassword(userEmail, password);
     }
 
     const response = { success: true, data: { user } };
