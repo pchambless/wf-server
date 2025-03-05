@@ -1,71 +1,117 @@
 const bcrypt = require('bcrypt');
+const { createRequestBody } = require('@utils/queryResolver'); // Import createRequestBody function
 const { executeQuery } = require('@utils/dbUtils');
-const codeName = `[userLogin] `;
+const logger = require('@utils/logger');
+const codeName = '[userLogin.js]';
 
-const rehashPassword = async (userEmail, plaintextPassword) => {
-  try {
-    // Generate a new hash for the plaintext password
-    const newHash = await bcrypt.hash(plaintextPassword, 10);
-    console.log(`${codeName} New hashed password:`, newHash);
+// Clear require cache
+Object.keys(require.cache).forEach(function(key) {
+    delete require.cache[key];
+});
 
-    // Update the database with the new hash
-    const updateQuery = `UPDATE users SET password = '${newHash}' WHERE userEmail = '${userEmail}'`;
-    await executeQuery(updateQuery, 'UPDATE');
-    console.log(`${codeName} Password rehashed and updated for email:`, userEmail);
-  } catch (error) {
-    console.error(`${codeName} Error rehashing password:`, error);
-  }
-};
+// Load eventTypes directly from the file
+const eventTypes = require('@middleware/eventTypes');
 
-module.exports = async (req, res) => {
-  try {
-    console.log(`${codeName} Login attempt started`); 
+async function rehashPassword(userEmail, oldHash) {
+    try {
+        const newHash = await bcrypt.hash(oldHash, 10);
+        logger.debug(`${codeName} Password rehash generated`, { userEmail });
 
-    // Extract userEmail and password from the request body
-    const { userEmail, password } = req.body;
-
-    if (!userEmail || !password) {
-      console.log(`${codeName} Missing email or password`);
-      return res.status(400).send({ message: 'Email and password are required' });
+        const updateQuery = 'UPDATE api_wf.userList SET password = ? WHERE userEmail = ?';
+        await executeQuery(updateQuery, 'PATCH', [newHash, userEmail]);
+        logger.info(`${codeName} Password rehashed and updated`, { userEmail });
+    } catch (error) {
+        logger.error(`${codeName} Error rehashing password:`, error);
+        throw error;
     }
+}
 
-    // Construct the query to get the user by email
-    const query = `SELECT userID, password, roleID, acctID, acctName, userEmail FROM v_userLogin WHERE userEmail = '${userEmail}'`;  
-    console.log(`${codeName} Executing query: ${query}`);
+async function login(req, res) {
+    logger.info(`${codeName} Login attempt started`);
+    
+    try {
+        const { userEmail, password } = req.body;
 
-    const results = await executeQuery(query, 'GET');
+        if (!userEmail || !password) {
+            logger.warn(`${codeName} Missing credentials`, { userEmail: !!userEmail, password: !!password });
+            return res.status(400).json({
+                success: false,
+                message: 'Email and password are required'
+            });
+        }
 
-    if (results.length === 0) {
-      console.log(`${codeName} Email not found`);
-      return res.status(401).send({ message: 'Unauthorized' });
+        logger.debug(`${codeName} Executing user lookup query`, { userEmail });
+
+        // Find the eventType for userLogin directly from the loaded eventTypes
+        const eventRoute = eventTypes.find(event => event.eventType === 'userLogin');
+        if (!eventRoute) {
+            logger.warn(`${codeName} Invalid eventType: userLogin`);
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid eventType'
+            });
+        }
+
+        const { qrySQL, method } = eventRoute;
+        const params = { ":userEmail": userEmail, ":enteredPassword": password };
+        const qryMod = createRequestBody(qrySQL, params);
+        logger.debug(`${codeName} Modified query: ${qryMod}`);
+        
+        // Add logging before executing the query
+        logger.debug(`${codeName} About to execute query`, { qryMod, method });
+        const users = await executeQuery(qryMod, method);
+        logger.debug(`${codeName} Query executed`, { users });
+
+        if (users.length === 0) {
+            logger.warn(`${codeName} User not found`, { userEmail });
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password'
+            });
+        }
+
+        const user = users[0];
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        
+        logger.debug(`${codeName} Password verification result`, { 
+            userEmail,
+            matched: passwordMatch,
+            needsRehash: passwordMatch && user.password.length < 60
+        });
+
+        if (!passwordMatch) {
+            logger.warn(`${codeName} Invalid password attempt`, { userEmail });
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password'
+            });
+        }
+
+        // If using an old hash format, rehash the password
+        if (user.password.length < 60) {
+            await rehashPassword(userEmail, user.password);
+        }
+
+        const response = {
+            success: true,
+            user: {
+                id: user.userID,
+                email: user.userEmail,
+                name: `${user.firstName} ${user.lastName}`,
+                role: user.roleID
+            }
+        };
+
+        logger.info(`${codeName} Login successful`, { userEmail });
+        res.json(response);
+
+    } catch (error) {
+        logger.error(`${codeName} Login error:`, error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
     }
+}
 
-    const user = results[0];
-    const storedPassword = user.password;
-
-    // Adjust prefix if needed
-    const adjustedStoredPassword = storedPassword.replace('$2y$', '$2b$');
-
-    // Use bcrypt to compare the provided password with the stored hashed password
-    const passwordMatch = await bcrypt.compare(password, adjustedStoredPassword);
-    console.log(`${codeName} Password match:`, passwordMatch);
-
-    if (!passwordMatch) {
-      console.log(`${codeName} Invalid password`);
-      return res.status(401).send({ message: 'Unauthorized' });
-    }
-
-    // Check if the password needs to be rehashed
-    const needsRehash = adjustedStoredPassword.startsWith('$2b$') && adjustedStoredPassword.length !== 60;
-    if (needsRehash) {
-      await rehashPassword(userEmail, password);
-    }
-
-    const response = { success: true, data: { user } };
-    console.log(`${codeName} Sending response:`, response);
-    res.status(200).send(response);
-  } catch (error) {
-    console.error(`${codeName} Error processing login:`, error);
-    res.status(500).send({ message: 'Internal Server Error' });
-  }
-};
+module.exports = login;

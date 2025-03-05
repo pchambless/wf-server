@@ -1,56 +1,53 @@
 require('module-alias/register');
 const { createRequestBody } = require('@utils/queryResolver'); // Import createRequestBody function
-const eventTypes = require('@middleware/eventTypes');
 const { executeQuery } = require('@utils/dbUtils');
+const logger = require('@utils/logger');
 const codeName = `[execEventType.js]`;
 
+// Load eventTypes directly from the file
+const eventTypes = require('@middleware/eventTypes');
+
 module.exports = async (req, res) => {
-  console.log(codeName, '[Request]', {
+  logger.http(`${codeName} Request received`, {
     method: req.method,
     originalUrl: req.originalUrl,
     headers: req.headers,
-    body: JSON.stringify(req.body, null, 2) // Ensure nested objects are correctly logged
+    body: req.body
   });
 
   const { eventType, params } = req.body; 
 
   // Log the received parameters
-  console.log(codeName, '[Parameters]', params);
-
-  const eventRoute = eventTypes.find(route => route.eventType === eventType); 
-  if (!eventType) {
-    console.error(codeName, `Invalid eventType: ${eventType}`); 
-    return res.status(400).send('Invalid eventType');
-  }
-
-  const { qrySQL, method } = eventRoute; // Retrieve the method from eventRoute
+  logger.debug(`${codeName} Parameters:`, params);
 
   try {
-    // Create the request body and ensure parameters are correctly replaced in the query
-    const requestBody = createRequestBody(qrySQL, params);
-    console.log(codeName, '[Request Body]', JSON.stringify(requestBody, null, 2));
-
-    // Check for unresolved parameters and log warnings
-    const unresolvedParams = requestBody.qryMod.match(/:[a-zA-Z0-9_]+/g); 
-    if (unresolvedParams) {
-      console.warn(codeName, 'Unresolved parameters found in query:', unresolvedParams);
-      return res.status(400).send(`Unresolved parameters: ${unresolvedParams.join(', ')}`);
+    // Find the eventType directly from the loaded eventTypes
+    const eventRoute = eventTypes.find(event => event.eventType === eventType);
+    if (!eventRoute) {
+      logger.warn(`${codeName} Invalid eventType: ${eventType}`);
+      return res.status(400).json({
+        error: 'Invalid eventType',
+        message: `Event type '${eventType}' not found`
+      });
     }
 
-    // Execute the query
-    const result = await executeQuery(requestBody.qryMod, method);
-    console.log(codeName, `eventType -> '${eventType}' [${method}]: Successful`, JSON.stringify(result, null, 2));
-    res.status(200).json(result);
-  } catch (error) {
-    console.error(codeName, `eventType -> ${eventType} Failed:`, error); 
+    const { qrySQL, method } = eventRoute;
+    logger.debug(`${codeName} Executing query with event type method: ${method}`);
 
-    // Send detailed error response
-    const errorDetails = {
-      message: 'Internal server error',
-      error: error.message,
-      stack: error.stack,
-      type: 'execution_error'
-    };
-    res.status(500).json(errorDetails);
+    // Use queryResolver to handle parameter substitution
+    const qryMod = createRequestBody(qrySQL, params);
+    logger.debug(`${codeName} Modified query:`, qryMod);
+
+    // Execute the modified query
+    const result = await executeQuery(qryMod, method);
+    logger.info(`${codeName} Query executed successfully for ${eventType}`);
+    res.json(result);
+
+  } catch (error) {
+    logger.error(`${codeName} Error executing event type:`, error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message
+    });
   }
 };

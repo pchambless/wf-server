@@ -1,77 +1,100 @@
 require('module-alias/register');
-const mysql = require('mysql2/promise');
-const { app, port } = require('@root/server/app');
-const registerRoutes = require('@routes/registerRoutes');
+require('dotenv').config();
+const { app } = require('./app');
+const logger = require('@utils/logger');
+const initializeRoutes = require('@routes/index');
 const { genEventTypeFile } = require('@controller/fetchEventTypes');
 const { genApiColumnFile } = require('@controller/fetchApiColumns');
-const codeName = `[server.js] `;
-
-// Add middleware to set request timeout
-app.use((req, res, next) => {
-  req.setTimeout(10000); // 10 seconds timeout for testing
-  next();
-});
+const dbManager = require('./utils/dbManager');
+const codeName = '[server.js]';
 
 // Simple test route to verify routing
 app.get('/test-route', (req, res) => {
   res.send('Test route is working!');
 });
 
-const initializeServer = async () => {
-  let server;
+async function startServer() {
+    try {
+        // Initialize database connection
+        const pool = await dbManager.initialize();
+        global.pool = pool;
 
-  try {
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME
-    });
-    console.log(codeName, 'Connected to the database successfully.');
+        const port = process.env.PORT || 3001;
 
-    await genEventTypeFile(connection);
-    await genApiColumnFile(connection);
-
-    console.log(codeName, 'Initializing routes');
-    registerRoutes(app);
-    console.log(codeName, 'Routes initialized');
-
-    // Handle duplicate start
-    if (process.env.NODENAME && process.env.NODENAME === 'nodemon') {
-      console.log(codeName, 'Running under nodemon, avoiding duplicate start...');
-      return;
-    }
-
-    console.log(codeName, 'Attempting to start server on port', port);
-    server = app.listen(port, () => {
-      console.log(codeName, `Server is running on http://localhost:${port}`);
-    });
-
-    const exitHandler = async () => {
-      try {
-        await connection.end();
-        console.log(codeName, 'Connection closed.');
-        if (server) {
-          server.close(() => {
-            console.log(codeName, 'Process terminated');
-            process.exit(0);
-          });
-        } else {
-          process.exit(0);
+        // Check if running under nodemon
+        if (process.env.NODE_ENV === 'development' && process.env.NODEMON) {
+            logger.info(`${codeName} Running under nodemon, avoiding duplicate start`);
+            return;
         }
-      } catch (error) {
-        console.error(codeName, 'Error during shutdown:', error);
+
+        // Add database status endpoint
+        app.get('/api/status/database', (req, res) => {
+            res.json(dbManager.getStatus());
+        });
+
+        // Initialize routes before starting the server
+        logger.info(`${codeName} Initializing routes`);
+        initializeRoutes(app);
+        logger.info(`${codeName} Routes initialized`);
+
+        // Generate necessary files
+        await dbManager.executeWithRetry(async () => {
+            await genEventTypeFile(pool);
+            await genApiColumnFile(pool);
+        });
+
+        // Handle 404 - Register after all routes
+        app.use((req, res) => {
+            // Don't log 404s for favicon.ico
+            if (req.path !== '/favicon.ico') {
+                logger.warn(`${codeName} Route not found: ${req.method} ${req.path}`);
+            }
+            
+            // Send a more helpful 404 response
+            res.status(404).json({
+                status: 'error',
+                message: 'Route not found',
+                availableEndpoints: {
+                    auth: {
+                        login: '/api/auth/login'
+                    },
+                    events: {
+                        execute: '/api/execEventType'
+                    },
+                    status: {
+                        health: '/health',
+                        database: '/api/status/database'
+                    }
+                },
+                documentation: 'Visit / for API documentation'
+            });
+        });
+
+        logger.info(`${codeName} Starting server on port ${port}`);
+        const server = app.listen(port, () => {
+            logger.info(`${codeName} Server is running on http://localhost:${port}`);
+        });
+
+        // Configure keep-alive
+        server.keepAliveTimeout = 5000; // 5 seconds
+        server.headersTimeout = 6000; // 6 seconds (should be greater than keepAliveTimeout)
+        logger.info(`${codeName} Server timeouts configured: keepAlive=5s, headers=6s`);
+
+        // Graceful shutdown
+        process.on('SIGTERM', async () => {
+            logger.info(`${codeName} SIGTERM received, shutting down gracefully`);
+            await dbManager.end();
+            logger.info(`${codeName} Database connections closed`);
+            server.close(() => {
+                logger.info(`${codeName} Server closed`);
+                process.exit(0);
+            });
+        });
+
+    } catch (error) {
+        logger.error(`${codeName} Error starting server:`, error);
         process.exit(1);
-      }
-    };
+    }
+}
 
-    process.on('SIGINT', exitHandler);
-    process.on('SIGTERM', exitHandler);
-  } catch (error) {
-    console.error(codeName, 'Error initializing server:', error);
-    process.exit(1);
-  }
-};
-
-
-initializeServer();
+startServer();

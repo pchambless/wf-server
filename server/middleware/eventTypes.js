@@ -35,7 +35,7 @@ module.exports = [
     "eventID": 69,
     "eventType": "ingrBtchList",
     "method": "GET",
-    "qrySQL": "SELECT *\nFROM api_wf.ingrBtchList\nwhere  ingrID = :ingrID\nORDER BY ingrBtchPurchDate desc\nLIMIT 25",
+    "qrySQL": "SELECT *\nFROM api_wf.ingrBtchList\nwhere  ingrID = :ingrID\nLIMIT 25",
     "params": "[\n  \":ingrID\"\n]",
     "purpose": "List the selected Ingredient's Batches"
   },
@@ -126,6 +126,14 @@ module.exports = [
     "qrySQL": "select *\nfrom api_wf.userList\norder by lastName",
     "params": "[]",
     "purpose": "The list of Whatsfresh Users."
+  },
+  {
+    "eventID": 87,
+    "eventType": "userLogin",
+    "method": "GET",
+    "qrySQL": "select *, :enteredPassword\nfrom api_wf.userList\nwhere userEmail = :userEmail",
+    "params": "[\n  \":enteredPassword\",\n  \":userEmail\"\n]",
+    "purpose": "Login for User."
   },
   {
     "eventID": 40,

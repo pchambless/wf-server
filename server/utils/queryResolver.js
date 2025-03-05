@@ -1,4 +1,5 @@
-const codeName = `[queryResolver.js]`;
+const logger = require('./logger');
+const codeName = '[queryResolver.js]';
 
 const replacePlaceholder = (qrySQL, paramName, paramValue) => {
   const regex = new RegExp(paramName, 'g');
@@ -7,8 +8,8 @@ const replacePlaceholder = (qrySQL, paramName, paramValue) => {
 
 const convertQuery = (qrySQL, params) => {
   try {
-    console.log(codeName, 'Original qrySQL:', qrySQL);
-    console.log(codeName, 'Original params:', params);
+    // Log the original query and parameters
+    logger.debug(`${codeName} Original query:`, { qrySQL, params });
 
     // Check for nested params and flatten if necessary
     if (params.params) {
@@ -17,26 +18,22 @@ const convertQuery = (qrySQL, params) => {
 
     // Directly replace placeholders in qrySQL with actual values from params
     for (const [paramName, paramValue] of Object.entries(params)) {
-      console.log(codeName, 'ParamName: ', paramName, 'ParamVal: ', paramValue)
+      logger.debug(`${codeName} Processing parameter:`, { paramName, paramValue });
       qrySQL = replacePlaceholder(qrySQL, paramName, typeof paramValue === 'string' ? `'${paramValue}'` : paramValue);
     }
 
-    console.log(codeName, 'qryMod:', qrySQL);
+    logger.debug(`${codeName} Modified query:`, qrySQL);
     return qrySQL;
   } catch (error) { 
-    console.error(codeName, 'Error converting query:', error);
+    logger.error(`${codeName} Error converting query:`, error);
     throw new Error(`${codeName} Failed to convert query`);
   }
 };
 
 const createRequestBody = (qrySQL, params) => {
   const qryMod = convertQuery(qrySQL, params);
-
-  const requestBody = { qryMod };
-
-  console.log(codeName, 'Created requestBody:', JSON.stringify(requestBody, null, 2));
-
-  return requestBody;
+  logger.debug(`${codeName} Created request body with query:`, qryMod);
+  return qryMod; // Return the string directly
 };
 
 module.exports = { createRequestBody };

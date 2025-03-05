@@ -1,11 +1,16 @@
 require('module-alias/register');
 const codeName = `[index.js] `;
-
-console.log(codeName, 'Entering Index')
-const router = require('@routes/registerRoutes'); // Import the centralized routes
+const logger = require('@utils/logger');
+const router = require('@routes/registerRoutes');
 
 const initializeRoutes = (app) => {
-  app.use('/', router);
+  logger.debug(`${codeName} Initializing routes`);
+  const routes = router(app);
+  
+  // Mount the router to handle all routes
+  app.use('/', routes);
+  
+  logger.debug(`${codeName} Routes initialized`);
 };
 
-module.exports = { initializeRoutes }; 
+module.exports = initializeRoutes;  

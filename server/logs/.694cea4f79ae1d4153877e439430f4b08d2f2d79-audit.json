@@ -1,0 +1,35 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\.694cea4f79ae1d4153877e439430f4b08d2f2d79-audit.json",
+    "files": [
+        {
+            "date": 1740676969778,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\error-2025-02-27.log",
+            "hash": "53c1dd5a91c950cee91105262e48f1b5d5fa9430bd22a729bb343000bb4e9a27"
+        },
+        {
+            "date": 1740939539946,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\error-2025-03-02.log",
+            "hash": "70cc11303915de88723ec7d46e56a90828495907e0e311e5c8d254ea8a88a79c"
+        },
+        {
+            "date": 1741017087256,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\error-2025-03-03.log",
+            "hash": "dfbab0be25c0f4167465b65d00fe8d291c1f50c770ade8fd26e83b9c392100a1"
+        },
+        {
+            "date": 1741098999804,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\error-2025-03-04.log",
+            "hash": "d8dea6ec12532410d5c11cf6c1709cb6fef9fa704e2573175b8fb0f683ba9c18"
+        },
+        {
+            "date": 1741185504301,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\error-2025-03-05.log",
+            "hash": "8629985215e54805529ce63d450d8a86f8820b64b8ae70b2d750fe28f8d11c5e"
+        }
+    ],
+    "hashType": "sha256"
+}

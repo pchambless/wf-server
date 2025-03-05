@@ -1,0 +1,45 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\.9352c4d073b84647a0961043d5ba60e96f1216f5-audit.json",
+    "files": [
+        {
+            "date": 1740677253547,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-02-27.log",
+            "hash": "1e9b9bb4ded4e527bf8fb534fefc642a527f8adae6c6937f30ff18f05352e7af"
+        },
+        {
+            "date": 1740722419224,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-02-28.log",
+            "hash": "1b007d3c54e92aec4dc5a0cc69e7f124e616a9a4d7e6ff4b9236c3fcc3a76b18"
+        },
+        {
+            "date": 1740822935553,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-03-01.log",
+            "hash": "99d9b83b806646685954ab4f6be59d270363445b04ffcd88c14559875528f518"
+        },
+        {
+            "date": 1740909336220,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-03-02.log",
+            "hash": "b9a824b70d7862cbd539bdadd187991fd729d17bc71fb61ce227831765cf93a8"
+        },
+        {
+            "date": 1741017087258,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-03-03.log",
+            "hash": "317da0852edbc681e1ebef282ffa429d70fd74e0ac0f59744e18a6e7d4f223f1"
+        },
+        {
+            "date": 1741081477391,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-03-04.log",
+            "hash": "4013168aa6fa222d1c68e73e962e5dff5af0d95941ca71a5d12f797ec7d8c257"
+        },
+        {
+            "date": 1741167878297,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\performance-2025-03-05.log",
+            "hash": "da4c0c9d361b3d3e1edd2fdf292027282050b13c1b7f2e6dfc61e1e94fd9e89f"
+        }
+    ],
+    "hashType": "sha256"
+}
