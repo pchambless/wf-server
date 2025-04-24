@@ -99,8 +99,8 @@ module.exports = [
     "eventID": 27,
     "eventType": "rcpeList",
     "method": "GET",
-    "qrySQL": "",
-    "params": "[]",
+    "qrySQL": "select *\nfrom api_wf.rcpeList\nwhere prodID = :prodID\norder by ordr",
+    "params": "[\n  \":prodID\"\n]",
     "purpose": "List the Recipe Ingredients for a selected Product."
   },
   {

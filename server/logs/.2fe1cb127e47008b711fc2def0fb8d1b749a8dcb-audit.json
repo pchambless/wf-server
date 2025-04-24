@@ -6,39 +6,49 @@
     "auditLog": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\.2fe1cb127e47008b711fc2def0fb8d1b749a8dcb-audit.json",
     "files": [
         {
-            "date": 1740676969774,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-02-27.log",
-            "hash": "08707ce653dde16c76d484116bb1e29856e09011542680e1f03a8f50a54b540c"
+            "date": 1744176628318,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-09.log",
+            "hash": "aeefdd3f17b8f5b534184c3c4f837c67a3f88b4ad0df919c6021d8ba0719f67d"
         },
         {
-            "date": 1740722419221,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-02-28.log",
-            "hash": "ff68a455b08dc87d030b80a2fa4a26cc3d4c19b9a9e62622cdb819a902c2c3a6"
+            "date": 1744264740179,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-10.log",
+            "hash": "19e3170d23081d7eac681eb7c289aec02726823f7c109d4827ac4613d2e62b7b"
         },
         {
-            "date": 1740822935452,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-03-01.log",
-            "hash": "84230fd74de097a6eee517b1001dc4c4dfb673b150f8a2a8a5a20ceffa013db3"
+            "date": 1744347788560,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-11.log",
+            "hash": "5461390408e3bc8ccad666d160db96143f1bb852b58217937f9d1881f9136d84"
         },
         {
-            "date": 1740909336171,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-03-02.log",
-            "hash": "1d034bbc1da01096a9285e7f4355dcee9141fa7a0460ed12eb5d2c755e3f5d56"
+            "date": 1744438562397,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-12.log",
+            "hash": "5af333bf97b12847bb4f620ca535b6f8c060e1319be6ca614319c0e9c4bb42aa"
         },
         {
-            "date": 1741017087251,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-03-03.log",
-            "hash": "de2f41efe7e9b3c8d5a939e9855e88b02bdd645ba5e4a092a60c8a87fd25fd4f"
+            "date": 1744520581113,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-13.log",
+            "hash": "5c55e56d288e49ba3bf955b1b4278a170cad6b49877a324710e77d31656241cf"
         },
         {
-            "date": 1741081477386,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-03-04.log",
-            "hash": "1f3e62303fcd2e797195b42fbadb72686dd87f5e4ddb9b461a1c3cb37b5185d7"
+            "date": 1744639659565,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-14.log",
+            "hash": "c886d909b600b0b1c106efe2fd378ab1a7b70779989b191214dbc3f7384a7f39"
         },
         {
-            "date": 1741167878243,
-            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-03-05.log",
-            "hash": "b3d6da4380f27530daa2edf6f00d575d92a703a9dac94d96e7559ec1215a39f4"
+            "date": 1744718200305,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-15.log",
+            "hash": "ae0c6befe51bce8dffb0f849f12905d481f873b60d17258efdc0fb2fdfdce9ef"
+        },
+        {
+            "date": 1745337595747,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-22.log",
+            "hash": "f34b7661bd057cb2ee29e62aa7d859d2e956a55fd454e6c0f60303a469a8e7bf"
+        },
+        {
+            "date": 1745384597670,
+            "name": "C:\\Users\\pc790\\whatsfresh\\Projects\\wf-server\\server\\logs\\application-2025-04-23.log",
+            "hash": "ad41774f10c9f0d632c250a30e05c351aa5292fc123de0740093960b7cae53c6"
         }
     ],
     "hashType": "sha256"

@@ -1,7 +1,7 @@
 require('module-alias/register');
 const eventTypes = require('@middleware/eventTypes');
 const dbUtils = require('@utils/dbUtils');
-const codeName = `queryResolver.js `;
+const codeName = '[queryResolver.js]';
 
 module.exports = async (req, res) => {
   // Log the incoming request
@@ -27,7 +27,6 @@ module.exports = async (req, res) => {
 
     // Use dbUtils to replace named parameters and get the resolved query
     const resolvedQuery = dbUtils.replaceNamedParams(qrySQL, params);
-    console.log(codeName, `[Resolved Query] ${resolvedQuery}`);
 
     // Return the resolved query
     res.status(200).json({ resolvedQuery });

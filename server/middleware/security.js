@@ -5,7 +5,7 @@ const codeName = '[security.js]';
 // Rate limiting configuration
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: 400, // Increase the limit to 200 requests per windowMs
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -14,7 +14,7 @@ const limiter = rateLimit({
 // Create specific limiters for sensitive routes
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour window
-    max: 5, // start blocking after 5 requests
+    max: 10, // Increase the limit to 10 requests per windowMs
     message: 'Too many login attempts from this IP, please try again after an hour'
 });
 
@@ -48,10 +48,12 @@ module.exports = {
     
     // CORS configuration
     corsOptions: {
-        origin: ['http://localhost:3000', 'https://crisp-sharply-mutt.ngrok-free.app'],
+        origin: ['http://localhost:3000', 
+          'https://crisp-sharply-mutt.ngrok-free.app', 
+          'https://wf.new.whatsfresh.app'],
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true,
         maxAge: 86400 // 24 hours
     }
-}; 
+};
