@@ -1,0 +1,45 @@
+project: wf-server
+description: Clean-slate Express app serving HTMX pages via n8n webhooks
+
+agent_tooling:
+  path: /home/paul/Projects/wf-agents
+  scripts: /home/paul/Projects/wf-agents/scripts
+  session_startup: bash /home/paul/Projects/wf-agents/scripts/session-startup | jq .
+
+frequent_paths:
+  entry_point: src/server.js
+  app_init: src/app.js
+  n8n_client: src/utils/n8nClient.js
+  routes: src/routes/
+  controllers: src/controller/
+  renderers: src/renderers/
+  env: .env
+
+established_patterns:
+  data_access: All DB access via n8nClient.js — never direct DB connections
+  modules: ESM only (import/export)
+  responses: HTMX HTML fragments from controllers
+  dd_widgets: callWorkflow('dd-query', { query, params, source:'server' })
+  reports: callWorkflow('wf-report', { report, params })
+  no_comments: No code comments unless explicitly requested
+
+n8n:
+  base_url: https://n8n.whatsfresh.app
+  key_workflows:
+    dd_query: POST /webhook/dd-query
+    wf_report: POST /webhook/wf-report
+    server_query: POST /webhook/server-query
+
+build_status:
+  complete:
+    - Express skeleton (app.js, server.js)
+  pending:
+    - src/utils/n8nClient.js
+    - src/routes/
+    - src/controller/
+    - src/renderers/
+    - .env
+
+active_sprint:
+  epic: 91 - WF Appsmith AppBuilder Architecture
+  current_plan: 99 - DB Schema Restructure
