@@ -8,20 +8,15 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { app } from './app.js';
+import pageRoutes, { loadRoutes } from './routes/pageRoutes.js';
 
 const codeName = '[server.js]';
 const port = process.env.PORT || 3001;
 
 async function startServer() {
   try {
-    // TODO: import and initialize dbManager once migrated
-    // const dbManager = (await import('./utils/dbManager.js')).default;
-    // await dbManager.initialize();
-    // app.get('/api/status/database', (req, res) => res.json(dbManager.getStatus()));
-
-    // TODO: register controllers + HTMX routes here as they're migrated
-    // initializeRoutes(app);
-    // app.use('/', htmxRoutes);
+    await loadRoutes();
+    app.use('/', pageRoutes);
 
     app.use((req, res) => {
       if (req.path !== '/favicon.ico') {
