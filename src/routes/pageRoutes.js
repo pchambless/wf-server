@@ -43,3 +43,6 @@ async function getStyledTemplate(templateId) {
   const data = Array.isArray(rows) ? rows : rows.data || [];
   return data[0] || null;
 }
+
+export default router;
+export { loadRoutes, getPageStructure, getStyledTemplate };
