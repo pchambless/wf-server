@@ -9,6 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { app } from './app.js';
 import apiRoutes from './routes/apiRoutes.js';
+import { renderPage } from './renderers/pageRenderer.js';
 
 const codeName = '[server.js]';
 const port = process.env.PORT || 3001;
@@ -19,7 +20,7 @@ async function startServer() {
     app.use('/api', apiRoutes);
 
     // All other GET requests → generic page renderer
-    app.get('*', renderPage);
+    app.get('{*path}', renderPage);
 
     app.use((req, res) => {
       if (req.path !== '/favicon.ico') {
