@@ -8,7 +8,6 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { app } from './app.js';
-import pageRoutes, { loadRoutes } from './routes/pageRoutes.js';
 import apiRoutes from './routes/apiRoutes.js';
 
 const codeName = '[server.js]';
@@ -16,12 +15,11 @@ const port = process.env.PORT || 3001;
 
 async function startServer() {
   try {
-    // Register API routes first
+    // Register API routes (authVerify)
     app.use('/api', apiRoutes);
 
-    // Then load page routes from database
-    await loadRoutes();
-    app.use('/', pageRoutes);
+    // All other GET requests → generic page renderer
+    app.get('*', renderPage);
 
     app.use((req, res) => {
       if (req.path !== '/favicon.ico') {

@@ -1,9 +1,11 @@
-import express from 'express';
+import { Router } from 'express';
 import verifyPassword from '../controllers/authVerify.js';
+import { renderPage } from '../renderers/pageRenderer.js';
 
-const router = express.Router();
+const router = Router();
 
-// Auth endpoints
 router.post('/auth/verify', verifyPassword);
+
+router.get('/page/*', renderPage);
 
 export default router;
