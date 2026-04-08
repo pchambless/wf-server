@@ -2,3 +2,5 @@
 node_modules/
 logs/
 *.log
+*.sql
+.DS_Store
