@@ -26,5 +26,7 @@ export async function callWorkflow(webhookPath, body = {}) {
     return response.text();
   }
 
-  return response.json();
+  const text = await response.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }

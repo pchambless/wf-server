@@ -19,10 +19,15 @@ export async function renderPage(req, res, next) {
   if (route === '/favicon.ico' || route === '/health') return next();
 
   // Fetch routes to validate this is a real page
-  const routeData = await callWorkflow('hydrate-guide', {
-    template_name: 'api_routes', source: 'wf-server'
-  });
-  const routes = Array.isArray(routeData) ? routeData : routeData?.data || [];
+  let routes = [];
+  try {
+    const routeData = await callWorkflow('hydrate-guide', {
+      template_name: 'api_routes', source: 'wf-server', format: 'json'
+    });
+    routes = Array.isArray(routeData) ? routeData : routeData?.data || [];
+  } catch (e) {
+    return next();
+  }
   const routeInfo = routes.find(r => r.route === route);
 
   if (!routeInfo) return next();
@@ -30,8 +35,9 @@ export async function renderPage(req, res, next) {
   // Login page doesn't need session
   if (routeInfo.page_name === 'login') {
     const loginTemplate = await callWorkflow('hydrate-guide', {
-      template_name: 'login_form', source: 'wf-server'
+      template_name: 'login_form', source: 'wf-server', format: 'html'
     });
+    console.log('[pageRenderer] login response:', typeof loginTemplate, JSON.stringify(loginTemplate)?.substring(0, 200));
     const html = typeof loginTemplate === 'string'
       ? loginTemplate : loginTemplate?.html || loginTemplate?.[0]?.html || '';
     return res.send(wrapHtml(routeInfo.page_name, html));
