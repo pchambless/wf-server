@@ -1,5 +1,7 @@
 const BASE_URL = process.env.N8N_BASE_URL || 'https://n8n.whatsfresh.app';
 
+export { BASE_URL as N8N_BASE };
+
 export async function callWorkflow(webhookPath, body = {}) {
   const url = `${BASE_URL}/webhook/${webhookPath}`;
 

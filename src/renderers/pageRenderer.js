@@ -1,6 +1,4 @@
-import { callWorkflow } from '../utils/n8nClient.js';
-
-const N8N_BASE = process.env.N8N_BASE_URL || 'https://n8n.whatsfresh.app';
+import { callWorkflow, N8N_BASE } from '../utils/n8nClient.js';
 
 function buildHtmxDiv(component) {
   const { comp_name, template_name } = component;
