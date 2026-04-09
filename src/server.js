@@ -10,12 +10,29 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 import { app } from './app.js';
 import apiRoutes from './routes/apiRoutes.js';
 import { renderPage } from './renderers/pageRenderer.js';
+import { callWorkflow } from './utils/n8nClient.js';
 
 const codeName = '[server.js]';
 const port = process.env.PORT || 3001;
 
+async function logAvailableRoutes() {
+  try {
+    const routeData = await callWorkflow('hydrate-guide', {
+      template_name: 'api_routes', source: 'wf-server', format: 'json'
+    });
+    const routes = Array.isArray(routeData) ? routeData : routeData?.data || [];
+    console.log(`${codeName} Available routes (${routes.length}):`);
+    routes.forEach(r => console.log(`  ${r.route} (${r.page_name})`));
+  } catch (e) {
+    console.error(`${codeName} Failed to load routes:`, e.message);
+  }
+}
+
 async function startServer() {
   try {
+    // Log available routes at startup
+    await logAvailableRoutes();
+
     // Register API routes (authVerify)
     app.use('/api', apiRoutes);
 

@@ -13,7 +13,7 @@ router.post('/hydrate', async (req, res) => {
   const result = await callWorkflow('hydrate-guide', {
     template_name, source: 'wf-server', format: 'html'
   });
-  const html = typeof result === 'string' ? result : '';
+  const html = typeof result === 'string' ? result : result?.html || result?.[0]?.html || '';
   res.type('html').send(html);
 });
 

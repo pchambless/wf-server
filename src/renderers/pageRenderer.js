@@ -2,9 +2,9 @@ import { callWorkflow, N8N_BASE } from '../utils/n8nClient.js';
 
 function buildHtmxDiv(component) {
   const { comp_name, template_name } = component;
-  const vals = JSON.stringify({ template_name, source: 'wf-server' });
+  const vals = JSON.stringify({ template_name });
   return `<div id="${comp_name}"
-     hx-post="${N8N_BASE}/webhook/hydrate-guide"
+     hx-post="/api/hydrate"
      hx-trigger="load"
      hx-vals='${vals}'
      hx-swap="innerHTML">
@@ -37,7 +37,6 @@ export async function renderPage(req, res, next) {
     const loginTemplate = await callWorkflow('hydrate-guide', {
       template_name: 'login_form', source: 'wf-server', format: 'html'
     });
-    console.log('[pageRenderer] login response:', typeof loginTemplate, JSON.stringify(loginTemplate)?.substring(0, 200));
     const html = typeof loginTemplate === 'string'
       ? loginTemplate : loginTemplate?.html || loginTemplate?.[0]?.html || '';
     return res.send(wrapHtml(routeInfo.page_name, html));
@@ -52,7 +51,7 @@ export async function renderPage(req, res, next) {
     vals: [{ param_name: 'page_id', param_val: String(routeInfo.page_id) }]
   });
 
-  // Get page structure
+  // Get page structure to find template and components
   const structure = await callWorkflow('hydrate-guide', {
     template_name: 'api_page_structure', source: 'wf-server'
   });
@@ -65,27 +64,38 @@ export async function renderPage(req, res, next) {
     return res.status(404).send('Page template not found');
   }
 
-  // Get styled page template
+  // Render page template via hydrate-guide (route_type determines sub-workflow)
   const templateResult = await callWorkflow('hydrate-guide', {
     template_name: pageInfo.templateName, source: 'wf-server'
   });
   let html = typeof templateResult === 'string'
     ? templateResult : templateResult?.html || templateResult?.[0]?.html || '';
 
-  // Replace slots with HTMX self-hydrating divs
+  // Replace slots with HTMX self-hydrating divs (for layout templates)
   for (const comp of components) {
     if (comp.slot_name) {
       html = html.replace(`{{slot:${comp.slot_name}}}`, buildHtmxDiv(comp));
     }
   }
 
-  // Clear any unfilled slots
-  html = html.replace(/\{\{slot:\w+\}\}/g, '');
+  // Show unfilled slots as visible placeholders (dev indicator)
+  html = html.replace(/\{\{slot:(\w+)\}\}/g, '<div style="background: #f8f9fa; border: 2px dashed #d1d5db; padding: 16px; margin: 8px 0; text-align: center; color: #9ca3af; font-size: 14px;"><strong>SLOT:</strong> $1 (component missing)</div>');
 
   res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, html));
 }
 
 function wrapHtml(title, body) {
+  // Extract <style> tags from body and move to head
+  const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
+  const styles = [];
+  let cleanBody = body;
+
+  let match;
+  while ((match = styleRegex.exec(body)) !== null) {
+    styles.push(match[0]);
+  }
+  cleanBody = body.replace(styleRegex, '');
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,9 +103,10 @@ function wrapHtml(title, body) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title || 'WhatsFresh'}</title>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  ${styles.join('\n')}
 </head>
 <body>
-  ${body}
+  ${cleanBody}
 </body>
 </html>`;
 }
