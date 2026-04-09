@@ -12,7 +12,17 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", process.env.N8N_BASE_URL || "https://n8n.whatsfresh.app"]
+    }
+  }
+}));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500 }));
 
 app.use(morgan('dev', {
