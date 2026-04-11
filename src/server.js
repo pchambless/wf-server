@@ -9,29 +9,43 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { app } from './app.js';
 import apiRoutes from './routes/apiRoutes.js';
-import { renderPage } from './renderers/pageRenderer.js';
+import { renderPage, setRoutes } from './renderers/pageRenderer.js';
 import { callWorkflow } from './utils/n8nClient.js';
 
 const codeName = '[server.js]';
 const port = process.env.PORT || 3001;
 
-async function logAvailableRoutes() {
+// Cached routes (loaded once at startup)
+let cachedRoutes = [];
+
+async function initializeRoutes() {
   try {
     const routeData = await callWorkflow('hydrate-guide', {
       template_name: 'api_routes', source: 'wf-server', format: 'json'
     });
-    const routes = Array.isArray(routeData) ? routeData : routeData?.data || [];
-    console.log(`${codeName} Available routes (${routes.length}):`);
-    routes.forEach(r => console.log(`  ${r.route} (${r.page_name})`));
+    const result = Array.isArray(routeData) ? routeData[0] : routeData;
+    cachedRoutes = result?.data || [];
+
+    console.log(`${codeName} Loaded ${cachedRoutes.length} route(s):`);
+    if (cachedRoutes.length === 0) {
+      console.warn(`${codeName} WARNING: No routes loaded. routeData:`, routeData);
+    } else {
+      cachedRoutes.forEach((r, idx) => {
+        console.log(`${codeName}   [${idx + 1}] ${r.route} → ${r.page_name} (id: ${r.page_id})`);
+      });
+    }
+
+    // Pass cached routes to pageRenderer
+    setRoutes(cachedRoutes);
   } catch (e) {
-    console.error(`${codeName} Failed to load routes:`, e.message);
+    console.error(`${codeName} Failed to initialize routes:`, e.message);
   }
 }
 
 async function startServer() {
   try {
-    // Log available routes at startup
-    await logAvailableRoutes();
+    // Initialize routes once at startup
+    await initializeRoutes();
 
     // Register API routes (authVerify)
     app.use('/api', apiRoutes);

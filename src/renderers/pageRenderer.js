@@ -1,5 +1,12 @@
 import { callWorkflow, N8N_BASE } from '../utils/n8nClient.js';
 
+// Cached routes (set once at server startup)
+let cachedRoutes = [];
+
+export function setRoutes(routes) {
+  cachedRoutes = routes;
+}
+
 function buildHtmxDiv(component) {
   const { comp_name, template_name } = component;
   const vals = JSON.stringify({ template_name });
@@ -15,22 +22,19 @@ export async function renderPage(req, res, next) {
   const email = req.session?.current_user_email;
   const route = req.path;
 
+  console.log(`[pageRenderer] Attempting to render: ${route}, email: ${email}`);
+
   // Skip non-page requests
   if (route === '/favicon.ico' || route === '/health') return next();
 
-  // Fetch routes to validate this is a real page
-  let routes = [];
-  try {
-    const routeData = await callWorkflow('hydrate-guide', {
-      template_name: 'api_routes', source: 'wf-server', format: 'json'
-    });
-    routes = Array.isArray(routeData) ? routeData : routeData?.data || [];
-  } catch (e) {
+  // Use cached routes (loaded at server startup)
+  const routeInfo = cachedRoutes.find(r => r.route === route);
+  console.log(`[pageRenderer] routeInfo:`, routeInfo);
+
+  if (!routeInfo) {
+    console.log(`[pageRenderer] Route not found in cache, calling next()`);
     return next();
   }
-  const routeInfo = routes.find(r => r.route === route);
-
-  if (!routeInfo) return next();
 
   // Login page doesn't need session
   if (routeInfo.page_name === 'login') {
@@ -45,23 +49,34 @@ export async function renderPage(req, res, next) {
   // All other pages need auth
   if (!email) return res.redirect('/whatsfresh/login');
 
+  console.log(`[pageRenderer] Setting page context for page_id: ${routeInfo.page_id}`);
   // Set page context
-  await callWorkflow('setvals', {
-    email,
-    vals: [{ param_name: 'page_id', param_val: String(routeInfo.page_id) }]
-  });
+  try {
+    await callWorkflow('setvals', {
+      email,
+      vals: [{ param_name: 'page_id', param_val: String(routeInfo.page_id) }]
+    });
+  } catch (e) {
+    console.error(`[pageRenderer] setvals failed:`, e.message);
+    return res.status(500).send('Failed to set page context');
+  }
 
-  // Get page structure to find template and components
-  const structure = await callWorkflow('hydrate-guide', {
-    template_name: 'api_page_structure', source: 'wf-server'
-  });
-  const page = Array.isArray(structure) ? structure[0] : structure;
-  const pageData = page?.api_page_structure || page;
-  const pageInfo = pageData?.pageInfo;
-  const components = pageData?.components || [];
+  console.log(`[pageRenderer] Fetching page structure`);
+  // Get page structure via internal workflow
+  let pageInfo, components;
+  try {
+    const structure = await callWorkflow('page_structure', { email });
+    console.log(`[pageRenderer] pageInfo:`, structure?.pageInfo);
 
-  if (!pageInfo?.templateName) {
-    return res.status(404).send('Page template not found');
+    pageInfo = structure?.pageInfo;
+    components = structure?.components || [];
+
+    if (!pageInfo?.templateName) {
+      return res.status(404).send('Page template not found');
+    }
+  } catch (e) {
+    console.error(`[pageRenderer] page_structure failed:`, e.message);
+    return res.status(500).send('Failed to fetch page structure');
   }
 
   // Render page template via hydrate-guide (route_type determines sub-workflow)
