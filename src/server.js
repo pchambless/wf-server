@@ -9,7 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { app } from './app.js';
 import apiRoutes from './routes/apiRoutes.js';
-import { renderPage, setRoutes } from './renderers/pageRenderer.js';
+import { renderPage, setRoutes } from './renderers/index.js';
 import { callWorkflow } from './utils/n8nClient.js';
 
 const codeName = '[server.js]';
