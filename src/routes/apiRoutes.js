@@ -1,11 +1,9 @@
 import { Router } from 'express';
-import verifyPassword from '../controllers/authVerify.js';
 import { handleLogin } from '../controllers/loginHandler.js';
 import { callWorkflow } from '../utils/n8nClient.js';
 
 const router = Router();
 
-router.post('/auth/verify', verifyPassword);
 router.post('/auth/login', handleLogin);
 
 router.post('/hydrate', async (req, res) => {
