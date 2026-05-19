@@ -52,6 +52,22 @@ export async function renderPage(req, res, next) {
     if (!pageInfo?.templateName) {
       return res.status(404).send('Page template not found');
     }
+
+    // Inject appbar component with logout action
+    const appbarComponent = {
+      comp_name: 'appbar',
+      template_name: 'wf_appbar',
+      slot_name: 'appbar',
+      page_id: pageInfo.pageID,
+      page_title: pageInfo.pageTitle,
+      actions: [{
+        trigger: 'click',
+        action: 'redirect',
+        targets: [],
+        payload: { url: '/whatsfresh/login' }
+      }]
+    };
+    components.unshift(appbarComponent);
   } catch (e) {
     return res.status(500).send('Failed to fetch page structure');
   }
@@ -66,7 +82,7 @@ export async function renderPage(req, res, next) {
   );
 
   for (const comp of components) {
-    if (comp.slot_name) {
+    if (comp.slot_name && comp.comp_name !== 'appbar') {
       pageHtml = pageHtml.replace(`{{slot:${comp.slot_name}}}`, buildHtmxDiv(comp));
     }
   }
@@ -87,7 +103,8 @@ export async function renderPage(req, res, next) {
       : ''
   );
 
-  const appbarHtml = buildHtmxDiv({ comp_name: 'appbar', template_name: 'wf_appbar' });
+  const appbarComponent = components.find(c => c.comp_name === 'appbar');
+  const appbarHtml = appbarComponent ? buildHtmxDiv(appbarComponent) : '';
   layoutHtml = layoutHtml.replace('{{slot:appbar}}', appbarHtml);
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
