@@ -18,13 +18,35 @@ const port = process.env.PORT || 3001;
 // Cached routes (loaded once at startup)
 let cachedRoutes = [];
 
+async function fetchRoutes(query) {
+  return callWorkflow('server-query', {
+    query,
+    params: {},
+    source: 'server'
+  });
+}
+
 async function initializeRoutes() {
   try {
-    const routeData = await callWorkflow('hydrate-guide', {
-      template_name: 'api_routes', source: 'wf-server', format: 'json'
-    });
-    const result = Array.isArray(routeData) ? routeData[0] : routeData;
-    cachedRoutes = result?.data || [];
+    const routeData = await fetchRoutes(`
+      SELECT route, page_name, id AS page_id
+      FROM studio.api_routes()
+      UNION ALL
+      SELECT '/whatsfresh' as route, 'wf-dashboard' as page_name, 32 as page_id
+    `);
+
+    cachedRoutes = Array.isArray(routeData) ? routeData : [];
+
+    if (cachedRoutes.length === 0) {
+      console.warn(`${codeName} api_routes() returned no routes. Falling back to studio.vw_pages.`);
+      const fallbackRouteData = await fetchRoutes(`
+        SELECT route_path as route, page_name, page_id
+        FROM studio.vw_pages
+        UNION ALL
+        SELECT '/whatsfresh' as route, 'wf-dashboard' as page_name, 32 as page_id
+      `);
+      cachedRoutes = Array.isArray(fallbackRouteData) ? fallbackRouteData : [];
+    }
 
     console.log(`${codeName} Loaded ${cachedRoutes.length} route(s):`);
     if (cachedRoutes.length === 0) {
