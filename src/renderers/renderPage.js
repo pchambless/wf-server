@@ -4,6 +4,10 @@ import { wrapHtml } from './wrapHtml.js';
 
 let cachedRoutes = [];
 
+function normalizeHtml(html) {
+  return typeof html === 'string' ? html.replace(/\\n/g, '\n') : '';
+}
+
 export function setRoutes(routes) {
   cachedRoutes = routes;
 }
@@ -21,8 +25,11 @@ export async function renderPage(req, res, next) {
     const loginTemplate = await callWorkflow('hydrate-guide', {
       template_name: 'login_form', source: 'wf-server', format: 'html'
     });
-    const html = typeof loginTemplate === 'string'
-      ? loginTemplate : loginTemplate?.html || loginTemplate?.[0]?.html || '';
+    const html = normalizeHtml(
+      typeof loginTemplate === 'string'
+        ? loginTemplate
+        : loginTemplate?.html || loginTemplate?.[0]?.html || ''
+    );
     return res.send(wrapHtml(routeInfo.page_name, html));
   }
 
@@ -39,7 +46,7 @@ export async function renderPage(req, res, next) {
 
   let pageInfo, components;
   try {
-    const structure = await callWorkflow('page_structure', { email });
+    const structure = await callWorkflow('page-structure', { email });
     pageInfo = structure?.pageInfo;
     components = structure?.components || [];
     if (!pageInfo?.templateName) {
@@ -52,19 +59,37 @@ export async function renderPage(req, res, next) {
   const templateResult = await callWorkflow('hydrate-guide', {
     template_name: pageInfo.templateName, source: 'wf-server'
   });
-  let html = typeof templateResult === 'string'
-    ? templateResult : templateResult?.html || templateResult?.[0]?.html || '';
+  let pageHtml = normalizeHtml(
+    typeof templateResult === 'string'
+      ? templateResult
+      : templateResult?.html || templateResult?.[0]?.html || ''
+  );
 
   for (const comp of components) {
     if (comp.slot_name) {
-      html = html.replace(`{{slot:${comp.slot_name}}}`, buildHtmxDiv(comp));
+      pageHtml = pageHtml.replace(`{{slot:${comp.slot_name}}}`, buildHtmxDiv(comp));
     }
   }
 
-  html = html.replace(
+  pageHtml = pageHtml.replace(
     /\{\{slot:(\w+)\}\}/g,
     '<div style="background:#f8f9fa;border:2px dashed #d1d5db;padding:16px;margin:8px 0;text-align:center;color:#9ca3af;font-size:14px"><strong>SLOT:</strong> $1</div>'
   );
 
-  res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, html));
+  const layoutTemplate = await callWorkflow('server-query', {
+    query: "SELECT html FROM studio.html_templates WHERE name = 'wf_layout'",
+    params: {},
+    source: 'server'
+  });
+  let layoutHtml = normalizeHtml(
+    (Array.isArray(layoutTemplate) && layoutTemplate[0]?.html)
+      ? layoutTemplate[0].html
+      : ''
+  );
+
+  const appbarHtml = buildHtmxDiv({ comp_name: 'appbar', template_name: 'wf_appbar' });
+  layoutHtml = layoutHtml.replace('{{slot:appbar}}', appbarHtml);
+  layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
+
+  res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, layoutHtml));
 }
