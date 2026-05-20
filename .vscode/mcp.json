@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "n8n": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/start-n8n-mcp.sh"
+      ],
+      "envFile": "${workspaceFolder}/.env"
+    }
+  }
+}

@@ -103,9 +103,36 @@ export async function renderPage(req, res, next) {
       : ''
   );
 
+  // Fetch nav menu HTML and CSS from function
+  const navMenuResult = await callWorkflow('server-query', {
+    query: "SELECT studio.tf_nav_menu_html() as nav_html",
+    params: {},
+    source: 'server'
+  });
+  const navHtml = normalizeHtml(
+    (Array.isArray(navMenuResult) && navMenuResult[0]?.nav_html)
+      ? navMenuResult[0].nav_html
+      : ''
+  );
+
+  // Fetch appbar-nav CSS
+  const navCssResult = await callWorkflow('server-query', {
+    query: "SELECT css FROM studio.css WHERE class = 'appbar-nav'",
+    params: {},
+    source: 'server'
+  });
+  const navCss = normalizeHtml(
+    (Array.isArray(navCssResult) && navCssResult[0]?.css)
+      ? `<style>\n${navCssResult[0].css}\n</style>`
+      : ''
+  );
+
+  const navBarWithCss = navCss + '\n' + navHtml;
+
   const appbarComponent = components.find(c => c.comp_name === 'appbar');
   const appbarHtml = appbarComponent ? buildHtmxDiv(appbarComponent) : '';
-  layoutHtml = layoutHtml.replace('{{slot:appbar}}', appbarHtml);
+  const combinedAppbar = appbarHtml + '\n' + navBarWithCss;
+  layoutHtml = layoutHtml.replace('{{slot:appbar}}', combinedAppbar);
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
   res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, layoutHtml));
