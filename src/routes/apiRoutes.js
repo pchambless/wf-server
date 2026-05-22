@@ -216,35 +216,24 @@ router.post('/actions', async (req, res) => {
   }
 
   try {
-    const steps = Array.isArray(action.actions) ? action.actions : [];
+    const actionName = String(action.action || '').toLowerCase();
     let targets = normalizeTargets(action.targets);
     let redirectUrl = null;
 
-    for (const step of steps) {
-      const actionName = String(step?.action || '').toLowerCase();
+    if (actionName === 'setvals') {
+      const vals = getSetVals(action, selectedValue);
+      if (vals.length > 0) {
+        await callWorkflow('setvals', { email, vals });
 
-      if (actionName === 'setvals') {
-        const vals = getSetVals(step, selectedValue);
-        if (vals.length > 0) {
-          await callWorkflow('setvals', { email, vals });
-
-          const accountValue = vals.find(({ param_name }) => param_name === 'account_id')?.param_val;
-          if (accountValue) {
-            req.session.account_id = accountValue;
-          }
+        const accountValue = vals.find(({ param_name }) => param_name === 'account_id')?.param_val;
+        if (accountValue) {
+          req.session.account_id = accountValue;
         }
       }
+    }
 
-      if (actionName === 'hydrate') {
-        const stepTargets = normalizeTargets(step.targets);
-        if (stepTargets.length > 0) {
-          targets = stepTargets;
-        }
-      }
-
-      if (actionName === 'redirect') {
-        redirectUrl = step.payload?.url;
-      }
+    if (actionName === 'redirect') {
+      redirectUrl = action.payload?.url;
     }
 
     if (redirectUrl) {

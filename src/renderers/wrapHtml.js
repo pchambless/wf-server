@@ -54,14 +54,76 @@ export function wrapHtml(title, body) {
         if (window.htmx) window.htmx.process(target);
       };
 
+      const getGridRows = (wrapper) => {
+        if (!wrapper) return [];
+
+        const explicitRows = Array.from(wrapper.querySelectorAll('.page-grid .grid-row, .table .grid-row'));
+        if (explicitRows.length > 0) {
+          return explicitRows;
+        }
+
+        return Array.from(wrapper.querySelectorAll('.page-grid tbody tr, .table tbody tr'));
+      };
+
+      const filterGridRows = (input) => {
+        const wrapper = input.closest('[data-template-name]');
+        if (!wrapper) return;
+
+        const searchTerm = input.value.trim().toLowerCase();
+        const rows = getGridRows(wrapper);
+
+        for (const row of rows) {
+          const rowText = row.textContent?.toLowerCase() || '';
+          row.style.display = searchTerm === '' || rowText.includes(searchTerm) ? '' : 'none';
+        }
+      };
+
+      const resolvePlaceholders = (obj, data) => {
+        if (typeof obj === 'string') {
+          let result = obj;
+          for (const [key, val] of Object.entries(data)) {
+            const token = '{{' + key + '}}';
+            while (result.includes(token)) {
+              result = result.replace(token, val ?? '');
+            }
+          }
+          return result;
+        }
+        if (Array.isArray(obj)) return obj.map(item => resolvePlaceholders(item, data));
+        if (obj && typeof obj === 'object') {
+          return Object.fromEntries(
+            Object.entries(obj).map(([k, v]) => [k, resolvePlaceholders(v, data)])
+          );
+        }
+        return obj;
+      };
+
+      const deriveTrigger = (event, source) => {
+        if (source?.closest('.grid-row')) return 'row_click';
+        if (source?.dataset?.trigger) return source.dataset.trigger;
+        const triggerEl = source?.closest('[data-trigger]');
+        if (triggerEl) return triggerEl.dataset.trigger;
+        if (source?.matches('select')) return 'select_change';
+        if (source?.matches('input, textarea')) return 'input';
+        if (event.type === 'submit') return 'submit';
+        return 'click';
+      };
+
       const handleActionEvent = async (event) => {
         const source = event.target instanceof Element ? event.target : null;
         const wrapper = source?.closest('[data-actions]');
         if (!wrapper) return;
 
+        const trigger = deriveTrigger(event, source);
         const actions = parseActions(wrapper.dataset.actions);
-        const action = actions.find(candidate => candidate.trigger === event.type);
+        let action = actions.find(candidate => candidate.trigger === trigger);
         if (!action) return;
+
+        const gridRow = source?.closest('.grid-row');
+        if (gridRow) {
+          const rowData = { id: gridRow.dataset.rowId, ...gridRow.dataset };
+          action = resolvePlaceholders(action, rowData);
+        }
 
         if (event.type === 'submit') {
           event.preventDefault();
@@ -101,6 +163,15 @@ export function wrapHtml(title, body) {
       for (const eventName of ['change', 'click', 'input', 'submit']) {
         document.addEventListener(eventName, handleActionEvent);
       }
+
+      document.addEventListener('input', function(event) {
+        const target = event.target instanceof HTMLInputElement ? event.target : null;
+        if (!target?.matches('.grid-search .search-input, .grid-search input[type="search"], .grid-search input[type="text"]')) {
+          return;
+        }
+
+        filterGridRows(target);
+      });
 
       const closeDropdownMenus = () => {
         document.querySelectorAll('.dropdown-menu.open').forEach(function(menu) {
