@@ -28,7 +28,11 @@ Grid row click actions require `{{id}}` inside `data-actions` JSON to resolve to
    - `wrapHtml()` injects HTMX and page shell only.
    - No client-side `{{...}}` template substitution logic exists in wf-server.
 
-## Where `{{id}}` Can Be Replaced
+## Updated Requirement
+
+The selected row value should be persisted by calling the `n8n.setvals` workflow rather than relying on wf-server to perform inline row-template substitution.
+
+## Where the Row Id Should Flow
 
 ### What wf-server currently can/cannot do
 
@@ -36,24 +40,28 @@ Grid row click actions require `{{id}}` inside `data-actions` JSON to resolve to
 - wf-server does **not** have a row object context when serializing `data-action-*` metadata.
 - `buildHtmxDiv()` and `wrapHtml()` provide structure/shell behavior, not row template interpolation.
 
-### Correct substitution point
+### Correct persistence point
 
-`{{id}}` should be resolved where row data is available: **in n8n workflow generation (hydrate-guide/raw-json stage)** when building each row/action payload.
+The row id should be sent as the action value and persisted through **`n8n.setvals`** so later workflow steps can read it from n8n-managed state.
 
 ## Architecture Decision
 
 ### Recommended
 
-Perform substitution in n8n (`hydrate-guide` / `raw-json`) when rows are materialized, e.g. build per-row action JSON using real row fields (`id`) before HTML/JSON is returned to wf-server.
+Use wf-server as a thin bridge:
+
+1. Browser click action posts the selected value to `/api/setvals`
+2. wf-server forwards that payload plus the session email to `n8n.setvals`
+3. Later hydrate/render workflow calls consume the stored value from n8n state
 
 ### Not recommended as primary fix
 
-- **wf-server rendering layer**: lacks reliable row-level context and would require brittle HTML/JSON parsing.
-- **browser runtime substitution**: adds duplicated template semantics to client and makes action behavior dependent on DOM conventions.
+- **wf-server rendering layer**: still lacks reliable row-level context for server-side HTML interpolation.
+- **literal `{{id}}` values**: they should not be left unresolved in stored action payloads if the goal is to set workflow state.
 
 ## Conclusion
 
-The current code path confirms there is no existing wf-server template substitution mechanism for `{{id}}` in action JSON. The fix should be implemented in n8n at row construction time so `data-actions` arrives already populated with concrete ids.
+The corrected flow is to send the selected row id through wf-server into `n8n.setvals`, not to rely on wf-server HTML rendering to substitute `{{id}}` directly.
 
 ## Code References
 
