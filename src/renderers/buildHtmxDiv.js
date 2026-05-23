@@ -27,23 +27,17 @@ export function buildHtmxDiv(component) {
     try {
       actions = JSON.parse(actions);
     } catch {
-      actions = [];
+      actions = {};
     }
   }
 
-  if (!Array.isArray(actions)) {
-    actions = [];
+  if (!actions || typeof actions !== 'object') {
+    actions = {};
   }
 
-  const normalizedActions = actions
-    .map(action => ({
-      trigger: action.trigger,
-      action: action.action,
-      values: action.values || {},
-      targets: normalizeTargets(action.targets),
-      payload: action.payload || {}
-    }))
-    .filter(a => a.trigger);
+  // Actions are now trigger-keyed objects: { trigger_name: action_or_actions_array, ... }
+  // Pass them directly as-is
+  const normalizedActions = actions;
 
   const hxVals = { template_name };
   if (component.page_id !== undefined && component.page_id !== null) {
@@ -62,7 +56,7 @@ export function buildHtmxDiv(component) {
     `hx-swap="innerHTML"`
   ];
 
-  if (normalizedActions.length > 0) {
+  if (Object.keys(normalizedActions).length > 0) {
     attrs.push(`data-actions='${escapeHtmlAttr(JSON.stringify(normalizedActions))}'`);
   }
 
