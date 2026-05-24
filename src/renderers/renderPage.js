@@ -5,7 +5,44 @@ import { wrapHtml } from './wrapHtml.js';
 let cachedRoutes = [];
 
 function normalizeHtml(html) {
-  return typeof html === 'string' ? html.replace(/\\n/g, '\n') : '';
+  if (!html) return '';
+
+  if (typeof html === 'string') {
+    return html.replace(/\\n/g, '\n');
+  }
+
+  if (Array.isArray(html)) {
+    for (const item of html) {
+      const normalized = normalizeHtml(item);
+      if (normalized) return normalized;
+    }
+    return '';
+  }
+
+  if (typeof html === 'object') {
+    if (typeof html.html === 'string' && html.html.length > 0) {
+      return html.html.replace(/\\n/g, '\n');
+    }
+
+    if (html.data) {
+      const fromData = normalizeHtml(html.data);
+      if (fromData) return fromData;
+    }
+    if (html.body) {
+      const fromBody = normalizeHtml(html.body);
+      if (fromBody) return fromBody;
+    }
+    if (html.result) {
+      const fromResult = normalizeHtml(html.result);
+      if (fromResult) return fromResult;
+    }
+    if (html.output) {
+      const fromOutput = normalizeHtml(html.output);
+      if (fromOutput) return fromOutput;
+    }
+  }
+
+  return '';
 }
 
 export function setRoutes(routes) {
@@ -81,16 +118,51 @@ export async function renderPage(req, res, next) {
       : templateResult?.html || templateResult?.[0]?.html || ''
   );
 
-  for (const comp of components) {
-    if (comp.slot_name && comp.comp_name !== 'appbar') {
-      pageHtml = pageHtml.replace(`{{slot:${comp.slot_name}}}`, buildHtmxDiv(comp));
-    }
-  }
-
-  pageHtml = pageHtml.replace(
-    /\{\{slot:(\w+)\}\}/g,
-    '<div style="background:#f8f9fa;border:2px dashed #d1d5db;padding:16px;margin:8px 0;text-align:center;color:#9ca3af;font-size:14px"><strong>SLOT:</strong> $1</div>'
+  const slotComponents = new Map(
+    components
+      .filter(c => c.slot_name && c.comp_name !== 'appbar')
+      .map(c => [c.slot_name, c])
   );
+  const defaultSlotTemplateCache = new Map();
+  const slotTokenRegex = /\{\{slot:([a-zA-Z0-9_-]+)(?::([a-zA-Z0-9_-]+))?\}\}/g;
+  const slotTokens = [...pageHtml.matchAll(slotTokenRegex)];
+
+  for (const match of slotTokens) {
+    const token = match[0];
+    const slotName = match[1];
+    const defaultTemplateName = match[2];
+    const component = slotComponents.get(slotName);
+
+    if (component) {
+      pageHtml = pageHtml.split(token).join(buildHtmxDiv(component));
+      continue;
+    }
+
+    if (defaultTemplateName) {
+      if (!defaultSlotTemplateCache.has(defaultTemplateName)) {
+        const defaultTemplateResult = await callWorkflow('hydrate-guide', {
+          template_name: defaultTemplateName,
+          source: 'wf-server',
+          format: 'html'
+        });
+
+        const defaultTemplateHtml = normalizeHtml(
+          typeof defaultTemplateResult === 'string'
+            ? defaultTemplateResult
+            : defaultTemplateResult?.html || defaultTemplateResult?.[0]?.html || ''
+        );
+
+        defaultSlotTemplateCache.set(defaultTemplateName, defaultTemplateHtml);
+      }
+
+      pageHtml = pageHtml.split(token).join(defaultSlotTemplateCache.get(defaultTemplateName));
+      continue;
+    }
+
+    pageHtml = pageHtml.split(token).join(
+      `<div style="background:#f8f9fa;border:2px dashed #d1d5db;padding:16px;margin:8px 0;text-align:center;color:#9ca3af;font-size:14px"><strong>SLOT:</strong> ${slotName}</div>`
+    );
+  }
 
   const layoutTemplate = await callWorkflow('server-query', {
     query: "SELECT html FROM studio.html_templates WHERE name = 'wf_layout'",

@@ -56,6 +56,36 @@ export const actionEngineCode = `
         return obj;
       };
 
+      const toFieldKey = (label) => {
+        return String(label || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '');
+      };
+
+      const deriveGridRowData = (gridRow) => {
+        if (!gridRow) return {};
+
+        const rowData = { ...gridRow.dataset };
+        if (gridRow.dataset.rowId !== undefined) {
+          rowData.id = gridRow.dataset.rowId;
+        }
+
+        const table = gridRow.closest('table');
+        const headerCells = table ? Array.from(table.querySelectorAll('thead th')) : [];
+        const valueCells = Array.from(gridRow.querySelectorAll('td'));
+
+        valueCells.forEach((cell, index) => {
+          const fallbackKey = 'col_' + String(index + 1);
+          const headerText = headerCells[index]?.textContent || fallbackKey;
+          const key = toFieldKey(headerText) || fallbackKey;
+          rowData[key] = (cell.textContent || '').trim();
+        });
+
+        return rowData;
+      };
+
       const deriveTrigger = (event, source) => {
         if (source?.closest('.grid-row')) {
           return event.type === 'dblclick' ? 'row_dblclick' : 'row_click';
@@ -82,7 +112,7 @@ export const actionEngineCode = `
 
         const actionsToRun = Array.isArray(actionOrActions) ? actionOrActions : [actionOrActions];
         const gridRow = source?.closest('.grid-row');
-        const rowData = gridRow ? { id: gridRow.dataset.rowId, ...gridRow.dataset } : {};
+        const rowData = deriveGridRowData(gridRow);
 
         const elementContext = {};
         if (source?.matches('select, input, textarea')) {
@@ -96,6 +126,26 @@ export const actionEngineCode = `
 
         for (const action of actionsToRun) {
           const resolvedAction = resolvePlaceholders(action, { ...rowData, ...elementContext });
+
+          if (String(resolvedAction.action || '').toLowerCase() === 'setvals') {
+            const nextValues = resolvedAction.values || resolvedAction.vals || {};
+            if (nextValues && typeof nextValues === 'object' && !Array.isArray(nextValues)) {
+              window.contextStore = {
+                ...(window.contextStore || {}),
+                ...nextValues
+              };
+            }
+          }
+
+          // Handle client-side actions
+          if (resolvedAction.action === 'open_modal') {
+            const formTemplate = resolvedAction.form_template;
+            const hydrateData = { ...rowData, ...(window.contextStore || {}), ...elementContext };
+            if (window.formModal && formTemplate) {
+              window.formModal.open(formTemplate, hydrateData);
+            }
+            continue;
+          }
 
           const response = await fetch('/api/actions', {
             method: 'POST',

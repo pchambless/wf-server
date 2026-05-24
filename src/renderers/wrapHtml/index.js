@@ -1,10 +1,25 @@
 import { actionEngineCode } from './actionEngine.js';
 import { gridActionsCode } from './gridActions.js';
 import { selectActionsCode } from './selectActions.js';
+import { formActionsCode } from './formActions.js';
 
 export function wrapHtml(title, body) {
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
   const styles = [];
+
+  const fallbackUiStyles = `<style>
+    .hidden { display: none !important; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+  </style>`;
 
   let match;
   while ((match = styleRegex.exec(body)) !== null) {
@@ -17,6 +32,7 @@ export function wrapHtml(title, body) {
       ${actionEngineCode}
       ${gridActionsCode}
       ${selectActionsCode}
+      ${formActionsCode}
     })();
   `;
 
@@ -30,6 +46,7 @@ export function wrapHtml(title, body) {
   <script>
     ${inlineScript}
   </script>
+  ${fallbackUiStyles}
   ${styles.join('\n')}
 </head>
 <body>
