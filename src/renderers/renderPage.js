@@ -49,6 +49,32 @@ export function setRoutes(routes) {
   cachedRoutes = routes;
 }
 
+function buildSlotActionsHtml(slotActions = []) {
+  if (!Array.isArray(slotActions) || slotActions.length === 0) return '';
+
+  const ordered = [...slotActions].sort((a, b) => {
+    const groupA = Number(a?.group_order ?? 0);
+    const groupB = Number(b?.group_order ?? 0);
+    if (groupA !== groupB) return groupA - groupB;
+
+    const compA = Number(a?.comp_order ?? 0);
+    const compB = Number(b?.comp_order ?? 0);
+    if (compA !== compB) return compA - compB;
+
+    return String(a?.component_name ?? '').localeCompare(String(b?.component_name ?? ''));
+  });
+
+  const buttons = ordered
+    .map((action) => {
+      const id = String(action?.component_name || action?.id || 'slot_action');
+      const label = String(action?.label || id);
+      return `<button type="button" id="${id}" class="wf-slot-action-btn">${label}</button>`;
+    })
+    .join('');
+
+  return `<div class="wf-slot-actions">${buttons}</div>`;
+}
+
 export async function renderPage(req, res, next) {
   const email = req.session?.current_user_email;
   const route = req.path;
@@ -81,11 +107,12 @@ export async function renderPage(req, res, next) {
     return res.status(500).send('Failed to set page context');
   }
 
-  let pageInfo, components;
+  let pageInfo, components, slotActions;
   try {
     const structure = await callWorkflow('page-structure', { email });
     pageInfo = structure?.pageInfo;
     components = structure?.components || [];
+    slotActions = structure?.slotActions || structure?.pageInfo?.slotActions || {};
     if (!pageInfo?.templateName) {
       return res.status(404).send('Page template not found');
     }
@@ -135,6 +162,12 @@ export async function renderPage(req, res, next) {
 
     if (component) {
       pageHtml = pageHtml.split(token).join(buildHtmxDiv(component));
+      continue;
+    }
+
+    const actionsForSlot = Array.isArray(slotActions?.[slotName]) ? slotActions[slotName] : [];
+    if (actionsForSlot.length > 0) {
+      pageHtml = pageHtml.split(token).join(buildSlotActionsHtml(actionsForSlot));
       continue;
     }
 
