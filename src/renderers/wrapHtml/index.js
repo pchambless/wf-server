@@ -9,6 +9,28 @@ export function wrapHtml(title, body) {
 
   const fallbackUiStyles = `<style>
     .hidden { display: none !important; }
+    .wf-slot-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .wf-slot-actions .wf-slot-action-btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 24px;
+      background: #0891b2;
+      color: #ffffff;
+      cursor: pointer;
+    }
+    .wf-slot-actions .wf-slot-action-btn:hover {
+      background: #dcfce7;
+      color: #1f2937;
+    }
+    .wf-slot-actions .wf-slot-action-btn:focus-visible {
+      outline: 2px solid #0891b2;
+      outline-offset: 2px;
+    }
     .modal-overlay {
       position: fixed;
       inset: 0;
