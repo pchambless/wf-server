@@ -7,25 +7,22 @@ export function buildCrudButtons(pageInfo) {
 
   if (!formTemplate && !gridTemplate) return '';
 
-  const actions = [];
+  const actions = {};
 
   if (formTemplate) {
-    actions.push({
-      trigger: 'add_new',
+    actions.add_new = {
       action: 'open_modal',
-      values: { mode: 'INSERT', [contextKey]: '0' },
-      targets: ['form_modal'],
-      payload: { form_template: formTemplate }
-    });
+      form_template: formTemplate,
+      targets: ['form_modal']
+    };
   }
 
   if (gridTemplate) {
-    actions.push({
-      trigger: 'delete_selected',
+    actions.delete_selected = {
       action: 'row_delete',
       values: { mode: 'DELETE' },
       targets: [gridTemplate]
-    });
+    };
   }
 
   const escapeAttr = (str) => String(str)
