@@ -28,15 +28,10 @@ function buildSlotActionsHtml(slotActions = []) {
   return `<div class="wf-slot-actions">${buttons}</div>`;
 }
 
-export async function hydrateSlots(pageHtml, components, slotActions) {
-  const slotComponents = new Map(
-    components
-      .filter(c => c.slot_name && c.comp_name !== 'appbar')
-      .map(c => [c.slot_name, c])
-  );
-  const defaultSlotTemplateCache = new Map();
+async function processSlotTokens(html, slotComponents, slotActions, defaultSlotTemplateCache, templateCache) {
   const slotTokenRegex = /\{\{slot:([a-zA-Z0-9_-]+)(?::([a-zA-Z0-9_-]+))?\}\}/g;
-  const slotTokens = [...pageHtml.matchAll(slotTokenRegex)];
+  const slotTokens = [...html.matchAll(slotTokenRegex)];
+  let modified = false;
 
   for (const match of slotTokens) {
     const token = match[0];
@@ -45,13 +40,43 @@ export async function hydrateSlots(pageHtml, components, slotActions) {
     const component = slotComponents.get(slotName);
 
     if (component) {
-      pageHtml = pageHtml.split(token).join(buildHtmxDiv(component));
+      let componentHtml;
+
+      // For components with templates, fetch and hydrate the template first
+      if (component.html_template_id) {
+        const templateId = String(component.html_template_id);
+        if (!templateCache.has(templateId)) {
+          // Fetch template name by ID from the database
+          const templateLookup = await callWorkflow('server-query', {
+            query: `select name from studio.html_templates where id = ${templateId}`,
+            params: {},
+            source: 'wf-server'
+          });
+
+          const templateName = templateLookup?.[0]?.name;
+          if (templateName) {
+            const templateResult = await callWorkflow('hydrate-guide', {
+              template_name: templateName,
+              source: 'wf-server',
+              format: 'html'
+            });
+            templateCache.set(templateId, normalizeHtml(templateResult));
+          }
+        }
+        componentHtml = templateCache.get(templateId) || buildHtmxDiv(component);
+      } else {
+        componentHtml = buildHtmxDiv(component);
+      }
+
+      html = html.split(token).join(componentHtml);
+      modified = true;
       continue;
     }
 
     const actionsForSlot = Array.isArray(slotActions?.[slotName]) ? slotActions[slotName] : [];
     if (actionsForSlot.length > 0) {
-      pageHtml = pageHtml.split(token).join(buildSlotActionsHtml(actionsForSlot));
+      html = html.split(token).join(buildSlotActionsHtml(actionsForSlot));
+      modified = true;
       continue;
     }
 
@@ -64,14 +89,37 @@ export async function hydrateSlots(pageHtml, components, slotActions) {
         });
         defaultSlotTemplateCache.set(defaultTemplateName, normalizeHtml(defaultTemplateResult));
       }
-      pageHtml = pageHtml.split(token).join(defaultSlotTemplateCache.get(defaultTemplateName));
+      html = html.split(token).join(defaultSlotTemplateCache.get(defaultTemplateName));
+      modified = true;
       continue;
     }
 
-    pageHtml = pageHtml.split(token).join(
+    html = html.split(token).join(
       `<div style="background:#f8f9fa;border:2px dashed #d1d5db;padding:16px;margin:8px 0;text-align:center;color:#9ca3af;font-size:14px"><strong>SLOT:</strong> ${slotName}</div>`
     );
+    modified = true;
   }
 
-  return pageHtml;
+  return { html, modified };
+}
+
+export async function hydrateSlots(pageHtml, components, slotActions) {
+  const slotComponents = new Map(
+    components
+      .filter(c => c.slot_name && c.comp_name !== 'appbar')
+      .map(c => [c.slot_name, c])
+  );
+  const defaultSlotTemplateCache = new Map();
+  const templateCache = new Map();
+
+  let html = pageHtml;
+  let hasSlots = true;
+
+  while (hasSlots) {
+    const { html: processedHtml, modified } = await processSlotTokens(html, slotComponents, slotActions, defaultSlotTemplateCache, templateCache);
+    html = processedHtml;
+    hasSlots = modified;
+  }
+
+  return html;
 }
