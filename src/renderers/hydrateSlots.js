@@ -1,5 +1,6 @@
 import { callWorkflow } from '../utils/n8nClient.js';
 import { buildHtmxDiv } from './buildHtmxDiv.js';
+import { buildSelectWidget } from './buildSelectWidget.js';
 import { normalizeHtml } from './normalizeHtml.js';
 
 function buildSlotActionsHtml(slotActions = []) {
@@ -28,6 +29,16 @@ function buildSlotActionsHtml(slotActions = []) {
   return `<div class="wf-slot-actions">${buttons}</div>`;
 }
 
+function parseSlotAttrs(attrString) {
+  const attrRegex = /([a-zA-Z0-9_-]+)="([^"]*)"/g;
+  const attrs = {};
+  let m;
+  while ((m = attrRegex.exec(attrString)) !== null) {
+    attrs[m[1]] = m[2];
+  }
+  return attrs;
+}
+
 export async function hydrateSlots(pageHtml, components, slotActions) {
   const slotComponents = new Map(
     components
@@ -35,17 +46,24 @@ export async function hydrateSlots(pageHtml, components, slotActions) {
       .map(c => [c.slot_name, c])
   );
   const defaultSlotTemplateCache = new Map();
-  const slotTokenRegex = /\{\{slot:([a-zA-Z0-9_-]+)(?::([a-zA-Z0-9_-]+))?\}\}/g;
+
+  // Matches:
+  //   {{slot:name}}
+  //   {{slot:name:default_template}}
+  //   {{slot:name key="value" key2="value2"}}
+  const slotTokenRegex = /\{\{slot:([a-zA-Z0-9_-]+)(?::([a-zA-Z0-9_-]+))?((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\}\}/g;
   const slotTokens = [...pageHtml.matchAll(slotTokenRegex)];
 
   for (const match of slotTokens) {
     const token = match[0];
     const slotName = match[1];
-    const defaultTemplateName = match[2];
+    const defaultTemplateName = match[2] || null;
+    const attrString = match[3] || '';
+    const attrs = parseSlotAttrs(attrString);
     const component = slotComponents.get(slotName);
 
     if (component) {
-      pageHtml = pageHtml.split(token).join(buildHtmxDiv(component));
+      pageHtml = pageHtml.split(token).join(buildHtmxDiv(component, attrs));
       continue;
     }
 

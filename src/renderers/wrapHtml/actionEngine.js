@@ -147,6 +147,21 @@ export const actionEngineCode = `
             continue;
           }
 
+          if (resolvedAction.action === 'show_element') {
+            const el = document.getElementById(resolvedAction.target);
+            if (el) el.style.display = resolvedAction.style || 'inline-flex';
+            continue;
+          }
+
+          if (resolvedAction.action === 'open_report') {
+            const templates = resolvedAction.templates || [];
+            const contextData = { ...rowData, ...(window.contextStore || {}), ...elementContext };
+            if (window.reportModal && templates.length > 0) {
+              window.reportModal.open(templates, contextData);
+            }
+            continue;
+          }
+
           const response = await fetch('/api/actions', {
             method: 'POST',
             headers: {

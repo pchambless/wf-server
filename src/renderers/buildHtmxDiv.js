@@ -19,7 +19,7 @@ function escapeHtmlAttr(value) {
     .replace(/>/g, '&gt;');
 }
 
-export function buildHtmxDiv(component) {
+export function buildHtmxDiv(component, slotAttrs = {}) {
   const { comp_name, template_name } = component;
   let actions = component.actions || [];
 
@@ -47,6 +47,7 @@ export function buildHtmxDiv(component) {
     hxVals.page_title = component.page_title;
   }
 
+  // Pass slotAttrs as data-slot-attrs for downstream hydration (e.g., select widget template)
   const attrs = [
     `id="${comp_name}"`,
     `data-template-name="${escapeHtmlAttr(template_name)}"`,
@@ -58,6 +59,11 @@ export function buildHtmxDiv(component) {
 
   if (Object.keys(normalizedActions).length > 0) {
     attrs.push(`data-actions='${escapeHtmlAttr(JSON.stringify(normalizedActions))}'`);
+  }
+  if (slotAttrs && Object.keys(slotAttrs).length > 0) {
+    for (const [key, val] of Object.entries(slotAttrs)) {
+      attrs.push(`${key}="${escapeHtmlAttr(val)}"`);
+    }
   }
 
   return `<div ${attrs.join('\n     ')}>\n  </div>`;

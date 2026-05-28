@@ -44,6 +44,8 @@ export const formActionsCode = `
           const formHtml = await response.text();
           container.innerHTML = formHtml;
 
+          if (window.htmx) window.htmx.process(container);
+
           const form = container.querySelector("form");
           if (form) {
             form.id = "form_element";

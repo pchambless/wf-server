@@ -11,6 +11,83 @@ export function setRoutes(routes) {
   cachedRoutes = routes;
 }
 
+function escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function joinClasses(...parts) {
+  return parts.filter(Boolean).join(' ');
+}
+
+function parseObjectLike(value, fallback = {}) {
+  if (!value) return fallback;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+}
+
+function parseButtons(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
+function triggerToLabel(trigger) {
+  const base = String(trigger || '').replace(/_click$/i, '').replace(/_/g, ' ').trim();
+  if (!base) return 'Action';
+  return base.replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function buildContextButtons(components) {
+  return components
+    .filter(c => c.slot_name === 'context-btn')
+    .sort((a, b) => (a.ordr ?? 0) - (b.ordr ?? 0))
+    .map(c => {
+      const componentData = parseObjectLike(c.data, {});
+      const id = componentData.id || c.comp_name;
+      const actions = parseObjectLike(c.actions, {});
+      const parsedButtons = parseButtons(componentData.buttons, []);
+      const actionEntries = Object.entries(actions).filter(([, cfg]) => cfg && typeof cfg === 'object' && !Array.isArray(cfg));
+
+      const configuredButtons = parsedButtons.length > 0
+        ? parsedButtons
+        : actionEntries.length > 0
+          ? actionEntries.map(([trigger, cfg]) => ({
+              label: cfg.label || triggerToLabel(trigger),
+              trigger
+            }))
+          : [{ label: componentData.label || c.comp_name, trigger: componentData.trigger || 'button_click' }];
+
+      const buttonsHtml = configuredButtons
+        .map((btn) => {
+          const label = btn?.label || c.comp_name;
+          const trigger = btn?.trigger || 'button_click';
+          const extraClass = typeof btn?.className === 'string' ? btn.className.trim() : '';
+          const className = joinClasses('wf-slot-action-btn', 'wf-context-btn', extraClass);
+          return `<button type="button" class="${escapeAttr(className)}" data-trigger="${escapeAttr(trigger)}">${escapeAttr(label)}</button>`;
+        })
+        .join('');
+
+      return `<div id="${escapeAttr(id)}" class="wf-slot-actions wf-context-btn-group" style="display:none" data-actions='${escapeAttr(JSON.stringify(actions))}'>${buttonsHtml}</div>`;
+    })
+    .join('');
+}
+
 export async function renderPage(req, res, next) {
   const email = req.session?.current_user_email;
   const route = req.path;
@@ -72,8 +149,10 @@ export async function renderPage(req, res, next) {
 
   // Inject CRUD buttons if page is crud type
   const crudButtonsHtml = buildCrudButtons(pageInfo);
-  if (crudButtonsHtml) {
-    pageHtml = pageHtml.split('{{slot:page-buttons}}').join(crudButtonsHtml);
+  const contextBtnsHtml = buildContextButtons(components);
+  const allButtonsHtml = (crudButtonsHtml || '') + contextBtnsHtml;
+  if (allButtonsHtml) {
+    pageHtml = pageHtml.split('{{slot:page-buttons}}').join(allButtonsHtml);
   }
 
   pageHtml = await hydrateSlots(pageHtml, components, slotActions);
