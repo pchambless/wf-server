@@ -24,6 +24,13 @@ export const reportActionsCode = `
           if (e.target === modal) window.reportModal.close();
         });
 
+        // Delegate print button clicks (CSP blocks inline onclick handlers)
+        modal.addEventListener('click', (e) => {
+          if (e.target.closest('.print-btn')) {
+            window.print();
+          }
+        });
+
         return modal;
       };
 

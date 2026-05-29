@@ -123,6 +123,22 @@ export function wrapHtml(title, body) {
       justify-content: center;
       padding: 16px;
     }
+    @media print {
+      body > *:not(#report_modal) { display: none !important; }
+      #report_modal {
+        position: static !important;
+        background: none !important;
+        padding: 0 !important;
+        display: block !important;
+      }
+      #report_modal > div {
+        box-shadow: none !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+      }
+      #report_modal_body { overflow: visible !important; }
+      #report_modal .print-btn { display: none !important; }
+    }
   </style>`;
 
   let match;
