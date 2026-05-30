@@ -74,27 +74,37 @@ export function wrapHtml(title, body) {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 6px 14px;
+      padding: 12px 14px;
       background: var(--accent-color, #16a34a);
       color: white;
       font-family: var(--font-family, "Segoe UI", Arial, sans-serif);
+      justify-content: center;
     }
     .appbar .wf-icon {
-      width: 18px;
-      height: 18px;
+      width: 24px;
+      height: 24px;
       flex: 0 0 auto;
+      position: absolute;
+      left: 14px;
     }
     .appbar .title {
-      font-size: 16px;
-      font-weight: 1200;
+      font-size: 18px;
+      font-weight: 600;
       line-height: 1.2;
-      margin-right: auto;
+      text-align: center;
+      flex: 1;
+    }
+    .appbar .first-name {
+      font-size: 14px;
+      line-height: 1.2;
+      margin-left: auto;
+      padding: 4px 8px;
     }
     .appbar .account-name {
-      font-size: 16px;
+      font-size: 14px;
       line-height: 1.2;
-      padding: 2px 8px;
-      border-radius: 999px;
+      padding: 4px 8px;
+      border-radius: 4px;
       background: rgba(255,255,255,0.14);
       border: 1px solid rgba(255,255,255,0.22);
     }
@@ -103,7 +113,7 @@ export function wrapHtml(title, body) {
       background: rgba(255,255,255,0.15);
       color: white;
       border: 1px solid rgba(255,255,255,0.3);
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
