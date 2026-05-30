@@ -73,19 +73,16 @@ export function wrapHtml(title, body) {
     .appbar {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       padding: 12px 14px;
       background: var(--accent-color, #16a34a);
       color: white;
       font-family: var(--font-family, "Segoe UI", Arial, sans-serif);
-      justify-content: center;
     }
     .appbar .wf-icon {
       width: 24px;
       height: 24px;
       flex: 0 0 auto;
-      position: absolute;
-      left: 14px;
     }
     .appbar .title {
       font-size: 18px;
@@ -97,8 +94,8 @@ export function wrapHtml(title, body) {
     .appbar .first-name {
       font-size: 14px;
       line-height: 1.2;
-      margin-left: auto;
       padding: 4px 8px;
+      flex: 0 0 auto;
     }
     .appbar .account-name {
       font-size: 14px;
@@ -107,6 +104,7 @@ export function wrapHtml(title, body) {
       border-radius: 4px;
       background: rgba(255,255,255,0.14);
       border: 1px solid rgba(255,255,255,0.22);
+      flex: 0 0 auto;
     }
     .appbar button,
     .appbar .logout-btn {
