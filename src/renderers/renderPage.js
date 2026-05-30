@@ -143,7 +143,7 @@ export async function renderPage(req, res, next) {
   }
 
   const templateResult = await callWorkflow('hydrate-guide', {
-    template_name: pageInfo.templateName, source: 'wf-server'
+    template_name: pageInfo.templateName, source: 'wf-server', email
   });
   let pageHtml = normalizeHtml(templateResult);
 
@@ -155,10 +155,11 @@ export async function renderPage(req, res, next) {
     pageHtml = pageHtml.split('{{slot:page-buttons}}').join(allButtonsHtml);
   }
 
-  pageHtml = await hydrateSlots(pageHtml, components, slotActions);
+  pageHtml = await hydrateSlots(pageHtml, components, slotActions, email);
 
   let layoutHtml = await resolveLayout(components);
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
+  res.set('Cache-Control', 'no-store');
   res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, layoutHtml));
 }

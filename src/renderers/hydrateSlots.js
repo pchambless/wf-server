@@ -39,7 +39,7 @@ function parseSlotAttrs(attrString) {
   return attrs;
 }
 
-export async function hydrateSlots(pageHtml, components, slotActions) {
+export async function hydrateSlots(pageHtml, components, slotActions, email) {
   const slotComponents = new Map(
     components
       .filter(c => c.slot_name && c.comp_name !== 'appbar')
@@ -78,7 +78,8 @@ export async function hydrateSlots(pageHtml, components, slotActions) {
         const defaultTemplateResult = await callWorkflow('hydrate-guide', {
           template_name: defaultTemplateName,
           source: 'wf-server',
-          format: 'html'
+          format: 'html',
+          ...(email ? { email } : {})
         });
         defaultSlotTemplateCache.set(defaultTemplateName, normalizeHtml(defaultTemplateResult));
       }
