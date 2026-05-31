@@ -30,6 +30,29 @@ export const gridActionsCode = `
         }
       };
 
+      const handleGridRowSelection = (event) => {
+        const source = event.target instanceof Element ? event.target : null;
+        if (!source) return;
+
+        const row = source.closest('.grid-row, tbody tr');
+        if (!row || !row.matches('tr, .grid-row')) return;
+
+        // Find the grid wrapper to deselect other rows
+        const wrapper = row.closest('[data-template-name], .page-grid, .table');
+        if (!wrapper) return;
+
+        // Only toggle selection on direct row click, not on clicks that trigger actions
+        const hasActions = row.closest('[data-actions]');
+        if (hasActions && source !== row) return;
+
+        // Deselect all other rows in this grid
+        const rows = wrapper.querySelectorAll('.grid-row, tbody tr');
+        rows.forEach(r => r.classList.remove('selected'));
+
+        // Select the clicked row
+        row.classList.add('selected');
+      };
+
       document.addEventListener('input', function(event) {
         const target = event.target instanceof HTMLInputElement ? event.target : null;
         if (!target?.matches('.grid-search .search-input, .grid-search input[type="search"], .grid-search input[type="text"], .grid-toolbar .search-input')) {
@@ -38,4 +61,6 @@ export const gridActionsCode = `
 
         filterGridRows(target);
       });
+
+      document.addEventListener('click', handleGridRowSelection);
 `;
