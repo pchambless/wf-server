@@ -193,8 +193,15 @@ router.post('/actions', async (req, res) => {
       }
     }
 
+    if (actionName === 'clearvals') {
+      const keys = action.context_keys || [];
+      if (keys.length > 0) {
+        await callWorkflow('clearvals', { email, keys });
+      }
+    }
+
     if (actionName === 'redirect') {
-      redirectUrl = action.payload?.url;
+      redirectUrl = action.redirectUrl || action.payload?.url;
     }
 
     if (redirectUrl) {
