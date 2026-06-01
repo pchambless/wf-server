@@ -88,13 +88,25 @@ router.post('/hydrate', async (req, res) => {
             ...(page_title ? { page_title } : {})
           })
     });
-    let rawHtml = normalizeHtml(result);
-
-    // If result has styled_html and data, compile Handlebars template with data
+    // Check for styled_html + data (new select widget pattern) before normalizing
+    let rawHtml;
+    logger.info('[hydrate] Result type and keys', {
+      type: typeof result,
+      isArray: Array.isArray(result),
+      resultKeys: Array.isArray(result) ? Object.keys(result[0] || {}) : Object.keys(result || {}),
+      has_styled_html: !!result?.styled_html,
+      has_data: !!result?.data
+    });
     if (result?.styled_html && result?.data) {
+      logger.info('[hydrate] Compiling Handlebars', { template_name, data_length: result.data.length });
       rawHtml = compileHandlebars(result.styled_html, { data: result.data });
-    } else if (template_name === 'user_accounts_dd') {
-      rawHtml = applySelectedAccount(rawHtml, req.session?.account_id);
+      logger.info('[hydrate] Compiled HTML length', { length: rawHtml.length });
+    } else {
+      logger.info('[hydrate] Using normalizeHtml');
+      rawHtml = normalizeHtml(result);
+      if (template_name === 'user_accounts_dd') {
+        rawHtml = applySelectedAccount(rawHtml, req.session?.account_id);
+      }
     }
 
     // Resolve any {{slot:*}} tokens in the returned HTML (e.g., select widgets in forms)

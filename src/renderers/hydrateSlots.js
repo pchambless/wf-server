@@ -87,9 +87,8 @@ export async function hydrateSlots(pageHtml, components, slotActions, email) {
       continue;
     }
 
-    pageHtml = pageHtml.split(token).join(
-      `<div style="background:#f8f9fa;border:2px dashed #d1d5db;padding:16px;margin:8px 0;text-align:center;color:#9ca3af;font-size:14px"><strong>SLOT:</strong> ${slotName}</div>`
-    );
+    // Slot has no component and no default template — render nothing
+    pageHtml = pageHtml.split(token).join('');
   }
 
   return pageHtml;
