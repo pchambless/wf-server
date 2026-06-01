@@ -1,4 +1,5 @@
 import { callWorkflow } from '../utils/n8nClient.js';
+import Handlebars from 'handlebars';
 
 export function normalizeHtml(result) {
   if (!result) return '';
@@ -109,4 +110,16 @@ export async function hydrateTargets(email, targets, swapMode) {
   }
 
   return updates;
+}
+
+export function compileHandlebars(templateHtml, data) {
+  if (!templateHtml || !data) return templateHtml;
+
+  try {
+    const template = Handlebars.compile(templateHtml);
+    return template(data);
+  } catch (err) {
+    console.error('[Handlebars] Compilation error:', err.message);
+    return templateHtml;
+  }
 }

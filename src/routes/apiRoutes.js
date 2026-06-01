@@ -3,7 +3,7 @@ import { handleLogin } from '../controllers/loginHandler.js';
 import { callWorkflow } from '../utils/n8nClient.js';
 import logger from '../utils/logger.js';
 import { parseAction, normalizeTargets, getSetVals } from './actionUtils.js';
-import { normalizeHtml, applySelectedAccount, hydrateTargets } from './hydrationUtils.js';
+import { normalizeHtml, applySelectedAccount, hydrateTargets, compileHandlebars } from './hydrationUtils.js';
 import { buildHtmxDiv } from '../renderers/buildHtmxDiv.js';
 import { buildSelectWidget } from '../renderers/buildSelectWidget.js';
 
@@ -88,9 +88,14 @@ router.post('/hydrate', async (req, res) => {
             ...(page_title ? { page_title } : {})
           })
     });
-    const rawHtml = template_name === 'user_accounts_dd'
-      ? applySelectedAccount(normalizeHtml(result), req.session?.account_id)
-      : normalizeHtml(result);
+    let rawHtml = normalizeHtml(result);
+
+    // If result has styled_html and data, compile Handlebars template with data
+    if (result?.styled_html && result?.data) {
+      rawHtml = compileHandlebars(result.styled_html, { data: result.data });
+    } else if (template_name === 'user_accounts_dd') {
+      rawHtml = applySelectedAccount(rawHtml, req.session?.account_id);
+    }
 
     // Resolve any {{slot:*}} tokens in the returned HTML (e.g., select widgets in forms)
     let html = rawHtml;
