@@ -8,7 +8,7 @@ function escapeHtmlAttr(value) {
 }
 
 export function buildSelectWidget(component, slotAttrs = {}) {
-  const { comp_name, template_name } = component;
+  const { comp_name, template_name, template_title } = component;
   let actions = component.actions || {};
 
   if (typeof actions === 'string') {
@@ -42,5 +42,9 @@ export function buildSelectWidget(component, slotAttrs = {}) {
     }
   }
 
-  return `<div ${attrs.join(' ')}></div>`;
+  if (!template_title) {
+    throw new Error(`Select widget "${template_name}" missing required template_title for label`);
+  }
+
+  return `<div class="dropdown-label">${escapeHtmlAttr(template_title)}</div><div ${attrs.join(' ')}></div>`;
 }

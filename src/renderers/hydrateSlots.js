@@ -63,7 +63,9 @@ export async function hydrateSlots(pageHtml, components, slotActions, email) {
     const component = slotComponents.get(slotName);
 
     if (component) {
-      pageHtml = pageHtml.split(token).join(buildHtmxDiv(component, attrs));
+      const builder = (component.widget_type === 'select' || component.comp_name.endsWith('_dd'))
+        ? buildSelectWidget : buildHtmxDiv;
+      pageHtml = pageHtml.split(token).join(builder(component, attrs));
       continue;
     }
 

@@ -16,7 +16,7 @@ export const gridActionsCode = `
         // If not in a component, look for grid in the same page container
         if (!wrapper) {
           const page = input.closest('.crud-page');
-          wrapper = page?.querySelector('[data-template-name]');
+          wrapper = page?.querySelector('.page-grid, .table');
         }
 
         if (!wrapper) return;
