@@ -11,7 +11,9 @@ export const actionEngineCode = `
       };
 
       const getActionValue = (event, wrapper) => {
-        const source = event.target instanceof Element ? event.target : null;
+        const source = event.target instanceof Element
+          ? event.target
+          : event.target?.parentElement || null;
 
         if (source?.matches('select, input, textarea')) {
           return source.value ?? '';
@@ -100,7 +102,9 @@ export const actionEngineCode = `
       };
 
       const handleActionEvent = async (event) => {
-        const source = event.target instanceof Element ? event.target : null;
+        const source = event.target instanceof Element
+          ? event.target
+          : event.target?.parentElement || null;
         const wrapper = source?.closest('[data-actions]');
         if (!wrapper) return;
 
@@ -140,7 +144,8 @@ export const actionEngineCode = `
           // Handle client-side actions
           if (resolvedAction.action === 'open_modal') {
             const formTemplate = resolvedAction.form_template;
-            const hydrateData = { ...rowData, ...(window.contextStore || {}), ...elementContext };
+            const actionValues = resolvedAction.values || {};
+            const hydrateData = { ...rowData, ...(window.contextStore || {}), ...elementContext, ...actionValues };
             if (window.formModal && formTemplate) {
               window.formModal.open(formTemplate, hydrateData);
             }

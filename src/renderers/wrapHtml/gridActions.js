@@ -31,7 +31,9 @@ export const gridActionsCode = `
       };
 
       const handleGridRowSelection = (event) => {
-        const source = event.target instanceof Element ? event.target : null;
+        const source = event.target instanceof Element
+          ? event.target
+          : event.target?.parentElement || null;
         if (!source) return;
 
         const row = source.closest('tr');
