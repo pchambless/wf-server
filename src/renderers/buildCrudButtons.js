@@ -13,6 +13,7 @@ export function buildCrudButtons(pageInfo) {
     actions.add_new = {
       action: 'open_modal',
       form_template: formTemplate,
+      values: { mode: 'INSERT' },
       targets: ['form_modal']
     };
   }
