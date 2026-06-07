@@ -68,6 +68,9 @@ router.post('/hydrate', async (req, res) => {
 
   try {
     const workflowName = template_name === 'wf_appbar' ? 'page-chrome' : 'hydrate-guide';
+    const contextValues = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title'].includes(key))
+    );
     const result = await callWorkflow(workflowName, {
       ...(template_name === 'wf_appbar'
         ? {
@@ -81,7 +84,8 @@ router.post('/hydrate', async (req, res) => {
             format: 'html',
             ...(email ? { email } : {}),
             ...(page_id ? { page_id } : {}),
-            ...(page_title ? { page_title } : {})
+            ...(page_title ? { page_title } : {}),
+            ...contextValues
           })
     });
     // Check for styled_html + data (new select widget pattern) before normalizing
@@ -108,9 +112,27 @@ router.post('/hydrate', async (req, res) => {
     // Resolve any {{slot:*}} tokens in the returned HTML (e.g., select widgets in forms)
     let html = rawHtml;
     if (html.includes('{{slot:')) {
+      // Set f_* context values from form data before resolving slots
+      const formFieldValues = Object.entries(contextValues)
+        .filter(([key]) => key.startsWith('f_'))
+        .map(([param_name, param_val]) => ({ param_name, param_val }));
+
+      if (formFieldValues.length > 0) {
+        await callWorkflow('setvals', { email, vals: formFieldValues });
+      }
+
       const structure = await callWorkflow('page-structure', { email });
       const components = structure?.components || [];
-      html = await resolveInlineSlots(html, components);
+
+      // Also fetch global components (page_id=0) for slot resolution
+      const globalComponents = await callWorkflow('server-query', {
+        query: "SELECT pc.id AS page_comp_id, pc.comp_name, pc.slot_name, ht.name AS template_name, ht.title AS template_title, ht.platform AS widget_type, pc.actions FROM studio.page_components pc LEFT JOIN studio.html_templates ht ON pc.html_template_id = ht.id WHERE pc.page_id = 0 AND pc.deleted_at IS NULL",
+        params: {},
+        source: 'server'
+      });
+
+      const allComponents = [...components, ...(Array.isArray(globalComponents) ? globalComponents : [])];
+      html = await resolveInlineSlots(html, allComponents);
     }
 
     logger.info('[api] Response', {

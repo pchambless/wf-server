@@ -7,7 +7,7 @@ function escapeHtmlAttr(value) {
     .replace(/>/g, '&gt;');
 }
 
-export function buildSelectWidget(component, slotAttrs = {}) {
+export function buildFormSelect(component, slotAttrs = {}) {
   const { comp_name, template_name, template_title } = component;
   let actions = component.actions || {};
 
@@ -19,6 +19,8 @@ export function buildSelectWidget(component, slotAttrs = {}) {
     }
   }
 
+  // For form selects, include all slotAttrs as HTMX values
+  // These contain the form data (f_measure_id, f_location_id, etc.)
   const hxVals = {
     template_name,
     ...slotAttrs
@@ -38,7 +40,6 @@ export function buildSelectWidget(component, slotAttrs = {}) {
     attrs.push(`data-actions='${escapeHtmlAttr(JSON.stringify(actions))}'`);
   }
 
-  // Slot attrs: name, data-field, data-selected-value, etc.
   if (slotAttrs && Object.keys(slotAttrs).length > 0) {
     for (const [key, val] of Object.entries(slotAttrs)) {
       attrs.push(`${key}="${escapeHtmlAttr(val)}"`);
@@ -46,7 +47,7 @@ export function buildSelectWidget(component, slotAttrs = {}) {
   }
 
   if (!template_title) {
-    throw new Error(`Select widget "${template_name}" missing required template_title for label`);
+    throw new Error(`Form select widget "${template_name}" missing required template_title for label`);
   }
 
   return `<div class="dropdown-label">${escapeHtmlAttr(template_title)}</div><div ${attrs.join(' ')}></div>`;
