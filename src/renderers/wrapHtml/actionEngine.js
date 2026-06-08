@@ -145,7 +145,7 @@ export const actionEngineCode = `
           if (resolvedAction.action === 'open_modal') {
             const formTemplate = resolvedAction.form_template;
             const actionValues = resolvedAction.values || {};
-            const hydrateData = { ...rowData, ...(window.contextStore || {}), ...elementContext, ...actionValues };
+            const hydrateData = { ...(window.contextStore || {}), ...elementContext, ...actionValues };
             if (window.formModal && formTemplate) {
               window.formModal.open(formTemplate, hydrateData);
             }

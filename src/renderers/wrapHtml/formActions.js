@@ -49,18 +49,14 @@ export const formActionsCode = `
           const form = container.querySelector("form");
           if (form) {
             form.id = "form_element";
-            form.querySelectorAll("[data-field]").forEach(field => {
-              const key = field.getAttribute("data-field");
-              if (key in hydrateData) {
-                field.value = hydrateData[key] || "";
-              }
-            });
           }
 
           const mode = window.contextStore?.mode || "INSERT";
           const entityName = templateName.replace(/_form$/, "").replace(/_/g, " ");
+          const nameField = form?.querySelector('[data-field="name"]');
+          const displayName = nameField?.value || "";
           const title = mode === "UPDATE"
-            ? \`UPDATE \${entityName}: \${hydrateData.name || ""}\`
+            ? \`UPDATE \${entityName}: \${displayName}\`
             : \`INSERT \${entityName}\`;
           const modalTitle = document.getElementById("modal_title");
           if (modalTitle) {

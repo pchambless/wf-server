@@ -98,8 +98,9 @@ router.post('/hydrate', async (req, res) => {
       has_data: !!result?.data
     });
     if (result?.styled_html && result?.data) {
-      logger.info('[hydrate] Compiling Handlebars', { template_name, data_length: result.data.length });
-      rawHtml = compileHandlebars(result.styled_html, { data: result.data });
+      const dataArr = Array.isArray(result.data) ? result.data : [result.data];
+      logger.info('[hydrate] Compiling Handlebars', { template_name, data_length: dataArr.length });
+      rawHtml = compileHandlebars(result.styled_html, { data: dataArr });
       logger.info('[hydrate] Compiled HTML length', { length: rawHtml.length });
     } else {
       logger.info('[hydrate] Using normalizeHtml');
