@@ -3,7 +3,7 @@ import { buildHtmxDiv } from './buildHtmxDiv.js';
 import { buildSelectWidget } from './buildSelectWidget.js';
 import { normalizeHtml } from './normalizeHtml.js';
 
-function buildSlotActionsHtml(slotActions = []) {
+function buildSlotActionsHtml(slotActions = [], slotName = '') {
   if (!Array.isArray(slotActions) || slotActions.length === 0) return '';
 
   const ordered = [...slotActions].sort((a, b) => {
@@ -18,6 +18,25 @@ function buildSlotActionsHtml(slotActions = []) {
     return String(a?.component_name ?? '').localeCompare(String(b?.component_name ?? ''));
   });
 
+  // Context-btn slot: render with full action wiring (data-actions + data-trigger)
+  if (slotName === 'context-btn') {
+    const actions = {};
+    const buttons = ordered.map((item) => {
+      const trigger = item.component_name + '_click';
+      if (item.action_type === 'redirect') {
+        actions[trigger] = { action: 'redirect', payload: { url: item.actions?.url } };
+      } else if (item.action_type === 'open_report') {
+        actions[trigger] = { action: 'open_report', templates: item.actions?.templates || [] };
+      } else {
+        actions[trigger] = { action: item.action_type, ...item.actions };
+      }
+      return `<button type="button" class="wf-slot-action-btn wf-context-btn" data-trigger="${trigger}">${String(item.label || item.component_name)}</button>`;
+    }).join('');
+
+    return `<div id="context_actions" class="wf-slot-actions wf-context-btn-group" style="display:none" data-actions='${JSON.stringify(actions)}'>${buttons}</div>`;
+  }
+
+  // Default rendering for other slots
   const buttons = ordered
     .map((action) => {
       const id = String(action?.component_name || action?.id || 'slot_action');
@@ -42,7 +61,7 @@ function parseSlotAttrs(attrString) {
 export async function hydrateSlots(pageHtml, components, slotActions, email) {
   const slotComponents = new Map(
     components
-      .filter(c => c.slot_name && c.comp_name !== 'appbar')
+      .filter(c => c.slot_name && c.comp_name !== 'appbar' && c.slot_name !== 'context-btn')
       .map(c => [c.slot_name, c])
   );
   const defaultSlotTemplateCache = new Map();
@@ -71,7 +90,7 @@ export async function hydrateSlots(pageHtml, components, slotActions, email) {
 
     const actionsForSlot = Array.isArray(slotActions?.[slotName]) ? slotActions[slotName] : [];
     if (actionsForSlot.length > 0) {
-      pageHtml = pageHtml.split(token).join(buildSlotActionsHtml(actionsForSlot));
+      pageHtml = pageHtml.split(token).join(buildSlotActionsHtml(actionsForSlot, slotName));
       continue;
     }
 
