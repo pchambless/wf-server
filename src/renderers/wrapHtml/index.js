@@ -53,6 +53,12 @@ export function wrapHtml(title, body) {
       background: #86efac;
       color: #111827;
     }
+    .wf-context-btn-group .wf-row-click-only {
+      display: none;
+    }
+    .wf-context-btn-group.row-active .wf-row-click-only {
+      display: block;
+    }
     .grid-toolbar {
       display: flex;
       align-items: center;

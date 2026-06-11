@@ -30,10 +30,11 @@ function buildSlotActionsHtml(slotActions = [], slotName = '') {
       } else {
         actions[trigger] = { action: item.action_type, ...item.actions };
       }
-      return `<button type="button" class="wf-slot-action-btn wf-context-btn" data-trigger="${trigger}">${String(item.label || item.component_name)}</button>`;
+      const visibilityClass = item.visible_when === 'always' ? 'wf-always-visible' : 'wf-row-click-only';
+      return `<button type="button" class="wf-slot-action-btn wf-context-btn ${visibilityClass}" data-trigger="${trigger}">${String(item.label || item.component_name)}</button>`;
     }).join('');
 
-    return `<div id="context_actions" class="wf-slot-actions wf-context-btn-group" style="display:none" data-actions='${JSON.stringify(actions)}'>${buttons}</div>`;
+    return `<div id="context_actions" class="wf-slot-actions wf-context-btn-group" data-actions='${JSON.stringify(actions)}'>${buttons}</div>`;
   }
 
   // Default rendering for other slots

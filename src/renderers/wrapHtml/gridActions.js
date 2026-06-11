@@ -53,6 +53,12 @@ export const gridActionsCode = `
 
         // Select the clicked row
         row.classList.add('selected');
+
+        // Show row-click buttons in context button group
+        const contextBtnGroup = grid.closest('[data-template-name]')?.parentElement?.querySelector('.wf-context-btn-group') || document.querySelector('.wf-context-btn-group');
+        if (contextBtnGroup) {
+          contextBtnGroup.classList.add('row-active');
+        }
       };
 
       document.addEventListener('input', function(event) {
