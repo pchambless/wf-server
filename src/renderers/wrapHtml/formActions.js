@@ -51,7 +51,9 @@ export const formActionsCode = `
             form.id = "form_element";
           }
 
-          const mode = window.contextStore?.mode || "INSERT";
+          const mode = hydrateData?.mode || window.contextStore?.mode || "INSERT";
+          // Sync contextStore so downstream code sees the correct mode
+          window.contextStore = { ...(window.contextStore || {}), mode };
           const entityName = templateName.replace(/_form$/, "").replace(/_/g, " ");
           const nameField = form?.querySelector('[data-field="name"]');
           const displayName = nameField?.value || "";
@@ -79,6 +81,49 @@ export const formActionsCode = `
       };
 
       window.formModal = formModal;
+
+      // --- Form Submit Handler ---
+      document.addEventListener("submit", async (e) => {
+        const form = e.target;
+        if (!form || form.id !== "form_element") return;
+        e.preventDefault();
+
+        const mode = window.contextStore?.mode || "INSERT";
+        const pageId = window.__pageContext?.pageId || window.contextStore?.page_id;
+
+        if (!pageId) {
+          alert("Error: page context not available");
+          return;
+        }
+
+        // Collect all form fields
+        const formData = new FormData(form);
+        const payload = { page_id: pageId, mode };
+
+        for (const [key, value] of formData.entries()) {
+          payload[key] = value;
+        }
+
+        try {
+          const response = await fetch("/api/dml", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            formModal.close();
+            // Refresh the page to reload grid data
+            window.location.reload();
+          } else {
+            alert(result.error || "Save failed");
+          }
+        } catch (err) {
+          alert("Save failed: " + err.message);
+        }
+      });
 
       document.addEventListener("click", (e) => {
         if (e.target instanceof Element && e.target.closest(".modal-close")) {

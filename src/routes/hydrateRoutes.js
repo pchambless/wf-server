@@ -71,6 +71,15 @@ router.post('/hydrate', async (req, res) => {
     const contextValues = Object.fromEntries(
       Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title'].includes(key))
     );
+
+    // Clear any null context values in DB before hydrating (e.g., Add New resets contextKey)
+    const nullParams = Object.entries(contextValues)
+      .filter(([, v]) => v === null || v === 'null')
+      .map(([key]) => key);
+    if (email && nullParams.length > 0) {
+      await callWorkflow('clearvals', { email, params: nullParams });
+    }
+
     const result = await callWorkflow(workflowName, {
       ...(template_name === 'wf_appbar'
         ? {
@@ -93,12 +102,15 @@ router.post('/hydrate', async (req, res) => {
     logger.info('[hydrate] Result type and keys', {
       type: typeof result,
       isArray: Array.isArray(result),
-      resultKeys: Array.isArray(result) ? Object.keys(result[0] || {}) : Object.keys(result || {}),
       has_styled_html: !!result?.styled_html,
       has_data: !!result?.data
     });
     if (result?.styled_html && result?.data) {
-      const dataArr = Array.isArray(result.data) ? result.data : [result.data];
+      let dataArr = Array.isArray(result.data) ? result.data : [result.data];
+      // For form templates with no data (INSERT mode), provide an empty object so fields render
+      if (dataArr.length === 0 && template_name?.endsWith('_form')) {
+        dataArr = [{}];
+      }
       logger.info('[hydrate] Compiling Handlebars', { template_name, data_length: dataArr.length });
       rawHtml = compileHandlebars(result.styled_html, { data: dataArr });
       logger.info('[hydrate] Compiled HTML length', { length: rawHtml.length });

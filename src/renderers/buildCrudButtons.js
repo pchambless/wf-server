@@ -4,24 +4,30 @@ export function buildCrudButtons(pageInfo) {
   const contextKey = pageInfo.contextKey || 'id';
   const formTemplate = pageInfo.formTemplate;
   const gridTemplate = pageInfo.gridTemplate;
+  const pageId = pageInfo.pageID;
 
   if (!formTemplate && !gridTemplate) return '';
 
   const actions = {};
 
   if (formTemplate) {
-    actions.add_new = {
-      action: 'open_modal',
-      form_template: formTemplate,
-      values: { mode: 'INSERT' },
-      targets: ['form_modal']
-    };
+    actions.add_new = [
+      {
+        action: 'setVals',
+        values: { mode: 'INSERT', [contextKey]: null, page_id: pageId }
+      },
+      {
+        action: 'open_modal',
+        form_template: formTemplate,
+        targets: ['form_modal']
+      }
+    ];
   }
 
   if (gridTemplate) {
     actions.delete_selected = {
       action: 'row_delete',
-      values: { mode: 'DELETE' },
+      values: { mode: 'DELETE', page_id: pageId },
       targets: [gridTemplate]
     };
   }

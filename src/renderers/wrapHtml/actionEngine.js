@@ -167,6 +167,39 @@ export const actionEngineCode = `
             continue;
           }
 
+          if (resolvedAction.action === 'row_delete') {
+            const actionValues = resolvedAction.values || {};
+            const pageId = actionValues.page_id || window.__pageContext?.pageId || window.contextStore?.page_id;
+            const contextKey = window.__pageContext?.contextKey || 'id';
+            const pkVal = window.contextStore?.[contextKey];
+
+            if (!pkVal) {
+              alert('Please select a row to delete');
+              continue;
+            }
+
+            if (!confirm('Are you sure you want to delete this record?')) {
+              continue;
+            }
+
+            try {
+              const response = await fetch('/api/dml', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ page_id: pageId, mode: 'DELETE', f_id: pkVal })
+              });
+              const result = await response.json();
+              if (result.success) {
+                window.location.reload();
+              } else {
+                alert(result.error || 'Delete failed');
+              }
+            } catch (err) {
+              alert('Delete failed: ' + err.message);
+            }
+            continue;
+          }
+
           const response = await fetch('/api/actions', {
             method: 'POST',
             headers: {

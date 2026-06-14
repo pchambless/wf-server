@@ -96,5 +96,6 @@ export async function renderPage(req, res, next) {
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
   res.set('Cache-Control', 'no-store');
-  res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, layoutHtml));
+  const pageMetaScript = `<script>window.__pageContext = { pageId: ${pageInfo.pageID}, contextKey: "${pageInfo.contextKey || 'id'}" };</script>`;
+  res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, pageMetaScript + layoutHtml));
 }
