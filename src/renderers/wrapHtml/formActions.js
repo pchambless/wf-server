@@ -115,10 +115,10 @@ export const formActionsCode = `
 
           if (result.success) {
             formModal.close();
-            // Refresh the page to reload grid data
             window.location.reload();
           } else {
-            alert(result.error || "Save failed");
+            const errMsg = typeof result.error === 'object' ? JSON.stringify(result.error) : (result.error || "Save failed");
+            alert(errMsg);
           }
         } catch (err) {
           alert("Save failed: " + err.message);
