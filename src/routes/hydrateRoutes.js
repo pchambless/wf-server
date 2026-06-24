@@ -80,6 +80,14 @@ router.post('/hydrate', async (req, res) => {
       await callWorkflow('clearvals', { email, params: nullParams });
     }
 
+    // Persist non-null context values to DB (e.g., ingredient_batch_id for UPDATE hydration)
+    const contextVals = Object.entries(contextValues)
+      .filter(([key, v]) => v !== null && v !== 'null' && v !== '' && !key.startsWith('f_') && key.endsWith('_id'))
+      .map(([param_name, param_val]) => ({ param_name, param_val: String(param_val) }));
+    if (email && contextVals.length > 0) {
+      await callWorkflow('setvals', { email, vals: contextVals });
+    }
+
     const result = await callWorkflow(workflowName, {
       ...(template_name === 'wf_appbar'
         ? {
