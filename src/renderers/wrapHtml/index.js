@@ -3,6 +3,7 @@ import { gridActionsCode } from './gridActions.js';
 import { selectActionsCode } from './selectActions.js';
 import { formActionsCode } from './formActions.js';
 import { reportActionsCode } from './reportActions.js';
+import { popActionsCode } from './popActions.js';
 
 export function wrapHtml(title, body) {
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
@@ -168,6 +169,7 @@ export function wrapHtml(title, body) {
       ${selectActionsCode}
       ${formActionsCode}
       ${reportActionsCode}
+      ${popActionsCode}
     })();
   `;
 
