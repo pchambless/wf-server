@@ -14,6 +14,11 @@ router.post('/dml', async (req, res) => {
     return res.status(400).json({ success: false, error: 'page_id and mode are required' });
   }
 
+  // Strip empty f_id to prevent NaN in DML pk_val
+  if (!formFields.f_id && formFields.f_id !== 0) {
+    delete formFields.f_id;
+  }
+
   logger.info('[api] Request', { path: '/api/dml', page_id, mode, email });
 
   try {

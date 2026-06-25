@@ -194,4 +194,18 @@ export const popActionsCode = `
         window.__popPageId = popPageId;
         popModal.open(formTemplate, dropdownSlot);
       });
+
+      // --- Best By Date auto-calc on Batch Date change ---
+      document.addEventListener("change", (e) => {
+        if (!(e.target instanceof Element) || e.target.id !== "f_event_date") return;
+        const bestByDate = document.getElementById("f_best_by_date");
+        const bestByDays = document.getElementById("f_best_by_days");
+        if (!bestByDate || !bestByDays) return;
+        const days = parseInt(bestByDays.value);
+        if (e.target.value && days) {
+          const d = new Date(e.target.value + "T00:00:00");
+          d.setDate(d.getDate() + days);
+          bestByDate.value = d.toISOString().split("T")[0];
+        }
+      });
 `;
