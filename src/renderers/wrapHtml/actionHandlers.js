@@ -79,6 +79,7 @@ export const actionHandlersCode = `
 
         // --- dml_direct ---
         if (resolvedAction.action === 'dml_direct') {
+          const endpoint = resolvedAction.endpoint || '/api/dml';
           const pageId = resolvedAction.page_id || window.__pageContext?.pageId;
           const mode = resolvedAction.mode || 'INSERT';
           const fields = resolvedAction.fields || {};
@@ -90,23 +91,22 @@ export const actionHandlersCode = `
             return 'handled';
           }
 
-          const payload = { page_id: parseInt(pageId), mode };
-          if (pkVal) {
-            payload.f_id = pkVal;
-          }
+          const payload = { mode };
+          if (pageId) payload.page_id = parseInt(pageId);
+          if (pkVal) payload.map_id = pkVal;
           for (const [key, value] of Object.entries(fields)) {
             payload[key] = value;
           }
 
           try {
-            const response = await fetch('/api/dml', {
+            const response = await fetch(endpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
             });
             const result = await response.json();
             if (result.success) {
-              refreshComponents(refresh);
+              window.location.reload();
             } else {
               alert(result.error || mode + ' failed');
             }
