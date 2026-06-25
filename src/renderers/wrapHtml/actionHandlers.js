@@ -1,0 +1,150 @@
+export const actionHandlersCode = `
+      window.__actionHandlers = async (resolvedAction, ctx) => {
+        const { rowData, elementContext, wrapper, event, getActionValue, applySwap, refreshComponents } = ctx;
+        const actionName = String(resolvedAction.action || '').toLowerCase();
+
+        // --- setVals (always runs, then falls through to server action) ---
+        if (actionName === 'setvals') {
+          const nextValues = resolvedAction.values || resolvedAction.vals || {};
+          if (nextValues && typeof nextValues === 'object' && !Array.isArray(nextValues)) {
+            window.contextStore = {
+              ...(window.contextStore || {}),
+              ...nextValues
+            };
+          }
+          // Always fall through to server action to persist via /api/actions
+        }
+
+        // --- open_modal ---
+        if (resolvedAction.action === 'open_modal') {
+          const formTemplate = resolvedAction.form_template;
+          const actionValues = resolvedAction.values || {};
+          const hydrateData = { ...(window.contextStore || {}), ...elementContext, ...actionValues };
+          if (window.formModal && formTemplate) {
+            window.formModal.open(formTemplate, hydrateData);
+          }
+          return 'handled';
+        }
+
+        // --- show_element ---
+        if (resolvedAction.action === 'show_element') {
+          const el = document.getElementById(resolvedAction.target);
+          if (el) el.style.display = resolvedAction.style || 'inline-flex';
+          return 'handled';
+        }
+
+        // --- open_report ---
+        if (resolvedAction.action === 'open_report') {
+          const templates = resolvedAction.templates || [];
+          const contextData = { ...rowData, ...(window.contextStore || {}), ...elementContext };
+          if (window.reportModal && templates.length > 0) {
+            window.reportModal.open(templates, contextData);
+          }
+          return 'handled';
+        }
+
+        // --- row_delete ---
+        if (resolvedAction.action === 'row_delete') {
+          const actionValues = resolvedAction.values || {};
+          const pageId = actionValues.page_id || window.__pageContext?.pageId || window.contextStore?.page_id;
+          const contextKey = window.__pageContext?.contextKey || 'id';
+          const pkVal = window.contextStore?.[contextKey];
+
+          if (!pkVal) {
+            alert('Please select a row to delete');
+            return 'handled';
+          }
+
+          if (!confirm('Are you sure you want to delete this record?')) {
+            return 'handled';
+          }
+
+          try {
+            const response = await fetch('/api/dml', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ page_id: pageId, mode: 'DELETE', f_id: pkVal })
+            });
+            const result = await response.json();
+            if (result.success) {
+              window.location.reload();
+            } else {
+              alert(result.error || 'Delete failed');
+            }
+          } catch (err) {
+            alert('Delete failed: ' + err.message);
+          }
+          return 'handled';
+        }
+
+        // --- dml_direct ---
+        if (resolvedAction.action === 'dml_direct') {
+          const pageId = resolvedAction.page_id || window.__pageContext?.pageId;
+          const mode = resolvedAction.mode || 'INSERT';
+          const fields = resolvedAction.fields || {};
+          const pkVal = resolvedAction.pk_val || null;
+          const refresh = resolvedAction.refresh || [];
+          const confirmMsg = resolvedAction.confirm;
+
+          if (confirmMsg && !confirm(confirmMsg)) {
+            return 'handled';
+          }
+
+          const payload = { page_id: parseInt(pageId), mode };
+          if (pkVal) {
+            payload.f_id = pkVal;
+          }
+          for (const [key, value] of Object.entries(fields)) {
+            payload[key] = value;
+          }
+
+          try {
+            const response = await fetch('/api/dml', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.success) {
+              refreshComponents(refresh);
+            } else {
+              alert(result.error || mode + ' failed');
+            }
+          } catch (err) {
+            alert(mode + ' failed: ' + err.message);
+          }
+          return 'handled';
+        }
+
+        // --- server action (default: POST to /api/actions) ---
+        if (resolvedAction.targets || (resolvedAction.action && !['open_modal', 'show_element', 'open_report', 'row_delete', 'dml_direct'].includes(resolvedAction.action))) {
+          const response = await fetch('/api/actions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              component_id: wrapper.id,
+              template_name: wrapper.dataset.templateName,
+              value: getActionValue(event, wrapper),
+              action: resolvedAction
+            })
+          });
+
+          if (!response.ok) return 'stop';
+
+          const result = await response.json();
+
+          if (result?.redirectUrl) {
+            window.location.href = result.redirectUrl;
+            return 'stop';
+          }
+
+          const updates = Array.isArray(result?.updates) ? result.updates : [];
+          for (const update of updates) {
+            applySwap(update.target, update.html, update.swapMode);
+          }
+          return 'handled';
+        }
+
+        return 'continue';
+      };
+`;

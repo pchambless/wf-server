@@ -1,7 +1,6 @@
 export const actionEngineCode = `
       const parseActions = (value) => {
         if (!value) return {};
-
         try {
           const parsed = JSON.parse(value);
           return typeof parsed === 'object' ? parsed : {};
@@ -14,11 +13,9 @@ export const actionEngineCode = `
         const source = event.target instanceof Element
           ? event.target
           : event.target?.parentElement || null;
-
         if (source?.matches('select, input, textarea')) {
           return source.value ?? '';
         }
-
         const field = wrapper.querySelector('select, input, textarea');
         return field?.value ?? '';
       };
@@ -26,14 +23,12 @@ export const actionEngineCode = `
       const applySwap = (targetId, html, swapMode) => {
         const target = document.getElementById(targetId);
         if (!target) return;
-
         if (swapMode === 'outerHTML') {
           target.outerHTML = html;
           const replacement = document.getElementById(targetId);
           if (replacement && window.htmx) window.htmx.process(replacement);
           return;
         }
-
         target.innerHTML = html;
         if (window.htmx) window.htmx.process(target);
       };
@@ -68,23 +63,19 @@ export const actionEngineCode = `
 
       const deriveGridRowData = (gridRow) => {
         if (!gridRow) return {};
-
         const rowData = { ...gridRow.dataset };
         if (gridRow.dataset.rowId !== undefined) {
           rowData.id = gridRow.dataset.rowId;
         }
-
         const table = gridRow.closest('table');
         const headerCells = table ? Array.from(table.querySelectorAll('thead th')) : [];
         const valueCells = Array.from(gridRow.querySelectorAll('td'));
-
         valueCells.forEach((cell, index) => {
           const fallbackKey = 'col_' + String(index + 1);
           const headerText = headerCells[index]?.textContent || fallbackKey;
           const key = toFieldKey(headerText) || fallbackKey;
           rowData[key] = (cell.textContent || '').trim();
         });
-
         return rowData;
       };
 
@@ -99,6 +90,16 @@ export const actionEngineCode = `
         if (source?.matches('input, textarea')) return 'input';
         if (event.type === 'submit') return 'submit';
         return 'click';
+      };
+
+      const refreshComponents = (componentIds) => {
+        if (!Array.isArray(componentIds)) return;
+        for (const id of componentIds) {
+          const el = document.getElementById(id);
+          if (el && window.htmx) {
+            window.htmx.trigger(el, 'load');
+          }
+        }
       };
 
       const handleActionEvent = async (event) => {
@@ -130,105 +131,10 @@ export const actionEngineCode = `
 
         for (const action of actionsToRun) {
           const resolvedAction = resolvePlaceholders(action, { ...rowData, ...elementContext });
-
-          if (String(resolvedAction.action || '').toLowerCase() === 'setvals') {
-            const nextValues = resolvedAction.values || resolvedAction.vals || {};
-            if (nextValues && typeof nextValues === 'object' && !Array.isArray(nextValues)) {
-              window.contextStore = {
-                ...(window.contextStore || {}),
-                ...nextValues
-              };
-            }
-          }
-
-          // Handle client-side actions
-          if (resolvedAction.action === 'open_modal') {
-            const formTemplate = resolvedAction.form_template;
-            const actionValues = resolvedAction.values || {};
-            const hydrateData = { ...(window.contextStore || {}), ...elementContext, ...actionValues };
-            if (window.formModal && formTemplate) {
-              window.formModal.open(formTemplate, hydrateData);
-            }
-            continue;
-          }
-
-          if (resolvedAction.action === 'show_element') {
-            const el = document.getElementById(resolvedAction.target);
-            if (el) el.style.display = resolvedAction.style || 'inline-flex';
-            continue;
-          }
-
-          if (resolvedAction.action === 'open_report') {
-            const templates = resolvedAction.templates || [];
-            const contextData = { ...rowData, ...(window.contextStore || {}), ...elementContext };
-            if (window.reportModal && templates.length > 0) {
-              window.reportModal.open(templates, contextData);
-            }
-            continue;
-          }
-
-          if (resolvedAction.action === 'row_delete') {
-            const actionValues = resolvedAction.values || {};
-            const pageId = actionValues.page_id || window.__pageContext?.pageId || window.contextStore?.page_id;
-            const contextKey = window.__pageContext?.contextKey || 'id';
-            const pkVal = window.contextStore?.[contextKey];
-
-            if (!pkVal) {
-              alert('Please select a row to delete');
-              continue;
-            }
-
-            if (!confirm('Are you sure you want to delete this record?')) {
-              continue;
-            }
-
-            try {
-              const response = await fetch('/api/dml', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ page_id: pageId, mode: 'DELETE', f_id: pkVal })
-              });
-              const result = await response.json();
-              if (result.success) {
-                window.location.reload();
-              } else {
-                alert(result.error || 'Delete failed');
-              }
-            } catch (err) {
-              alert('Delete failed: ' + err.message);
-            }
-            continue;
-          }
-
-          const response = await fetch('/api/actions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              component_id: wrapper.id,
-              template_name: wrapper.dataset.templateName,
-              value: getActionValue(event, wrapper),
-              action: resolvedAction
-            })
+          const handled = await window.__actionHandlers(resolvedAction, {
+            rowData, elementContext, wrapper, event, getActionValue, applySwap, refreshComponents
           });
-
-          if (!response.ok) {
-            return;
-          }
-
-          const result = await response.json();
-
-          if (result?.redirectUrl) {
-            window.location.href = result.redirectUrl;
-            return;
-          }
-
-          const updates = Array.isArray(result?.updates) ? result.updates : [];
-
-          for (const update of updates) {
-            applySwap(update.target, update.html, update.swapMode);
-          }
+          if (handled === 'stop') return;
         }
       };
 

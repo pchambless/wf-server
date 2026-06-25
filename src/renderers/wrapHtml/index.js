@@ -1,4 +1,5 @@
 import { actionEngineCode } from './actionEngine.js';
+import { actionHandlersCode } from './actionHandlers.js';
 import { gridActionsCode } from './gridActions.js';
 import { selectActionsCode } from './selectActions.js';
 import { formActionsCode } from './formActions.js';
@@ -165,6 +166,7 @@ export function wrapHtml(title, body) {
   const inlineScript = `
     (() => {
       ${actionEngineCode}
+      ${actionHandlersCode}
       ${gridActionsCode}
       ${selectActionsCode}
       ${formActionsCode}
