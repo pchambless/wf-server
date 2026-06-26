@@ -5,6 +5,7 @@ import { selectActionsCode } from './selectActions.js';
 import { formActionsCode } from './formActions.js';
 import { reportActionsCode } from './reportActions.js';
 import { popActionsCode } from './popActions.js';
+import { workerPickerCode } from './workerPicker.js';
 
 export function wrapHtml(title, body) {
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
@@ -60,6 +61,28 @@ export function wrapHtml(title, body) {
     }
     .wf-context-btn-group.row-active .wf-row-click-only {
       display: block;
+    }
+    .grid-row[data-row-id]:not([data-row-id=""]) { background: #e8f5e9; }
+    .grid-row[data-row-id=""] { background: #ffffff; }
+    .col-hidden { display: none; }
+    .worker-picker { max-height: 280px; overflow-y: auto; }
+    .worker-check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .worker-check-row:hover { background: #f0fdf4; }
+    .workers-display {
+      padding: 6px 8px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      min-height: 24px;
+      font-style: italic;
+      color: #6b7280;
     }
     .grid-toolbar {
       display: flex;
@@ -172,6 +195,7 @@ export function wrapHtml(title, body) {
       ${formActionsCode}
       ${reportActionsCode}
       ${popActionsCode}
+      ${workerPickerCode}
     })();
   `;
 

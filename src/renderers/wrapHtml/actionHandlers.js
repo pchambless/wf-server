@@ -15,6 +15,22 @@ export const actionHandlersCode = `
           // Always fall through to server action to persist via /api/actions
         }
 
+        // --- conditional_setVals ---
+        if (actionName === 'conditional_setvals') {
+          const fieldVal = resolvedAction.field
+            ? (window.contextStore?.[resolvedAction.field] ?? rowData[resolvedAction.field] ?? '')
+            : '';
+          const isEmpty = fieldVal === '' || fieldVal === null || fieldVal === undefined || fieldVal === 'null';
+          const valuesToSet = isEmpty ? resolvedAction.then : resolvedAction.else;
+          if (valuesToSet && typeof valuesToSet === 'object') {
+            window.contextStore = {
+              ...(window.contextStore || {}),
+              ...valuesToSet
+            };
+          }
+          return 'handled';
+        }
+
         // --- open_modal ---
         if (resolvedAction.action === 'open_modal') {
           const formTemplate = resolvedAction.form_template;
@@ -117,7 +133,7 @@ export const actionHandlersCode = `
         }
 
         // --- server action (default: POST to /api/actions) ---
-        if (resolvedAction.targets || (resolvedAction.action && !['open_modal', 'show_element', 'open_report', 'row_delete', 'dml_direct'].includes(resolvedAction.action))) {
+        if (resolvedAction.targets || (resolvedAction.action && !['open_modal', 'show_element', 'open_report', 'row_delete', 'dml_direct', 'conditional_setvals'].includes(resolvedAction.action))) {
           const response = await fetch('/api/actions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

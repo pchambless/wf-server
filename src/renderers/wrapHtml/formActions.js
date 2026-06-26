@@ -66,6 +66,11 @@ export const formActionsCode = `
           }
 
           modal.classList.remove("hidden");
+
+          // Initialize worker picker if present in this form
+          if (container.querySelector('#worker_checkboxes') && typeof initWorkerPicker === 'function') {
+            initWorkerPicker();
+          }
         },
 
         close: () => {
