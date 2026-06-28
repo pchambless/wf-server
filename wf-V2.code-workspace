@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "../wf-agents"
+		},
+		{
+			"path": "/home/paul/DBeaverData"
+		},
+		{
+			"path": "../wf-jsPDF"
 		}
 	],
 	"settings": {

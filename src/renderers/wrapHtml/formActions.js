@@ -52,14 +52,25 @@ export const formActionsCode = `
           }
 
           const mode = hydrateData?.mode || window.contextStore?.mode || "INSERT";
-          // Sync contextStore so downstream code sees the correct mode
-          window.contextStore = { ...(window.contextStore || {}), mode };
-          const entityName = templateName.replace(/_form$/, "").replace(/_/g, " ");
-          const nameField = form?.querySelector('[data-field="name"]');
-          const displayName = nameField?.value || "";
-          const title = mode === "UPDATE"
-            ? \`UPDATE \${entityName}: \${displayName}\`
-            : \`INSERT \${entityName}\`;
+
+          // Determine modal title: contextStore > header-field > fallback
+          let title = window.contextStore?.modal_title;
+
+          if (!title) {
+            const headerField = container.querySelector('[data-header-field="true"]');
+            const headerValue = headerField?.value || headerField?.textContent || "";
+            if (headerValue.trim()) {
+              title = \`\${mode} \${headerValue.trim()}\`;
+            } else {
+              const entityName = templateName.replace(/_form$/, "").replace(/_/g, " ");
+              const nameField = form?.querySelector('[data-field="name"]');
+              const displayName = nameField?.value || "";
+              title = mode === "UPDATE"
+                ? \`UPDATE \${entityName}: \${displayName}\`
+                : \`INSERT \${entityName}\`;
+            }
+          }
+
           const modalTitle = document.getElementById("modal_title");
           if (modalTitle) {
             modalTitle.textContent = title;
