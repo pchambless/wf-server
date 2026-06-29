@@ -101,7 +101,43 @@ export function wrapHtml(title, body) {
       display: flex;
       gap: 8px;
     }
+    /* Global loading spinner */
+    .wf-loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.4);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .wf-loading-overlay.active {
+      display: flex;
+    }
+    .wf-spinner {
+      width: 36px;
+      height: 36px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #10b981;
+      border-radius: 50%;
+      animation: wf-spin 0.6s linear infinite;
+    }
+    @keyframes wf-spin {
+      to { transform: rotate(360deg); }
+    }
+    /* Page container */
+    body {
+      max-width: 1400px;
+      margin: 16px auto;
+      padding: 16px 24px;
+      border: 2px solid #991b1b;
+      border-radius: 12px;
+      background: #ffffff;
+    }
     .appbar {
+      margin: -16px -24px 16px -24px;
+      border-radius: 10px 10px 0 0;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -207,6 +243,33 @@ export function wrapHtml(title, body) {
   <title>${title || 'WhatsFresh'}</title>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <script>
+    // Global loading indicator
+    (() => {
+      const overlay = document.createElement('div');
+      overlay.className = 'wf-loading-overlay';
+      overlay.innerHTML = '<div class="wf-spinner"></div>';
+      document.addEventListener('DOMContentLoaded', () => document.body.appendChild(overlay));
+
+      let activeRequests = 0;
+      const show = () => { activeRequests++; overlay.classList.add('active'); };
+      const hide = () => { activeRequests = Math.max(0, activeRequests - 1); if (activeRequests === 0) overlay.classList.remove('active'); };
+
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+        if (url.startsWith('/api/')) {
+          show();
+          return originalFetch.apply(this, args).finally(hide);
+        }
+        return originalFetch.apply(this, args);
+      };
+
+      // Also cover htmx requests
+      document.addEventListener('htmx:beforeRequest', show);
+      document.addEventListener('htmx:afterRequest', hide);
+      document.addEventListener('htmx:responseError', hide);
+    })();
+
     ${inlineScript}
   </script>
   ${fallbackUiStyles}

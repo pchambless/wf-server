@@ -42,6 +42,48 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- open_inline_form ---
+        if (resolvedAction.action === 'open_inline_form') {
+          const formTemplate = resolvedAction.form_template;
+          const actionValues = resolvedAction.values || {};
+          const hydrateData = { ...(window.contextStore || {}), ...elementContext, ...actionValues };
+          const panel = document.getElementById('inline_form_panel');
+          const container = document.getElementById('inline_form_container');
+          if (!panel || !container || !formTemplate) return 'handled';
+
+          const response = await fetch('/api/hydrate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ template_name: formTemplate, ...hydrateData })
+          });
+
+          const formHtml = await response.text();
+          container.innerHTML = formHtml;
+
+          if (window.htmx) window.htmx.process(container);
+
+          const form = container.querySelector('form');
+          if (form) form.id = 'inline_form_element';
+
+          // Set title
+          const mode = hydrateData.mode || window.contextStore?.mode || 'INSERT';
+          const headerField = container.querySelector('[data-header-field="true"]');
+          const headerValue = headerField?.value || headerField?.textContent || '';
+          let title = headerValue.trim()
+            ? mode + ' ' + headerValue.trim()
+            : mode + ' ' + formTemplate.replace(/_form$/, '').replace(/_/g, ' ');
+          const titleEl = document.getElementById('inline_form_title');
+          if (titleEl) titleEl.textContent = title;
+
+          panel.classList.remove('hidden');
+
+          // Initialize worker picker if present
+          if (container.querySelector('#worker_checkboxes') && typeof initWorkerPicker === 'function') {
+            initWorkerPicker();
+          }
+          return 'handled';
+        }
+
         // --- show_element ---
         if (resolvedAction.action === 'show_element') {
           const el = document.getElementById(resolvedAction.target);

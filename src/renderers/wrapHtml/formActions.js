@@ -149,4 +149,54 @@ export const formActionsCode = `
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") formModal.close();
       });
+
+      // --- Inline Form Submit Handler ---
+      document.addEventListener("submit", async (e) => {
+        const form = e.target;
+        if (!form || form.id !== "inline_form_element") return;
+        e.preventDefault();
+
+        const mode = window.contextStore?.mode || "INSERT";
+        const pageId = window.__pageContext?.pageId || window.contextStore?.page_id;
+
+        if (!pageId) {
+          alert("Error: page context not available");
+          return;
+        }
+
+        const formData = new FormData(form);
+        const payload = { page_id: pageId, mode };
+
+        for (const [key, value] of formData.entries()) {
+          payload[key] = value;
+        }
+
+        try {
+          const response = await fetch("/api/dml", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Refresh page after save
+            window.location.reload();
+          } else {
+            const errMsg = typeof result.error === 'object' ? JSON.stringify(result.error) : (result.error || "Save failed");
+            alert(errMsg);
+          }
+        } catch (err) {
+          alert("Save failed: " + err.message);
+        }
+      });
+
+      // --- Inline Form Close ---
+      document.addEventListener("click", (e) => {
+        if (e.target instanceof Element && e.target.closest(".inline-form-close")) {
+          const panel = document.getElementById("inline_form_panel");
+          if (panel) panel.classList.add("hidden");
+        }
+      });
 `;
