@@ -28,7 +28,7 @@ export function wrapHtml(title, body) {
       border: 0;
       border-right: 2px solid #000000;
       border-radius: 0;
-      padding: 6px 12px;
+      padding: 2px 6px;
       background: #fecaca;
       color: #111827;
       cursor: pointer;
@@ -69,14 +69,14 @@ export function wrapHtml(title, body) {
     .worker-check-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
       padding: 4px 8px;
       cursor: pointer;
       border-radius: 4px;
     }
     .worker-check-row:hover { background: #f0fdf4; }
     .workers-display {
-      padding: 6px 8px;
+      padding: 3px 6px;
       background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 4px;
@@ -87,19 +87,19 @@ export function wrapHtml(title, body) {
     .grid-toolbar {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 8px;
     }
     .grid-toolbar .search-input {
       width: 180px;
-      padding: 8px 12px;
+      padding: 2px 6px;
       border: 1px solid #d1d5db;
       border-radius: 4px;
       font-size: 14px;
     }
     .grid-toolbar .toolbar-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
     /* Global loading spinner */
     .wf-loading-overlay {
@@ -130,7 +130,7 @@ export function wrapHtml(title, body) {
     body {
       max-width: 1400px;
       margin: 16px auto;
-      padding: 16px 24px;
+      padding: 8px 12px;
       border: 2px solid #991b1b;
       border-radius: 12px;
       background: #ffffff;
@@ -140,8 +140,8 @@ export function wrapHtml(title, body) {
       border-radius: 10px 10px 0 0;
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 14px;
+      gap: 6px;
+      padding: 4px 8px;
       background: var(--accent-color, #16a34a);
       color: white;
       font-family: var(--font-family, "Segoe UI", Arial, sans-serif);
@@ -178,8 +178,8 @@ export function wrapHtml(title, body) {
       background: rgba(255,255,255,0.15);
       color: white;
       border: 1px solid rgba(255,255,255,0.3);
-      padding: 6px 12px;
-      border-radius: 4px;
+      padding: 2px 6px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 12px;
       line-height: 1.2;
