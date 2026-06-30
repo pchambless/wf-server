@@ -96,6 +96,6 @@ export async function renderPage(req, res, next) {
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
   res.set('Cache-Control', 'no-store');
-  const pageMetaScript = `<script>window.__pageContext = { pageId: ${pageInfo.pageID}, contextKey: "${pageInfo.contextKey || 'id'}" };</script>`;
+  const pageMetaScript = `<script>window.__pageContext = { pageId: ${pageInfo.pageID}, contextKey: "${pageInfo.contextKey || 'id'}", form: "${pageInfo.formTemplate || ''}", hideCrud: ${pageInfo.hideCrud || false} };</script>`;
   res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, pageMetaScript + layoutHtml));
 }
