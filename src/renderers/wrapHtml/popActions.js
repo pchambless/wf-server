@@ -41,7 +41,7 @@ export const popActionsCode = `
           const response = await fetch("/api/hydrate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ template_name: templateName })
+            body: JSON.stringify({ template_name: templateName, mode: "INSERT" })
           });
 
           const formHtml = await response.text();
