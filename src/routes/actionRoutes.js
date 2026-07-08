@@ -48,8 +48,9 @@ router.post('/actions', async (req, res) => {
 
     if (actionName === 'clearvals') {
       const params = action.values || action.context_keys || [];
-      if (params.length > 0) {
-        await callWorkflow('clearvals', { email, params });
+      const clearAll = action.clear_all || false;
+      if (clearAll || params.length > 0) {
+        await callWorkflow('clearvals', { email, params, clear_all: clearAll });
       }
     }
 

@@ -66,12 +66,18 @@ export async function renderPage(req, res, next) {
       slot_name: 'appbar',
       page_id: pageInfo.pageID,
       page_title: pageInfo.pageTitle,
-      actions: [{
-        trigger: 'click',
-        action: 'redirect',
-        targets: [],
-        payload: { url: '/whatsfresh/login' }
-      }]
+      actions: {
+        click: [
+          {
+            action: 'clearvals',
+            clear_all: true
+          },
+          {
+            action: 'redirect',
+            payload: { url: '/whatsfresh/login' }
+          }
+        ]
+      }
     });
   } catch (e) {
     return res.status(500).send('Failed to fetch page structure');
