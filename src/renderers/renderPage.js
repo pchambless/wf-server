@@ -32,14 +32,15 @@ export async function renderPage(req, res, next) {
   const routeInfo = cachedRoutes.find(r => r.route === route);
   if (!routeInfo) return next();
 
-  if (routeInfo.page_name === 'login') {
-    const loginTemplate = await callWorkflow('hydrate-guide', {
-      template_name: 'login_form', source: 'wf-server', format: 'html'
+  if (routeInfo.group_name === 'public') {
+    const templateName = routeInfo.page_name + '_form';
+    const template = await callWorkflow('hydrate-guide', {
+      template_name: templateName, source: 'wf-server', format: 'html'
     });
-    return res.send(wrapHtml(routeInfo.page_name, normalizeHtml(loginTemplate)));
+    return res.send(wrapHtml(routeInfo.page_name, normalizeHtml(template)));
   }
 
-  if (!email) return res.redirect('/whatsfresh/login');
+  if (!email) return res.redirect('/login');
 
   try {
     await callWorkflow('setvals', {
@@ -74,7 +75,7 @@ export async function renderPage(req, res, next) {
           },
           {
             action: 'redirect',
-            payload: { url: '/whatsfresh/login' }
+            payload: { url: '/login' }
           }
         ]
       }

@@ -29,10 +29,10 @@ async function fetchRoutes(query) {
 async function initializeRoutes() {
   try {
     const routeData = await fetchRoutes(`
-      SELECT route, page_name, id AS page_id
+      SELECT route, page_name, page_id, group_name
       FROM studio.api_routes()
       UNION ALL
-      SELECT '/whatsfresh' as route, 'wf-dashboard' as page_name, 32 as page_id
+      SELECT '/wf-dashboard' as route, 'wf-dashboard' as page_name, 32 as page_id, 'dashboard' as group_name
     `);
 
     cachedRoutes = Array.isArray(routeData) ? routeData : [];
@@ -43,7 +43,7 @@ async function initializeRoutes() {
         SELECT route_path as route, page_name, page_id
         FROM studio.vw_pages
         UNION ALL
-        SELECT '/whatsfresh' as route, 'wf-dashboard' as page_name, 32 as page_id
+        SELECT '/wf-dashboard' as route, 'wf-dashboard' as page_name, 32 as page_id
       `);
       cachedRoutes = Array.isArray(fallbackRouteData) ? fallbackRouteData : [];
     }
