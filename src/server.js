@@ -31,8 +31,6 @@ async function initializeRoutes() {
     const routeData = await fetchRoutes(`
       SELECT route, page_name, page_id, group_name
       FROM studio.api_routes()
-      UNION ALL
-      SELECT '/wf-dashboard' as route, 'wf-dashboard' as page_name, 32 as page_id, 'dashboard' as group_name
     `);
 
     cachedRoutes = Array.isArray(routeData) ? routeData : [];
