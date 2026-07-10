@@ -2,7 +2,7 @@ import { callWorkflow } from '../utils/n8nClient.js';
 import logger from '../utils/logger.js';
 
 export async function handleRegister(req, res) {
-  const { first_name, last_name, email, password, confirm_password, company_name, zip_code } = req.body;
+  const { first_name, last_name, email, password, confirm_password, company_name, zip_code, description, street_address, city, state_code, url } = req.body;
 
   logger.info('[api] Request', {
     path: '/api/auth/register',
@@ -23,8 +23,9 @@ export async function handleRegister(req, res) {
   }
 
   try {
+    const esc = (val) => val ? `'${val.replace(/'/g, "''")}'` : 'NULL';
     const result = await callWorkflow('server-query', {
-      query: `SELECT * FROM whatsfresh.api_register_user('${email.replace(/'/g, "''")}', '${password.replace(/'/g, "''")}', '${first_name.replace(/'/g, "''")}', '${last_name.replace(/'/g, "''")}', '${company_name.replace(/'/g, "''")}', '${zip_code.replace(/'/g, "''")}')`,
+      query: `SELECT * FROM whatsfresh.api_register_user(${esc(email)}, ${esc(password)}, ${esc(first_name)}, ${esc(last_name)}, ${esc(company_name)}, ${esc(zip_code)}, ${esc(description)}, ${esc(street_address)}, ${esc(city)}, ${esc(state_code)}, ${esc(url)})`,
       params: {},
       source: 'register'
     });
