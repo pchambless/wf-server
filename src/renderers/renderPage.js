@@ -33,11 +33,27 @@ export async function renderPage(req, res, next) {
   if (!routeInfo) return next();
 
   if (routeInfo.group_name === 'public') {
-    const templateName = routeInfo.page_name + '_form';
-    const template = await callWorkflow('hydrate-guide', {
-      template_name: templateName, source: 'wf-server', format: 'html'
+    const shell = await callWorkflow('hydrate-guide', {
+      template_name: 'shell-public', source: 'wf-server', format: 'html'
     });
-    return res.send(wrapHtml(routeInfo.page_name, normalizeHtml(template)));
+    const formTemplate = routeInfo.page_name + '_form';
+    const form = await callWorkflow('hydrate-guide', {
+      template_name: formTemplate, source: 'wf-server', format: 'html'
+    });
+
+    const titleResult = await callWorkflow('server-query', {
+      query: `SELECT title FROM studio.html_templates WHERE name = '${formTemplate}'`,
+      params: {},
+      source: 'server'
+    });
+    const title = Array.isArray(titleResult) ? titleResult[0]?.title || '' : '';
+
+    const shellHtml = normalizeHtml(shell);
+    const formHtml = normalizeHtml(form);
+    const combined = shellHtml
+      .replace('{{slot:title}}', title)
+      .replace('{{slot:form}}', formHtml);
+    return res.send(wrapHtml(routeInfo.page_name, combined));
   }
 
   if (!email) return res.redirect('/login');
