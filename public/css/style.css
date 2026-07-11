@@ -183,6 +183,7 @@ nav a:hover {
     padding: 2rem;
     transition: transform 0.2s, box-shadow 0.2s;
     border: 1px solid #e5e7eb;
+    cursor: pointer;
 }
 
 .feature-card:hover {

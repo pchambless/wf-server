@@ -42,24 +42,24 @@
         </div>
 
         <div class="features-grid">
-            <div class="feature-card">
+            <div class="feature-card" onclick="document.getElementById('feature-interface').scrollIntoView({behavior: 'smooth'})">
                 <div class="feature-icon">✏️</div>
                 <h3>Intuitive Grid & Form Interface</h3>
                 <p>Edit any record instantly with a dual grid/form system. No page navigation. Make corrections, updates, and changes seamlessly.</p>
             </div>
-            <div class="feature-card">
+            <div class="feature-card" onclick="document.getElementById('feature-batch-management').scrollIntoView({behavior: 'smooth'})">
                 <div class="feature-icon">⚡</div>
                 <h3>Fast Batch Creation</h3>
                 <p>Set up your business once, then create batches and manage ingredients in seconds. No drilling through menus.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card" onclick="document.getElementById('feature-worksheets').scrollIntoView({behavior: 'smooth'})">
                 <div class="feature-icon">📋</div>
                 <h3>Production Worksheets</h3>
                 <p>Generate compliance-ready documentation instantly. Everything your team needs in one place.</p>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card" onclick="document.getElementById('feature-traceability').scrollIntoView({behavior: 'smooth'})">
                 <div class="feature-icon">🔍</div>
                 <h3>Complete Traceability</h3>
                 <p>Track any ingredient through every product it touched. Critical for recalls and FDA compliance.</p>
@@ -72,7 +72,7 @@
     <!-- Feature Details -->
     <section id="features" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
         <!-- Intuitive Interface Feature -->
-        <div class="feature-detail">
+        <div class="feature-detail" id="feature-interface">
             <h3>Intuitive Grid & Form Interface</h3>
             <p>
                 Built for efficiency. See all your records in a grid, click any row to edit in a side panel. No page navigation, no drilling through menus—just instant access to what you need.
@@ -83,7 +83,7 @@
             <img src="images/easy_editing.png" alt="Dual grid and form interface for intuitive editing" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.07);" />
         </div>
         <!-- Batch Management Feature -->
-        <div class="feature-detail">
+        <div class="feature-detail" id="feature-batch-management">
             <h3>Streamlined Batch Management</h3>
             <p>
                 The old way? Drill through products or ingredients to add a batch. The new way? Three clicks:
@@ -99,7 +99,7 @@
         </div>
 
         <!-- Production Worksheets Feature -->
-        <div class="feature-detail">
+        <div class="feature-detail" id="feature-worksheets">
             <h3>Print-Ready Production Worksheets</h3>
             <p>
                 After mapping your ingredients, generate a complete batch worksheet in one click. It includes:
@@ -117,7 +117,7 @@
         </div>
 
         <!-- Traceability Feature -->
-        <div class="feature-detail" id="traceability">
+        <div class="feature-detail" id="feature-traceability">
             <h3>Complete Ingredient Traceability</h3>
             <p>
                 Need to trace an ingredient through your entire production? What's Fresh shows you instantly:
