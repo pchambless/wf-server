@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What's Fresh V2 - Food Traceability Made Simple</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon">W</div>
+            What's Fresh V2
+        </div>
+        <nav>
+            <a href="#features">Features</a>
+            <a href="#traceability">Traceability</a>
+            <a href="#" onclick="document.querySelector('.cta-section').scrollIntoView({behavior: 'smooth'})">Get Started</a>
+            <a href="/login" class="cta-button">Login</a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Batch Management Made Simple</h1>
+            <p class="hero-subtitle">
+                From setup to compliance documentation in seconds. What's Fresh V2 gives you everything you need to manage food batches, ensure FDA compliance, and track ingredients with confidence.
+            </p>
+            <div class="hero-buttons">
+                <button class="button-primary" onclick="document.querySelector('.cta-section').scrollIntoView({behavior: 'smooth'})">Start Free Trial</button>
+                <button class="button-secondary" onclick="document.querySelector('#features').scrollIntoView({behavior: 'smooth'})">Learn More</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Features Overview -->
+    <section class="features">
+        <div class="features-header">
+            <h2>These Powerful Features (and more to come!)</h2>
+            <p>Everything you need to build, manage, and trace your food production.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">✏️</div>
+                <h3>Intuitive Grid & Form Interface</h3>
+                <p>Edit any record instantly with a dual grid/form system. No page navigation. Make corrections, updates, and changes seamlessly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Fast Batch Creation</h3>
+                <p>Set up your business once, then create batches and manage ingredients in seconds. No drilling through menus.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Production Worksheets</h3>
+                <p>Generate compliance-ready documentation instantly. Everything your team needs in one place.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Complete Traceability</h3>
+                <p>Track any ingredient through every product it touched. Critical for recalls and FDA compliance.</p>
+            </div>
+
+
+        </div>
+    </section>
+
+    <!-- Feature Details -->
+    <section id="features" style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+        <!-- Intuitive Interface Feature -->
+        <div class="feature-detail">
+            <h3>Intuitive Grid & Form Interface</h3>
+            <p>
+                Built for efficiency. See all your records in a grid, click any row to edit in a side panel. No page navigation, no drilling through menus—just instant access to what you need.
+            </p>
+            <p>
+                Whether you're correcting a data entry mistake, updating ingredient information, or managing batch details, changes are immediate and seamless. This is what modern data management looks like.
+            </p>
+            <img src="images/easy_editing.png" alt="Dual grid and form interface for intuitive editing" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.07);" />
+        </div>
+        <!-- Batch Management Feature -->
+        <div class="feature-detail">
+            <h3>Streamlined Batch Management</h3>
+            <p>
+                The old way? Drill through products or ingredients to add a batch. The new way? Three clicks:
+                <strong>Product Type → Product → Batch</strong>. Then map your ingredients according to your recipe.
+            </p>
+            <p>
+                No more navigating through multiple screens. Your recipe appears automatically, showing exactly which ingredients go into this batch. Double-click to map ingredient batches, and you're done.
+            </p>
+            <p>
+                Ooops!  Wrong mapping? No problem. Just double-click the mapped batch to unmap it. It's that simple.
+            </p>
+            <img src="images/batch_mapping.png" alt="Batch Mapping Interface - Select product batch and map ingredients" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.07);" />
+        </div>
+
+        <!-- Production Worksheets Feature -->
+        <div class="feature-detail">
+            <h3>Print-Ready Production Worksheets</h3>
+            <p>
+                After mapping your ingredients, generate a complete batch worksheet in one click. It includes:
+            </p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: #666;">
+                <li>Batch details (date, location, quantity)</li>
+                <li>Complete ingredient list with batch IDs (full traceability)</li>
+                <li>Task assignments and who's responsible for each step</li>
+                <li>Ready to print for production floor</li>
+            </ul>
+            <p>
+                What used to require pulling information from multiple screens is now one coherent document your team can reference during production.
+            </p>
+            <img src="images/batch_worksheet.png" alt="Batch Worksheet - Ingredients, tasks, worker assignments" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.07);" />
+        </div>
+
+        <!-- Traceability Feature -->
+        <div class="feature-detail" id="traceability">
+            <h3>Complete Ingredient Traceability</h3>
+            <p>
+                Need to trace an ingredient through your entire production? What's Fresh shows you instantly:
+            </p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: #666;">
+                <li><strong>Forward tracing:</strong> Pick any ingredient batch, see every product it went into</li>
+                <li><strong>Recall ready:</strong> In seconds, know exactly which batches and products are affected</li>
+                <li><strong>Complete audit trail:</strong> FSMA lot codes, dates, locations, supplier information all linked</li>
+            </ul>
+            <p>
+                For FDA compliance and recalls, this isn't just helpful—it's essential. What's Fresh makes it instant.
+            </p>
+            <img src="images/Ingredient_trace.png" alt="Ingredient Traceability Report - Trace ingredient batches through all products" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.07);" />
+        </div>
+
+    </section>
+
+    <!-- Testimonial -->
+    <section class="testimonial-section">
+        <div class="testimonial">
+            <p class="testimonial-quote">
+                "Being able to go straight from setting up our product to managing batches—without navigating through menus—saved us hours every week. And when we had to handle a recall, we could tell instantly which products were affected."
+            </p>
+            <p class="testimonial-author">— Small Batch Food Producer, current user</p>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Ready to Simplify Your Production?</h2>
+        <p>Join food makers who are managing batches faster and smarter.</p>
+        <button class="button-primary">Start Your Free Trial Today</button>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 What's Fresh. All rights reserved.</p>
+    </footer>
+</body>
+</html>
