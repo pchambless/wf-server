@@ -1,5 +1,5 @@
 #!/bin/bash
-# Sync git commits + file changes to studio.git_commits and studio.git_commit_files
+# Sync git commits + file changes to agile.git_commits and agile.git_commit_files
 # Runs after git pull on the droplet
 
 REPO_DIR="/home/n8n/wf-server"
@@ -17,7 +17,7 @@ git log --format="%H|%s|%an|%ae|%aI" -100 "$BRANCH" | while IFS="|" read -r sha 
   author="${author//\'/\'\'}"
 
   sudo -u postgres psql -d "$DB" -q -c "
-    INSERT INTO studio.git_commits (sha, message, author, email, commit_date, branch, repo)
+    INSERT INTO agile.git_commits (sha, message, author, email, commit_date, branch, repo)
     VALUES ('$sha', '$msg', '$author', '$email', '$date', '$BRANCH', '$REPO')
     ON CONFLICT (sha) DO NOTHING;
   " 2>/dev/null
@@ -25,8 +25,8 @@ done
 
 # Sync file changes for commits missing file data
 MISSING=$(sudo -u postgres psql -d "$DB" -t -A -c "
-  SELECT c.sha FROM studio.git_commits c
-  LEFT JOIN studio.git_commit_files f ON c.sha = f.sha
+  SELECT c.sha FROM agile.git_commits c
+  LEFT JOIN agile.git_commit_files f ON c.sha = f.sha
   WHERE f.sha IS NULL AND c.repo = '$REPO'
   LIMIT 100;
 ")
@@ -62,7 +62,7 @@ for sha in $MISSING; do
     desc="${desc//\'/\'\'}"
 
     sudo -u postgres psql -d "$DB" -q -c "
-      INSERT INTO studio.git_commit_files (sha, file_path, status, insertions, deletions, description)
+      INSERT INTO agile.git_commit_files (sha, file_path, status, insertions, deletions, description)
       VALUES ('$sha', '$filepath', '$status', ${ins:-0}, ${del:-0}, $([ -n "$desc" ] && echo "'$desc'" || echo "NULL"));
     " 2>/dev/null
   done

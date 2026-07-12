@@ -63,9 +63,15 @@ export const actionEngineCode = `
 
       const deriveGridRowData = (gridRow) => {
         if (!gridRow) return {};
-        const rowData = { ...gridRow.dataset };
-        if (gridRow.dataset.rowId !== undefined) {
-          rowData.id = gridRow.dataset.rowId;
+        const rawDataset = { ...gridRow.dataset };
+        const rowData = {};
+        for (const [key, val] of Object.entries(rawDataset)) {
+          rowData[key] = val;
+          const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+          if (snakeKey !== key) rowData[snakeKey] = val;
+        }
+        if (rawDataset.rowId !== undefined) {
+          rowData.id = rawDataset.rowId;
         }
         const table = gridRow.closest('table');
         const headerCells = table ? Array.from(table.querySelectorAll('thead th')) : [];
