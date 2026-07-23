@@ -16,7 +16,7 @@
         <nav>
             <a href="#features">Features</a>
             <a href="#traceability">Traceability</a>
-            <a href="#" onclick="document.querySelector('.cta-section').scrollIntoView({behavior: 'smooth'})">Get Started</a>
+            <a href="#" onclick="document.querySelector('.cta-section').scrollIntoView({behavior: 'smooth'})">How It Works</a>
             <a href="/login" class="cta-button">Login</a>
         </nav>
     </header>
@@ -29,7 +29,7 @@
                 WhatsFresh gives small food makers the traceability tools retailers expect and regulators require—without the compliance headache.
             </p>
             <div class="hero-buttons">
-                <button class="button-primary" onclick="document.querySelector('.cta-section').scrollIntoView({behavior: 'smooth'})">Start Free Trial</button>
+                <a href="/register" class="cta-button">Start Your Trial</a>
             </div>
         </div>
     </section>
@@ -122,14 +122,66 @@
             <p>
                 Need to trace an ingredient through your entire production? What's Fresh shows you instantly:
             </p>
-            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: #666;">
-                <li><strong>Forward tracing:</strong> Pick any ingredient batch, see every product it went into</li>
-                <li><strong>Recall ready:</strong> In seconds, know exactly which batches and products are affected</li>
-                <li><strong>Complete audit trail:</strong> FSMA lot codes, dates, locations, supplier information all linked</li>
-            </ul>
-            <p>
-                For FDA compliance and recalls, this isn't just helpful—it's essential. What's Fresh makes it instant.
-            </p>
+
+            <div class="accordion-container">
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-toggle">▶</span>
+                        How ingredient tracing works
+                    </button>
+                    <div class="accordion-content">
+                        <p>Pick any ingredient batch and see its complete journey:</p>
+                        <div class="flow-diagram">
+                            <div class="flow-step">Supplier</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-step">Ingredient Batch</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-step">Product Batch</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-step">Query Results</div>
+                        </div>
+                        <p style="margin-top: 1rem; color: #666;">Forward tracing shows you every product that ingredient touched. Critical for understanding your production dependencies.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-toggle">▶</span>
+                        In case of ingredient recall
+                    </button>
+                    <div class="accordion-content">
+                        <p>When a supplier issue arises, you have seconds to respond:</p>
+                        <div class="flow-diagram">
+                            <div class="flow-step" style="background: #fee;">⚠️ Alert</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-step">Query system</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-step" style="background: #fdd;">Affected Batches</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-step" style="background: #fcc;">Issue Recall</div>
+                        </div>
+                        <p style="margin-top: 1rem; color: #666;">Instead of manually checking notebooks and spreadsheets, What's Fresh instantly identifies every batch and product affected. For FDA compliance and recalls, this isn't just helpful—it's essential.</p>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-toggle">▶</span>
+                        Complete audit trail
+                    </button>
+                    <div class="accordion-content">
+                        <p>Every trace includes:</p>
+                        <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: #666;">
+                            <li><strong>FSMA lot codes</strong> — Full regulatory documentation</li>
+                            <li><strong>Dates & locations</strong> — Exact production timeline</li>
+                            <li><strong>Supplier information</strong> — Complete source chain</li>
+                            <li><strong>Batch history</strong> — Every touch point</li>
+                        </ul>
+                        <p>Nothing is lost or scattered. Everything your auditors need is linked and ready.</p>
+                    </div>
+                </div>
+            </div>
+
             <img src="images/Ingredient_trace.png" alt="Ingredient Traceability Report - Trace ingredient batches through all products" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; margin: 2rem 0; box-shadow: 0 4px 6px rgba(0,0,0,0.07);" />
         </div>
 
@@ -149,12 +201,31 @@
     <section class="cta-section">
         <h2>Ready to Simplify Your Production?</h2>
         <p>Join food makers who are managing batches faster and smarter.</p>
-        <button class="button-primary">Start Your Free Trial Today</button>
+        <div class="hero-buttons">
+            <a href="/register" class="cta-button">Start Your Free Trial Today</a>
+        </div>
     </section>
 
     <!-- Footer -->
     <footer>
         <p>&copy; 2026 What's Fresh. All rights reserved.</p>
     </footer>
+
+    <script>
+        function toggleAccordion(element) {
+            const item = element.closest('.accordion-item');
+            const container = item.closest('.accordion-container');
+
+            // Close other items in the same container
+            container.querySelectorAll('.accordion-item.active').forEach(activeItem => {
+                if (activeItem !== item) {
+                    activeItem.classList.remove('active');
+                }
+            });
+
+            // Toggle current item
+            item.classList.toggle('active');
+        }
+    </script>
 </body>
 </html>

@@ -208,4 +208,13 @@ export const popActionsCode = `
           bestByDate.value = d.toISOString().split("T")[0];
         }
       });
+
+      // --- Auto-generate tooltips for dd-add-btn ---
+      document.addEventListener("mouseover", (e) => {
+        const btn = e.target instanceof Element ? e.target.closest(".dd-add-btn") : null;
+        if (!btn || btn.title) return;
+        const formName = btn.dataset.popForm || "";
+        const entity = formName.replace(/_form$/, "").replace(/_/g, " ");
+        btn.title = "Add new " + entity;
+      });
 `;

@@ -279,7 +279,7 @@ nav a:hover {
 
 /* CTA Section */
 .cta-section {
-    background: #22c55e;
+    background: #88a9e3;
     color: white;
     padding: 4rem 2rem;
     text-align: center;
@@ -314,6 +314,85 @@ footer {
     padding: 2rem;
     text-align: center;
     font-size: 0.9rem;
+}
+
+/* Accordion */
+.accordion-container {
+    margin: 2rem 0;
+}
+
+.accordion-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.accordion-header {
+    width: 100%;
+    padding: 1rem;
+    background: #f9fafb;
+    border: none;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: background 0.2s;
+}
+
+.accordion-header:hover {
+    background: #f3f4f6;
+}
+
+.accordion-toggle {
+    display: inline-flex;
+    transition: transform 0.3s;
+    font-size: 0.9rem;
+}
+
+.accordion-item.active .accordion-toggle {
+    transform: rotate(90deg);
+}
+
+.accordion-content {
+    display: none;
+    background: white;
+}
+
+.accordion-item.active .accordion-content {
+    display: block;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.flow-step {
+    background: #dcfce7;
+    border: 2px solid #22c55e;
+    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: #166534;
+    text-align: center;
+    min-width: 140px;
+}
+
+.flow-arrow {
+    color: #888;
+    font-weight: bold;
+    font-size: 1.5rem;
 }
 
 /* Responsive */
@@ -399,5 +478,33 @@ footer {
 
     footer {
         background: #111827;
+    }
+
+    .accordion-header {
+        background: #374151;
+        color: #f3f4f6;
+    }
+
+    .accordion-header:hover {
+        background: #4b5563;
+    }
+
+    .accordion-item {
+        border-color: #4b5563;
+    }
+
+    .accordion-item.active .accordion-content {
+        background: #1f2937;
+        border-top-color: #4b5563;
+    }
+
+    .flow-step {
+        background: #064e3b;
+        border-color: #22c55e;
+        color: #dcfce7;
+    }
+
+    .flow-arrow {
+        color: #9ca3af;
     }
 }

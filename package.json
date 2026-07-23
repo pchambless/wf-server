@@ -6,6 +6,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:safe": "pkill -f 'node.*server.js' 2>/dev/null; sleep 1; node src/server.js",
     "dev": "PORT=3001 npx nodemon src/server.js"
   },
   "dependencies": {
