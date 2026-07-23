@@ -8,9 +8,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$REPO_DIR/n8n/workflows"
+DB="n8n"
+
+# Source .env for API key if not already set
+if [ -z "$N8N_API_KEY" ] && [ -f "$REPO_DIR/.env" ]; then
+  export $(grep -v '^#' "$REPO_DIR/.env" | grep 'N8N_API_KEY\|N8N_BASE_URL' | xargs)
+fi
+
 N8N_URL="${N8N_BASE_URL:-https://n8n.whatsfresh.app}"
 N8N_API_KEY="${N8N_API_KEY:-}"
-DB="n8n"
 
 mkdir -p "$OUTPUT_DIR"
 
