@@ -38,10 +38,10 @@ async function initializeRoutes() {
     if (cachedRoutes.length === 0) {
       console.warn(`${codeName} api_routes() returned no routes. Falling back to studio.vw_pages.`);
       const fallbackRouteData = await fetchRoutes(`
-        SELECT route_path as route, page_name, page_id
+        SELECT route_path as route, page_name, page_id, group_name
         FROM studio.vw_pages
         UNION ALL
-        SELECT '/wf-dashboard' as route, 'wf-dashboard' as page_name, 32 as page_id
+        SELECT '/wf-dashboard' as route, 'wf-dashboard' as page_name, 32 as page_id, 'admin' as group_name
       `);
       cachedRoutes = Array.isArray(fallbackRouteData) ? fallbackRouteData : [];
     }
