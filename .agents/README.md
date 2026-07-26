@@ -1,4 +1,11 @@
-**Note:** This file is a pointer. For all agent instructions and documentation, continue following the README.md chain as directed here, until you reach the main agent knowledge base (e.g., in wf-agents or other designated location).
+Start every session by running:
 
-If you arrived here from CLAUDE.md or another pointer, keep following the README.md references for the most current and complete agent guidance.
-[[file:../wf-agents/README.md]]
+```bash
+bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup
+```
+
+That renders the full agent context — available scripts, connections, active
+guidance, and current work — from the `guidance` schema on localhost postgres.
+There is no README chain to follow.
+
+Repo index and role contracts: [wf-agents/README.md](/home/paul/Projects/wf-agents/README.md)
