@@ -31,7 +31,7 @@ import { callWorkflow } from '../utils/n8nClient.js';
 
 // Select widget HTML (for HTMX)
 const optionsHtml = await callWorkflow('dd-query', {
-  query: "SELECT * FROM whatsfresh.dd_accounts()",
+  query: "SELECT * FROM whatsfresh.api_accounts_users(:userID)",
   params: {},
   source: 'server'    // returns <option> HTML
 });

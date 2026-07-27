@@ -21,7 +21,7 @@ frequent_paths:
   app_init: src/app.js
   n8n_client: src/utils/n8nClient.js
   routes: src/routes/
-  controllers: src/controller/
+  controllers: src/controllers/
   renderers: src/renderers/
   env: .env
 
