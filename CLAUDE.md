@@ -14,7 +14,7 @@ In one pass it prints:
 - **Available Scripts** — every runnable tool and workflow, with invocation and example
 - **Connections** — database endpoints and which tool reaches each
 - **Active Guidance** — architecture and workflow rules in force
-- **Handoffs** — open notes another agent left for you; mark them consumed once acted on
+- **Handoffs** — open notes left for whoever picks up next; mark them consumed once acted on
 - **In Progress / Done Lately / Recent Impacts** — current work context
 
 Do not go hunting for markdown first. Agent knowledge lives in the `guidance`
