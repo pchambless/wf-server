@@ -3,12 +3,13 @@
 Start every session by running:
 
 ```bash
-bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 claude
+bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 claude whatsfresh
 ```
 
 That is the whole startup routine. Arg 1 is the app id, arg 2 is your agent
-role — pass `claude` so you get your own contract, not just the shared one.
-In one pass it prints:
+role — pass `claude` so you get your own contract, not just the shared one —
+and arg 3 is the project scope, which keeps local-desk and wf-marketing rules
+out of a whatsfresh session. In one pass it prints:
 
 - **Your Contract** — shared operating contract plus your role contract
 - **Available Scripts** — every runnable tool and workflow, with invocation and example
