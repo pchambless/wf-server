@@ -3,8 +3,16 @@ description: Clean-slate Express app serving HTMX pages via n8n webhooks
 
 agent_tooling:
   path: /home/paul/Projects/wf-agents
-  scripts: /home/paul/Projects/wf-agents/scripts
-  session_startup: bash /home/paul/Projects/wf-agents/scripts/session-startup | jq .
+  scripts: /home/paul/Projects/wf-agents/agents/tools
+  # Run this first, every session. Arg 1 is the app id, arg 2 is your role —
+  # pass 'kiro' to get your own contract from guidance.contracts, not just the
+  # shared one. Do not pipe to jq: output is section headers plus JSON blocks.
+  session_startup: bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 kiro
+
+# Your operating contract lives in guidance.contracts (localhost), role 'kiro'.
+# It renders at the top of session_startup. Read it directly with:
+#   bash /home/paul/Projects/wf-agents/agents/tools/investigate/local-text \
+#     "SELECT body FROM guidance.contracts WHERE role IN ('all','kiro')"
 
 frequent_paths:
   entry_point: src/server.js
@@ -30,16 +38,7 @@ n8n:
     wf_report: POST /webhook/wf-report
     server_query: POST /webhook/server-query
 
-build_status:
-  complete:
-    - Express skeleton (app.js, server.js)
-  pending:
-    - src/utils/n8nClient.js
-    - src/routes/
-    - src/controller/
-    - src/renderers/
-    - .env
-
-active_sprint:
-  epic: 91 - WF Appsmith AppBuilder Architecture
-  current_plan: 99 - DB Schema Restructure
+# build_status and active_sprint were removed 2026-07-27: both had gone stale
+# (n8nClient/routes/controller listed as pending though built; epic 91 / plan 99
+# long superseded). session_startup renders live sprint state — do not
+# reintroduce a hardcoded copy here.
