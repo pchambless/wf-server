@@ -34,56 +34,58 @@ export function wrapHtml(title, body) {
       document.addEventListener('DOMContentLoaded', () => {
         const ctx = window.__pageContext;
         const container = document.getElementById('crud_buttons');
-        if (!container || !ctx?.form || ctx.hideCrud) return;
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'wf-slot-actions wf-context-btn-group';
+        if (container && ctx?.form && !ctx.hideCrud) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'wf-slot-actions wf-context-btn-group';
 
-        const addBtn = document.createElement('button');
-        addBtn.type = 'button';
-        addBtn.className = 'wf-slot-action-btn';
-        addBtn.textContent = 'Add New';
-        addBtn.addEventListener('click', () => {
-          window.contextStore = { ...(window.contextStore || {}), mode: 'INSERT', [ctx.contextKey]: null };
-          const panel = document.getElementById('inline_form_panel');
-          const formContainer = document.getElementById('inline_form_container');
-          if (!panel || !formContainer) return;
-          fetch('/api/hydrate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ template_name: ctx.form, mode: 'INSERT', ...(window.contextStore || {}) })
-          }).then(r => r.text()).then(html => {
-            formContainer.innerHTML = html;
-            if (window.htmx) window.htmx.process(formContainer);
-            const form = formContainer.querySelector('form');
-            if (form) form.id = 'inline_form_element';
-            const titleEl = document.getElementById('inline_form_title');
-            if (titleEl) titleEl.textContent = 'INSERT ' + ctx.form.replace(/_form$/, '').replace(/_/g, ' ');
-            panel.classList.remove('hidden');
+          const addBtn = document.createElement('button');
+          addBtn.type = 'button';
+          addBtn.className = 'wf-slot-action-btn';
+          addBtn.textContent = 'Add New';
+          addBtn.addEventListener('click', () => {
+            window.contextStore = { ...(window.contextStore || {}), mode: 'INSERT', [ctx.contextKey]: null };
+            const panel = document.getElementById('inline_form_panel');
+            const formContainer = document.getElementById('inline_form_container');
+            if (!panel || !formContainer) return;
+            fetch('/api/hydrate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ template_name: ctx.form, mode: 'INSERT', ...(window.contextStore || {}) })
+            }).then(r => r.text()).then(html => {
+              formContainer.innerHTML = html;
+              if (window.htmx) window.htmx.process(formContainer);
+              const form = formContainer.querySelector('form');
+              if (form) form.id = 'inline_form_element';
+              const titleEl = document.getElementById('inline_form_title');
+              if (titleEl) titleEl.textContent = 'INSERT ' + ctx.form.replace(/_form$/, '').replace(/_/g, ' ');
+              panel.classList.remove('hidden');
+            });
           });
-        });
 
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'wf-slot-action-btn wf-btn-danger';
-        delBtn.textContent = 'Delete Selected';
-        delBtn.addEventListener('click', async () => {
-          const pkVal = window.contextStore?.[ctx.contextKey];
-          if (!pkVal) { alert('Please select a row to delete'); return; }
-          if (!confirm('Delete this record?')) return;
-          const response = await fetch('/api/dml', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ page_id: ctx.pageId, mode: 'DELETE', f_id: pkVal })
+          wrapper.appendChild(addBtn);
+          container.appendChild(wrapper);
+        }
+
+        // Delete now lives as a static button inside the form panel's own
+        // action bar (left of Save) instead of the top toolbar - it only
+        // ever acts on the single record currently loaded in the form.
+        const delBtn = document.getElementById('inline_form_delete');
+        if (delBtn && ctx) {
+          delBtn.addEventListener('click', async () => {
+            const pkVal = window.contextStore?.[ctx.contextKey];
+            if (!pkVal) { alert('Please select a row to delete'); return; }
+            if (!confirm('Delete this record?')) return;
+            const response = await fetch('/api/dml', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ page_id: ctx.pageId, mode: 'DELETE', f_id: pkVal })
+            });
+            const result = await response.json();
+            if (result.success) window.location.reload();
+            else alert(result.error || 'Delete failed');
           });
-          const result = await response.json();
-          if (result.success) window.location.reload();
-          else alert(result.error || 'Delete failed');
-        });
-
-        wrapper.appendChild(addBtn);
-        wrapper.appendChild(delBtn);
-        container.appendChild(wrapper);
+        }
       });
     })();
   `;
