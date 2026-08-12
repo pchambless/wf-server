@@ -15,7 +15,7 @@ this file ever drifts from it.
 Run this first if you need context beyond the task you were handed:
 
 ```bash
-bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 db-chores
+bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 db-chores whatsfresh
 ```
 
 ## Which tool reaches which database
@@ -25,13 +25,20 @@ bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 db-chore
 | localhost postgres (`guidance` schema) | `agents/tools/investigate/local-query` | read |
 | localhost postgres (`guidance` schema) | `agents/tools/investigate/local-exec` | write, single transaction |
 | localhost postgres, prose output | `agents/tools/investigate/local-text` | read, raw text not JSON |
-| droplet postgres (`studio`, `agile`, `knowledge_base`, `whatsfresh`) | `agents/tools/investigate/server-query` | read only |
+| droplet postgres (`studio`, `agile`, `knowledge_base`, `whatsfresh`, `deployment`) | `agents/tools/investigate/server-query` | read **and** write, incl. DDL |
 
 All paths are relative to `/home/paul/Projects/wf-agents`.
 
-The droplet has no agent write tool. Mutations there go through the agile-*
-n8n webhooks listed in `guidance.scripts`, or get written to the DBeaver
-workspace for Paul to run (Guide 19).
+`server-query` does writes and DDL, despite older notes claiming the droplet was
+read-only — that false limit cost thrown-away work once already (Guide 20). It
+still has two silent-failure modes: a bare `$$` in a function body, and any
+multi-statement script wrapped in `BEGIN`/`COMMIT`. Both return no output and no
+error while doing nothing. Use a named dollar tag (`$body$`), send one statement
+per call, and read the object or row count back afterward. Never treat empty
+output as success.
+
+Where a connection has `agent_access = none`, write the SQL to the DBeaver
+workspace instead of executing it (Guide 19).
 
 ## Responsibilities
 
