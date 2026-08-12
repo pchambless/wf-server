@@ -6,6 +6,7 @@ import { formActionsCode } from './formActions.js';
 import { reportActionsCode } from './reportActions.js';
 import { popActionsCode } from './popActions.js';
 import { workerPickerCode } from './workerPicker.js';
+import { formHydrationCode } from './formHydration.js';
 
 export function wrapHtml(title, body) {
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
@@ -22,6 +23,7 @@ export function wrapHtml(title, body) {
   const inlineScript = `
     (() => {
       ${actionEngineCode}
+      ${formHydrationCode}
       ${actionHandlersCode}
       ${gridActionsCode}
       ${selectActionsCode}
@@ -55,6 +57,8 @@ export function wrapHtml(title, body) {
             }).then(r => r.text()).then(html => {
               formContainer.innerHTML = html;
               if (window.htmx) window.htmx.process(formContainer);
+              applyModeVisibility(formContainer, 'INSERT');
+              hydrateEmbeddedDropdowns(formContainer);
               const form = formContainer.querySelector('form');
               if (form) form.id = 'inline_form_element';
               const titleEl = document.getElementById('inline_form_title');

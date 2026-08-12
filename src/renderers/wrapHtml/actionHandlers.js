@@ -62,11 +62,14 @@ export const actionHandlersCode = `
 
           if (window.htmx) window.htmx.process(container);
 
+          const mode = hydrateData.mode || window.contextStore?.mode || 'INSERT';
+          applyModeVisibility(container, mode);
+          hydrateEmbeddedDropdowns(container);
+
           const form = container.querySelector('form');
           if (form) form.id = 'inline_form_element';
 
           // Set title
-          const mode = hydrateData.mode || window.contextStore?.mode || 'INSERT';
           const headerField = container.querySelector('[data-header-field="true"]');
           const headerValue = headerField?.value || headerField?.textContent || '';
           let title = headerValue.trim()
@@ -174,8 +177,44 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- prompt_post ---
+        if (resolvedAction.action === 'prompt_post') {
+          const promptText = resolvedAction.prompt || 'Enter a value:';
+          const value = window.prompt(promptText);
+          if (!value) return 'handled';
+
+          const minLength = resolvedAction.min_length;
+          if (minLength && value.length < minLength) {
+            alert(resolvedAction.min_length_message || ('Must be at least ' + minLength + ' characters'));
+            return 'handled';
+          }
+
+          const payload = {};
+          for (const key of resolvedAction.context_keys || []) {
+            payload[key] = window.contextStore?.[key];
+          }
+          payload[resolvedAction.field_name || 'value'] = value;
+
+          try {
+            const response = await fetch(resolvedAction.endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.success) {
+              if (resolvedAction.success_message) alert(resolvedAction.success_message);
+            } else {
+              alert(result.message || resolvedAction.error_message || 'Action failed');
+            }
+          } catch (err) {
+            alert('Request failed: ' + err.message);
+          }
+          return 'handled';
+        }
+
         // --- server action (default: POST to /api/actions) ---
-        if (resolvedAction.targets || (resolvedAction.action && !['open_modal', 'show_element', 'open_report', 'row_delete', 'dml_direct', 'conditional_setvals'].includes(resolvedAction.action))) {
+        if (resolvedAction.targets || (resolvedAction.action && !['open_modal', 'show_element', 'open_report', 'row_delete', 'dml_direct', 'conditional_setvals', 'prompt_post'].includes(resolvedAction.action))) {
           const response = await fetch('/api/actions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

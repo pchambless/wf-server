@@ -58,6 +58,37 @@ export async function renderPage(req, res, next) {
 
   if (!email) return res.redirect('/login');
 
+  if (route !== '/change-password') {
+    try {
+      const flagResult = await callWorkflow('server-query', {
+        query: `SELECT must_change_password FROM whatsfresh.users WHERE email = '${email.replace(/'/g, "''")}'`,
+        params: {},
+        source: 'server'
+      });
+      const flagRow = Array.isArray(flagResult) ? flagResult[0] : flagResult;
+      if (flagRow?.must_change_password) {
+        return res.redirect('/change-password');
+      }
+    } catch (e) {
+      // Non-fatal: if the check itself fails, don't block the whole app on it.
+    }
+  }
+
+  if (routeInfo.page_name === 'change-password') {
+    const shell = await callWorkflow('hydrate-guide', {
+      template_name: 'shell-public', source: 'wf-server', format: 'html'
+    });
+    const form = await callWorkflow('hydrate-guide', {
+      template_name: 'change_password_form', source: 'wf-server', format: 'html'
+    });
+    const shellHtml = normalizeHtml(shell);
+    const formHtml = normalizeHtml(form);
+    const combined = shellHtml
+      .replace('{{slot:title}}', 'Change Password')
+      .replace('{{slot:form}}', formHtml);
+    return res.send(wrapHtml(routeInfo.page_name, combined));
+  }
+
   try {
     await callWorkflow('setvals', {
       email,

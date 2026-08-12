@@ -46,12 +46,14 @@ export const formActionsCode = `
 
           if (window.htmx) window.htmx.process(container);
 
+          const mode = hydrateData?.mode || window.contextStore?.mode || "INSERT";
+          applyModeVisibility(container, mode);
+          hydrateEmbeddedDropdowns(container);
+
           const form = container.querySelector("form");
           if (form) {
             form.id = "form_element";
           }
-
-          const mode = hydrateData?.mode || window.contextStore?.mode || "INSERT";
 
           // Determine modal title: contextStore > header-field > fallback
           let title = window.contextStore?.modal_title;
