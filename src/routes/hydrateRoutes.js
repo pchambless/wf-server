@@ -192,15 +192,20 @@ router.post('/report', async (req, res) => {
 
   try {
     const parts = await Promise.all(
-      templates.map(template_name =>
-        callWorkflow('hydrate-guide', {
+      templates.map(async (template_name) => {
+        const result = await callWorkflow('hydrate-guide', {
           template_name,
           source: 'wf-server',
           format: 'html',
           email,
           ...contextParams
-        }).then(r => normalizeHtml(r))
-      )
+        });
+        if (result?.styled_html && result?.data) {
+          const dataArr = Array.isArray(result.data) ? result.data : [result.data];
+          return compileHandlebars(result.styled_html, { data: dataArr });
+        }
+        return normalizeHtml(result);
+      })
     );
     res.type('html').send(parts.join(''));
   } catch (err) {
