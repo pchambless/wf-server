@@ -80,8 +80,20 @@ export const popActionsCode = `
           const wrapper = document.querySelector('[data-dropdown-slot="' + slotName + '"]');
           if (!wrapper) return;
 
-          // Derive template name from slot: f_locations_dd -> locations_dd
-          const templateName = slotName.replace(/^f_/, "");
+          // Read the template name the renderer already emitted, rather than
+          // rebuilding it from the slot naming convention. Every select path
+          // (buildSelectWidget, buildFormSelect, buildHtmxDiv) sets
+          // data-template-name, and htmx swaps the div's innerHTML, so the
+          // attribute survives hydration.
+          const widget = wrapper.querySelector("[data-template-name]");
+          let templateName = widget && widget.dataset.templateName;
+          if (!templateName) {
+            templateName = slotName.replace(/^f_/, "");
+            console.warn(
+              "popModal.refreshDropdown: no data-template-name in slot '" +
+                slotName + "', falling back to name derivation -> " + templateName
+            );
+          }
 
           // Re-hydrate the dropdown
           const response = await fetch("/api/hydrate", {
