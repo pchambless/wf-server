@@ -1,10 +1,31 @@
 #!/bin/bash
-# Sync git commits + file changes to agile.git_commits and agile.git_commit_files
-# Runs after git pull on the droplet
+# Sync git commits + file changes to agile.git_commits and agile.git_commit_files.
+# Runs after git pull, ON the machine that hosts the agile schema.
+#
+# Configurable via environment variables; the defaults reproduce the original
+# hardcoded behaviour exactly, so existing callers need no change:
+#   REPO_DIR   checkout to read git history from   (default /home/n8n/wf-server)
+#   SYNC_DB    database holding the agile schema   (default n8n)
+#   REPO_NAME  value stored in the repo column     (default wf-server)
+#
+# Example, syncing the sibling repo on the same droplet:
+#   REPO_DIR=/home/n8n/wf-marketing REPO_NAME=wf-marketing bash sync-git-commits.sh
+#
+# NOT usable from the prod droplet as written, for two reasons found 2026-08-14
+# (task 248): prod's database has only public, studio and whatsfresh - there is
+# no agile schema to write to - and dev's UFW allows 5432 only from 172.28.0.0/16,
+# so prod cannot reach dev's Postgres either. This is fine: agile.git_commits is
+# repo history, not per-environment history, and this script re-reads the last
+# 100 commits with ON CONFLICT DO NOTHING, so anything deployed to prod is
+# backfilled by the next dev sync. Recording that a sha is LIVE on prod is a
+# deployment fact and belongs in the deployment schema, not here.
 
-REPO_DIR="/home/n8n/wf-server"
-DB="n8n"
-REPO="wf-server"
+: "${REPO_DIR:=/home/n8n/wf-server}"
+: "${SYNC_DB:=n8n}"
+: "${REPO_NAME:=wf-server}"
+
+DB="$SYNC_DB"
+REPO="$REPO_NAME"
 
 cd "$REPO_DIR" || exit 1
 
