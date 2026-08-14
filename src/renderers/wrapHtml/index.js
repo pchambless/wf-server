@@ -113,12 +113,30 @@ export function wrapHtml(title, body) {
       const show = () => { activeRequests++; overlay.classList.add('active'); };
       const hide = () => { activeRequests = Math.max(0, activeRequests - 1); if (activeRequests === 0) overlay.classList.remove('active'); };
 
+      // A 401 from any session-gated /api/ route means the session died
+      // server-side (e.g. a restart dropped it) - bounce to login instead of
+      // letting callers show a raw "Unauthorized" alert or render the plain
+      // text body into a form. /auth/login itself returns 401 for a normal
+      // wrong-password attempt, which is not a dead session, so it's exempt.
+      const redirectOn401 = (url, status) => {
+        if (status === 401 && !url.includes('/auth/login')) {
+          window.location.href = '/login';
+          return true;
+        }
+        return false;
+      };
+
       const originalFetch = window.fetch;
       window.fetch = function(...args) {
         const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
         if (url.startsWith('/api/')) {
           show();
-          return originalFetch.apply(this, args).finally(hide);
+          return originalFetch.apply(this, args).then(response => {
+            if (redirectOn401(url, response.status)) {
+              return new Promise(() => {}); // navigating away, never resolve
+            }
+            return response;
+          }).finally(hide);
         }
         return originalFetch.apply(this, args);
       };
@@ -126,7 +144,11 @@ export function wrapHtml(title, body) {
       // Also cover htmx requests
       document.addEventListener('htmx:beforeRequest', show);
       document.addEventListener('htmx:afterRequest', hide);
-      document.addEventListener('htmx:responseError', hide);
+      document.addEventListener('htmx:responseError', (e) => {
+        hide();
+        const xhr = e.detail?.xhr;
+        if (xhr) redirectOn401(e.detail?.pathInfo?.requestPath || '', xhr.status);
+      });
     })();
 
     ${inlineScript}

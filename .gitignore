@@ -2,6 +2,7 @@
 .env.local
 node_modules/
 logs/
+.sessions/
 *.log
 *.sql
 .DS_Store
