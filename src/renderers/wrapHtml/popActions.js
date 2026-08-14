@@ -82,7 +82,7 @@ export const popActionsCode = `
 
           // Read the template name the renderer already emitted, rather than
           // rebuilding it from the slot naming convention. Every select path
-          // (buildSelectWidget, buildFormSelect, buildHtmxDiv) sets
+          // (buildSelectWidget, buildHtmxDiv) sets
           // data-template-name, and htmx swaps the div's innerHTML, so the
           // attribute survives hydration.
           const widget = wrapper.querySelector("[data-template-name]");
