@@ -14,42 +14,37 @@ cd "$REPO_DIR" || exit 1
 log "=== Starting deploy ==="
 
 # 1. Pull latest from main
+PREV_SHA=$(git rev-parse HEAD)
 log "Pulling latest from origin/main..."
 git pull origin main 2>&1 | tee -a "$LOG_FILE"
+NEW_SHA=$(git rev-parse HEAD)
 
 # 2. Install any new dependencies
-if git diff HEAD~1 --name-only | grep -q "package.json"; then
-  log "package.json changed — running npm install..."
+# Diff against the sha we were on BEFORE the pull. The old test was
+# "git diff HEAD~1", which looks exactly one commit back no matter how many
+# commits the pull brought, so a package.json change any further back was
+# missed. That is how session-file-store (task 245) landed on the droplet
+# uninstalled and left the server crash-looping on ERR_MODULE_NOT_FOUND.
+if [ "$PREV_SHA" != "$NEW_SHA" ] && git diff --name-only "$PREV_SHA" "$NEW_SHA" | grep -q "package.json"; then
+  log "package.json changed ($PREV_SHA -> $NEW_SHA) - running npm install..."
   npm install --production 2>&1 | tee -a "$LOG_FILE"
 fi
 
 # 3. Restart server
-# $SERVER_PIDS may hold SEVERAL newline-separated pids. It was previously quoted
-# as kill "$SERVER_PID", which passes them as ONE argument and fails with
-# "arguments must be process or job IDs" the moment a second process exists.
-# The old process kept the port, the new one died unable to bind, and the deploy
-# still reported success - so dev silently served stale code, and every
-# subsequent deploy orphaned another process and made it worse. Found 2026-08-16
-# with dev still running an Aug 14 build. Leave $SERVER_PIDS unquoted on purpose.
-log "Restarting wf-server..."
-SERVER_PIDS=$(pgrep -f "node /home/n8n/wf-server/src/server.js" || true)
-if [ -n "$SERVER_PIDS" ]; then
-  log "Killing existing server(s): $(echo $SERVER_PIDS | tr '\n' ' ')"
-  # shellcheck disable=SC2086
-  kill $SERVER_PIDS 2>/dev/null || true
-  sleep 2
-  SURVIVORS=$(pgrep -f "node /home/n8n/wf-server/src/server.js" || true)
-  if [ -n "$SURVIVORS" ]; then
-    log "Force-killing survivors: $(echo $SURVIVORS | tr '\n' ' ')"
-    # shellcheck disable=SC2086
-    kill -9 $SURVIVORS 2>/dev/null || true
-    sleep 1
-  fi
+# pm2 OWNS this process on the dev droplet. An earlier version of this script did
+# kill + nohup, which bypassed pm2 entirely: pm2 restarted whatever was killed,
+# the nohup process then could not bind 3001, and the deploy still reported
+# success - so dev served an Aug 14 build for two days while every deploy
+# orphaned another process. Found 2026-08-16. Do not reintroduce kill/nohup here;
+# whatever manages the process must be the thing this script talks to.
+log "Restarting wf-server via pm2..."
+if pm2 describe wf-server > /dev/null 2>&1; then
+  pm2 restart wf-server --update-env 2>&1 | tee -a "$LOG_FILE"
+else
+  log "wf-server not registered with pm2 - starting from ecosystem.config.cjs"
+  pm2 start "$REPO_DIR/ecosystem.config.cjs" 2>&1 | tee -a "$LOG_FILE"
 fi
-
-nohup node /home/n8n/wf-server/src/server.js >> "$LOG_FILE" 2>&1 &
-NEW_PID=$!
-log "Server started (PID: $NEW_PID)"
+pm2 save > /dev/null 2>&1 || true
 
 # Prove it actually came up. Binding failures are the whole reason this section
 # exists, and a deploy that cannot bind must fail loudly rather than report success.
