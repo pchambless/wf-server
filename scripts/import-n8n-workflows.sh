@@ -81,10 +81,19 @@ for WF_NAME in $NEEDED; do
   # Two remaps needed, both found the hard way:
   # - the postgres credential, from dev's name to target's id+name (credential ids
   #   are never portable across n8n instances)
-  # - any httpRequest node whose URL is hardcoded to the source n8n base URL (e.g.
-  #   login's L03-setvals node calling https://n8n.whatsfresh.app/webhook/setvals
-  #   directly instead of via a portable reference) - found because it silently
-  #   made a "prod" login write session context into DEV's database instead.
+  # - any httpRequest node whose URL is hardcoded to the source n8n base URL -
+  #   found because it silently made a "prod" login write session context into
+  #   DEV's database instead.
+  #   As of task 259 this remap is a NO-OP: login's L03-setvals was the only such
+  #   node, and it is gone - wf-server's loginHandler writes those context values
+  #   directly now, so no workflow contains an instance hostname. Verified with a
+  #   positive control (the scan still finds gmail-save's external URL).
+  #   KEPT DELIBERATELY as a guard: if a self-referencing httpRequest node is ever
+  #   reintroduced, this rewrites it instead of letting a prod import quietly point
+  #   at dev. Note the tradeoff - a reintroduced node would also make
+  #   deployment.f_n8n_diff report that workflow permanently out of sync, since the
+  #   remap means dev and prod can never hash identically. That is a signal worth
+  #   having, not a bug: treat it as "someone re-added a hostname".
   CREATE_PAYLOAD=$(echo "$SRC_WF" | jq \
     --arg tid "$TGT_CRED_ID" --arg tname "$TGT_CRED_NAME" --arg sname "$SRC_CRED_NAME" \
     --arg src_base "$SRC_URL" --arg tgt_base "$TGT_URL" '

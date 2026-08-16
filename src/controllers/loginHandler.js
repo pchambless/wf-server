@@ -39,13 +39,27 @@ export async function handleLogin(req, res) {
     const result = await callWorkflow('login', { email, password });
 
     if (result?.success) {
+      const user = result.user || {};
       const defaultAccountId = getDefaultAccountId(result);
 
-      if (defaultAccountId !== null && defaultAccountId !== undefined && defaultAccountId !== '') {
-        await callWorkflow('setvals', {
-          email,
-          vals: [{ param_name: 'account_id', param_val: String(defaultAccountId) }]
-        });
+      // These context values used to be written by the login workflow's own
+      // L03-setvals node, which called this instance's /webhook/setvals by
+      // absolute URL. That baked the hostname into the workflow, so every
+      // dev -> prod import had to rewrite it. Setting them here keeps login
+      // portable across n8n instances and drops an HTTP hop.
+      const contextVals = [
+        { param_name: 'userEmail', param_val: email },
+        { param_name: 'userID', param_val: user.user_id },
+        { param_name: 'account_id', param_val: defaultAccountId },
+        { param_name: 'firstName', param_val: user.first_name },
+        { param_name: 'lastName', param_val: user.last_name },
+        { param_name: 'role_id', param_val: user.role_id }
+      ]
+        .filter(v => v.param_val !== null && v.param_val !== undefined && v.param_val !== '')
+        .map(v => ({ param_name: v.param_name, param_val: String(v.param_val) }));
+
+      if (contextVals.length) {
+        await callWorkflow('setvals', { email, vals: contextVals });
       }
 
       req.session.current_user_email = email;
