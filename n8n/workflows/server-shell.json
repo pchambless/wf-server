@@ -1,0 +1,118 @@
+{
+  "name": "server-shell",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "server-shell",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -64
+      ],
+      "id": "5125c9ea-bd8a-47e6-8157-d5c687f6ae71",
+      "name": "Webhook",
+      "webhookId": "be6fc957-8c76-4818-9d9a-49818c215fb9"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        288,
+        -64
+      ],
+      "id": "e9598cf8-3109-4895-b19b-5dd3a9d67f5f",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ $json.body.command }}"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -64
+      ],
+      "id": "26ad9005-96dd-4279-afc2-edc2a244060f",
+      "name": "Execute a command",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "IADhe8t8PQya4lTw",
+          "name": "SSH n8n-WF-pg"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code node between SSH and Respond to Webhook\nreturn [{ json: { body: $input.first().json.stdout } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -64
+      ],
+      "id": "3f29d344-3d0d-4cdb-8647-157572233c4a",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Execute a command": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "active": true
+}

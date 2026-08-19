@@ -1,0 +1,251 @@
+{
+  "name": "etl-p01",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "etl-p01",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        -624
+      ],
+      "id": "16240e42-0297-48af-b44e-380706f6d7be",
+      "name": "Webhook",
+      "webhookId": "870edad9-3d96-4b09-9e7d-21944397f530"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1216,
+        -624
+      ],
+      "id": "9fa08b87-5566-4355-a122-781ad6fc85e9",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "call etl.p01_l02();",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        544,
+        -624
+      ],
+      "id": "d09edd56-bd00-468f-8699-b60d3d75bb57",
+      "name": "l02",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "etl.measures"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$\nBEGIN\n  CALL etl.p01_l05(); -- recipes\n  CALL etl.p01_l06(); -- product_batch_tasks\n  CALL etl.p01_l07(); -- locations\n  CALL etl.p01_l08(); -- products, ingredients\nEND;\n$$;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        992,
+        -624
+      ],
+      "id": "9ecc53f6-2f39-4f56-8a95-145d5fec604a",
+      "name": "l04",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "other conversions"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$\nBEGIN\n  call etl.p01_l03a();  -- build batches_map\n  call etl.p01_l03b();  -- populate batches\n  call etl.p01_l03c();  -- populate lineage\nEND;\n$$;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        768,
+        -624
+      ],
+      "id": "4122d516-4aaa-4850-a17e-8f54f769573c",
+      "name": "l03",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "batches and lineage"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CALL etl.p01_l01();",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        320,
+        -624
+      ],
+      "id": "c2982323-768c-42c6-a68b-43da34303b84",
+      "name": "l01",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "Truncates and Inserts"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CALL etl.p01_l00();",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        96,
+        -624
+      ],
+      "id": "48a940a6-ca5e-44bf-85ed-fe2de29ec8ba",
+      "name": "l00",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "Staging Tables"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "25fdcdc5-8599-481c-b491-a69ad096b661",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -128,
+        -448
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "l00",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "l02": {
+      "main": [
+        [
+          {
+            "node": "l03",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "l04": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "l03": {
+      "main": [
+        [
+          {
+            "node": "l04",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "l01": {
+      "main": [
+        [
+          {
+            "node": "l02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "l00": {
+      "main": [
+        [
+          {
+            "node": "l01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "l00",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": true
+}

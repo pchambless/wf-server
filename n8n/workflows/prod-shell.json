@@ -1,0 +1,111 @@
+{
+  "name": "prod-shell",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prod-shell",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -64
+      ],
+      "id": "de13a494-f541-4eb9-b1f7-d71167234b8c",
+      "name": "Webhook",
+      "webhookId": "6bce8a3c-7c7f-4f82-9b43-976006c87ca7"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        288,
+        -64
+      ],
+      "id": "87bf6798-eb60-4597-81dc-76ff1b0e0918",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ $json.body.command }}"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        -64
+      ],
+      "id": "1d612007-af50-49b7-97b0-e90c5e26d12a",
+      "name": "Execute a command",
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "l5DRhwz63rOKTHwf",
+          "name": "SSH-wf-prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code node between SSH and Respond to Webhook\nreturn [{ json: { body: $input.first().json.stdout } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -64
+      ],
+      "id": "d2aee1ae-0a46-4241-b1fb-010de7f727d8",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a command": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true
+}

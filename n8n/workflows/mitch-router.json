@@ -1,0 +1,230 @@
+{
+  "name": "mitch-router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mitch-router",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -512,
+        32
+      ],
+      "id": "d43fc9fd-4a0c-437b-a2d3-26ff6a45590f",
+      "name": "Webhook",
+      "webhookId": "f7506618-79ac-4e1e-954f-2518e7a9351c"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select a.id,\n       a.workflow,\n       studio.f_workflow_id(a.workflow) as workflow_id,\n       a.template_name,\n       a.title,\n       a.description,\n       a.hydrate,\n       a.html,\n       a.group_by,\n       a.css,\n       ('{{ JSON.stringify($json.body.params || {}) }}')::json as params\nfrom mitch.n8n_router('{{ $json.body.template_name }}') a\n\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -368,
+        32
+      ],
+      "id": "a03ce289-1b78-4ed9-a9e1-8c91c5d40f3b",
+      "name": "L00a",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "get Template columns"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        336,
+        48
+      ],
+      "id": "1452cd80-ceee-4d15-bcec-3d279a28d0fe",
+      "name": "L99-respond"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT '{{ $json.template_name }}' AS template_name,\n       json_agg(row_to_json(t)) AS data\nFROM ({{ \n  Object.keys($json.params || {}).reduce(\n    (sql, key) => \n      sql.replaceAll(':' + key, \n                     typeof $json.params[key] === 'string'\n                       ? `'${$json.params[key]}'`\n                       : $json.params[key]),\n    $json.hydrate\n  )\n}}) t;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -208,
+        -80
+      ],
+      "id": "28633918-2d25-42d6-9fde-35cb3ee27183",
+      "name": "L01a",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "SQL returned data"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select \n'{{ $json.template_name }}' as template_name,\n{{ $json.group_by ? \"'\" + $json.group_by + \"'\" : \"null\" }} as group_by,\nstudio.f_workflow_id('{{ $json.workflow }}') workflow_id,\nmitch.tf_html_styled('{{ $json.template_name }}') styled_html",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -224,
+        176
+      ],
+      "id": "b8117d0a-e2ca-462b-ac07-d0d3df18dc5f",
+      "name": "L01b",
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "template_name",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -64,
+        48
+      ],
+      "id": "f4b8e194-9ee7-478c-b9a2-552c10d3d4de",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflow_id }}",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        128,
+        48
+      ],
+      "id": "9da60e2d-bcb9-44d7-a2a2-11a701c57798",
+      "name": "L02",
+      "notesInFlow": true,
+      "notes": "Run Sub-Workflow"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L00a",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L00a": {
+      "main": [
+        [
+          {
+            "node": "L01a",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "L01b",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L99-respond": {
+      "main": [
+        []
+      ]
+    },
+    "L01a": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "L01b": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "L02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L02": {
+      "main": [
+        [
+          {
+            "node": "L99-respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "active": true
+}

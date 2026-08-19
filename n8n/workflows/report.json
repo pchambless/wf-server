@@ -1,0 +1,109 @@
+{
+  "name": "report",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -96
+      ],
+      "id": "f0a1d0c0-5789-4b48-9c06-7931e1b9c98c",
+      "name": "Webhook",
+      "webhookId": "6a46ddd3-7a67-4aee-9877-0c243a8d02b7"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16,
+        -192
+      ],
+      "id": "2fc48ef6-0cfb-4f3a-9dc2-d625c478722b",
+      "name": "L99-respond"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html_raw = $json.styled_html || '';\nconst data = Array.isArray($json.data) ? $json.data : [];\nconst groupByField = $json.group_by;\n\nlet html = html_raw;\nconst eachRegex = /\\{\\{#each data\\}\\}([\\s\\S]*?)\\{\\{\\/each\\}\\}/;\nconst match = html.match(eachRegex);\n\nif (match) {\n  const rowTemplate = match[1];\n  const rows = data.map((item, index) => {\n    let row = '';\n    if (groupByField && (index === 0 || item[groupByField] !== data[index-1][groupByField])) {\n      row += `<tr class=\"group-hdr\"><td colspan=\"99\"><strong>${item[groupByField]}</strong></td></tr>`;\n    }\n    row += rowTemplate;\n    for (const [key, value] of Object.entries(item)) {\n      row = row.replace(new RegExp(`\\\\{\\\\{${key}\\\\}\\\\}`, 'g'), value ?? '');\n    }\n    return row;\n  }).join('');\n  html = html.replace(eachRegex, rows);\n}\n\nreturn [{ json: { html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -192
+      ],
+      "id": "9ad89a7f-518f-46a3-92ad-c521a35c57a6",
+      "name": "L03 - html"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "d9acdefd-2d5b-4efc-937c-1e850559a5bb",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        -288
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L03 - html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L99-respond": {
+      "main": [
+        []
+      ]
+    },
+    "L03 - html": {
+      "main": [
+        [
+          {
+            "node": "L99-respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L03 - html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "active": true
+}

@@ -1,0 +1,112 @@
+{
+  "name": "deploy-p02",
+  "nodes": [
+    {
+      "id": "c7df9589-1e02-4ccc-944f-226dfdd1390d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        -624
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deploy-p02",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "0a2279bb-50e1-4c21-bb02-a73f7745e9ad"
+    },
+    {
+      "id": "fe013856-77cd-4b7a-87af-c795f75e18c3",
+      "name": "Run Structure Phase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        320,
+        -536
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM deployment.f_p02_structure($1, $2)",
+        "options": {
+          "queryReplacement": "={{ $json.body?.run_id ?? $json.run_id }},{{ $json.body?.dry_run ?? $json.dry_run ?? true }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "id": "491b0d14-23e8-40e7-b9d3-3b95a2e111c5",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        640,
+        -536
+      ],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    },
+    {
+      "id": "3a3d6f92-6f8b-4bed-8cff-219a2a3cb183",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        -448
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Run Structure Phase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Structure Phase": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Run Structure Phase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

@@ -1,0 +1,208 @@
+{
+  "name": "agile-update",
+  "nodes": [
+    {
+      "id": "918377eb-33f2-4985-b974-c16225ea2554",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agile-update",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "a0abdc23-4033-4aa8-9727-b5077c602f0b"
+    },
+    {
+      "id": "8f804ecd-21ce-4bb6-b707-22065d18c976",
+      "name": "Update agile_cache",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE agile.agile_cache SET\n  page_name = COALESCE($1, page_name),\n  status = COALESCE($2, status),\n  description = COALESCE($3, description),\n  ordr = COALESCE($4::int, ordr),\n  parent_id = COALESCE($5::int, parent_id),\n  data = CASE WHEN $6::text IS NOT NULL THEN $6::jsonb ELSE data END,\n  updated_at = NOW()\nWHERE id = $7::int AND deleted_at IS NULL\nRETURNING *",
+        "options": {
+          "queryReplacement": "={{ [$json.body.page_name || null, $json.body.status || null, $json.body.description || null, $json.body.ordr || null, $json.body.parent_id || null, $json.body.data ? JSON.stringify($json.body.data) : null, $json.body.id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "dba2023e-2682-4292-b545-e759eac4f45a",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        608,
+        -96
+      ],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    },
+    {
+      "id": "a9247512-3a29-44a4-87bd-ebdc31153345",
+      "name": "L03-Errored",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "parameters": {
+        "options": {
+          "ignoreCase": false
+        },
+        "conditions": {
+          "options": {
+            "version": 3,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "e1a2b3c4-2222-4a2b-9c3d-agileupdate02",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.error !== undefined && $json.error !== null }}",
+              "rightValue": ""
+            }
+          ]
+        }
+      },
+      "notes": "Did the update fail? Postgres node has onError=continueRegularOutput so the error travels in the main output instead of stopping the workflow silently."
+    },
+    {
+      "id": "dd08bba4-c50e-4816-863a-6b681070b5d0",
+      "name": "L98-Respond-Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        828,
+        96
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { error: ($('Update agile_cache').item.json.message ?? (typeof $('Update agile_cache').item.json.error === 'string' ? $('Update agile_cache').item.json.error : ($('Update agile_cache').item.json.error?.message ?? $('Update agile_cache').item.json.error?.description ?? JSON.stringify($('Update agile_cache').item.json.error)))), query: ($('Update agile_cache').item.json.error?.description ?? null), input: ($('Webhook').item.json.body ?? null), hint: 'The update failed. This is an error response, not an empty result set.' } }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "notes": "Failed update -> HTTP 500 + Postgres message. Matches server-query's fix (task 253)."
+    },
+    {
+      "id": "bc26653a-0b70-4433-bf15-63fae3cf567c",
+      "name": "L04-Notify-Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "position": [
+        608,
+        96
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "C9XQZL07N",
+          "cachedResultName": "development"
+        },
+        "text": "={{ $workflow.name }} failed: {{ $json.message ?? (typeof $json.error === 'string' ? $json.error : ($json.error?.message ?? $json.error?.description ?? JSON.stringify($json.error))) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
+        "otherOptions": {},
+        "authentication": "oAuth2"
+      },
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tRuM5DU9yKZPXkfk",
+          "name": "Slack account"
+        }
+      },
+      "notes": "Best-effort Slack alert on failure. onError=continueRegularOutput so a Slack/credential problem never blocks the caller's HTTP error response.",
+      "onError": "continueRegularOutput",
+      "webhookId": "e99ad4b6-5ede-4eef-b68b-654e5de6ab2e"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Update agile_cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update agile_cache": {
+      "main": [
+        [
+          {
+            "node": "L03-Errored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L03-Errored": {
+      "main": [
+        [
+          {
+            "node": "L04-Notify-Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L04-Notify-Slack": {
+      "main": [
+        [
+          {
+            "node": "L98-Respond-Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "active": true
+}

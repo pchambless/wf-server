@@ -1,0 +1,140 @@
+{
+  "name": "clearvals",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clearvals",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -352,
+        0
+      ],
+      "id": "e6fe751e-c37a-42b9-9bf4-b99c0b4c1aa7",
+      "name": "Webhook",
+      "webhookId": "e8d06646-4606-48f8-b872-3cc8c4ad9710"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        272,
+        0
+      ],
+      "id": "7a55d75e-94e2-49d3-a43f-3a24973d394b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { email, params, clear_all } = $input.first().json.body;\n\nlet sql;\nif (clear_all) {\n  sql = `\n    UPDATE whatsfresh.context_store \n    SET param_val = NULL, updates = updates + 1, updated_at = now()\n    WHERE email = '${email}'\n  `;\n} else {\n  const list = params.map(p => `'${p}'`).join(', ');\n  sql = `\n    UPDATE whatsfresh.context_store \n    SET param_val = NULL, updates = updates + 1, updated_at = now()\n    WHERE email = '${email}' AND param_name = ANY(ARRAY[${list}])\n  `;\n}\nreturn [{ json: { sql } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "3df3cd7d-2096-4dc6-9f6d-426f7010dc50",
+      "name": "L01",
+      "notesInFlow": true,
+      "notes": "Build clearvals SQL"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        64,
+        0
+      ],
+      "id": "a1514d75-db0c-4cda-a357-19e913fa72c3",
+      "name": "L02",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "upsert param_vals"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "ae9ea2ef-d7c5-4be7-b8af-20ccf426fddb",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        -192
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01": {
+      "main": [
+        [
+          {
+            "node": "L02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L02": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": true
+}

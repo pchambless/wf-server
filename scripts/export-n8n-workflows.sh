@@ -1,80 +1,102 @@
 #!/bin/bash
-# Export production-relevant n8n workflows to wf-server/n8n/workflows/
-# Uses knowledge_base.objects to determine which workflows are production-needed.
-# Requires: curl, jq, psql access
+# Export active n8n workflows from source (dev by default) to
+# wf-server/n8n/workflows/*.json for version control.
+#
+# This is the first leg of git-as-record deploy: export -> commit/review ->
+# import-n8n-workflows.sh reads FROM these files, not from a live API. That
+# makes drift structurally impossible instead of policed by memory - see
+# task 270. Counterpart to import-n8n-workflows.sh.
+#
+# THE DRAFT/PUBLISH TRAP (task 253 addendum 2/3, reconfirmed here): a plain
+# GET /api/v1/workflows/{id} returns the CURRENT DRAFT's nodes/connections,
+# not what is actually live, whenever versionId != activeVersionId. Verified
+# directly on this export: server-shell's draft had an extra responseBody
+# param its published version does not. When they diverge, the true active
+# content only exists in workflow_history keyed on activeVersionId, which
+# the public REST API has no endpoint for - queried via server-query instead
+# (same join f_n8n_diff already uses for its content hash).
+#
+# Each workflow is normalized to {name, nodes, connections, settings, active}
+# before being written - dropping id/versionId/createdAt/updatedAt/tags keeps
+# git diffs meaningful (only real content changes show up) instead of every
+# re-export touching every file on timestamp/version churn alone.
+#
+# The directory is fully regenerated each run (existing *.json removed
+# first) so it never accumulates a stale file for a workflow that was
+# renamed or deactivated - git tracks the deletion like any other change.
+#
+# Requires: curl, jq
+# Requires in .env: N8N_API_KEY, N8N_BASE_URL (source; defaults to dev)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$REPO_DIR/n8n/workflows"
-DB="n8n"
+SERVER_QUERY_URL="https://n8n.whatsfresh.app/webhook/server-query"
 
-# Source .env for API key if not already set
-if [ -z "$N8N_API_KEY" ] && [ -f "$REPO_DIR/.env" ]; then
-  export $(grep -v '^#' "$REPO_DIR/.env" | grep 'N8N_API_KEY\|N8N_BASE_URL' | xargs)
+if [ -f "$REPO_DIR/.env" ]; then
+  export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_(API_KEY|BASE_URL)=' | xargs)
 fi
 
-N8N_URL="${N8N_BASE_URL:-https://n8n.whatsfresh.app}"
-N8N_API_KEY="${N8N_API_KEY:-}"
+SRC_URL="${N8N_BASE_URL:-https://n8n.whatsfresh.app}"
+SRC_KEY="${N8N_API_KEY:?N8N_API_KEY not set in .env}"
 
 mkdir -p "$OUTPUT_DIR"
+rm -f "$OUTPUT_DIR"/*.json
 
-# Get production workflow names from knowledge_base
-echo "[export] Querying knowledge_base for production workflows..."
-WORKFLOWS=$(sudo -u postgres psql -d "$DB" -t -A -c "
-  SELECT DISTINCT o.name
-  FROM knowledge_base.objects o
-  WHERE o.platform = 'n8n' AND o.type = 'workflow'
-  AND (
-    o.id IN (SELECT object_id FROM knowledge_base.step_dependencies)
-    OR o.id IN (SELECT target_object_id FROM knowledge_base.object_dependencies)
-  )
-  AND (o.notes IS NULL OR o.notes->>'tech_debt' NOT LIKE '%dead%')
-  ORDER BY o.name;
-")
+echo "[export] Fetching active workflows from $SRC_URL..."
+ACTIVE=$(curl -s -H "X-N8N-API-KEY: $SRC_KEY" "$SRC_URL/api/v1/workflows?active=true&limit=250")
+IDS=$(echo "$ACTIVE" | jq -r '.data[].id')
 
-if [ -z "$WORKFLOWS" ]; then
-  echo "[export] No production workflows found in knowledge_base"
+if [ -z "$IDS" ]; then
+  echo "[export] No active workflows found - check N8N_BASE_URL/N8N_API_KEY."
   exit 1
 fi
 
-echo "[export] Found production workflows:"
-echo "$WORKFLOWS" | sed 's/^/  - /'
-
-# Export each workflow
 EXPORTED=0
 FAILED=0
+FROM_HISTORY=0
 
-for WF_NAME in $WORKFLOWS; do
-  # Search for workflow by name via n8n API
-  RESPONSE=$(curl -s -H "X-N8N-API-KEY: $N8N_API_KEY" \
-    "$N8N_URL/api/v1/workflows?name=$WF_NAME&limit=1" 2>/dev/null)
+for WF_ID in $IDS; do
+  WF_JSON=$(curl -s -H "X-N8N-API-KEY: $SRC_KEY" "$SRC_URL/api/v1/workflows/$WF_ID")
+  WF_NAME=$(echo "$WF_JSON" | jq -r '.name // empty')
 
-  WF_ID=$(echo "$RESPONSE" | jq -r '.data[0].id // empty' 2>/dev/null)
-
-  if [ -z "$WF_ID" ]; then
-    echo "[export] WARN: Could not find workflow '$WF_NAME' via API"
+  if [ -z "$WF_NAME" ]; then
+    echo "[export] WARN: could not fetch workflow id=$WF_ID"
     FAILED=$((FAILED + 1))
     continue
   fi
 
-  # Get full workflow details
-  WF_JSON=$(curl -s -H "X-N8N-API-KEY: $N8N_API_KEY" \
-    "$N8N_URL/api/v1/workflows/$WF_ID" 2>/dev/null)
+  VERSION_ID=$(echo "$WF_JSON" | jq -r '.versionId // empty')
+  ACTIVE_VERSION_ID=$(echo "$WF_JSON" | jq -r '.activeVersionId // empty')
 
-  if [ -z "$WF_JSON" ]; then
-    echo "[export] WARN: Could not export workflow '$WF_NAME' (id=$WF_ID)"
-    FAILED=$((FAILED + 1))
-    continue
+  if [ -n "$ACTIVE_VERSION_ID" ] && [ "$VERSION_ID" != "$ACTIVE_VERSION_ID" ]; then
+    echo "[export] $WF_NAME has an unpublished draft - pulling true active content from workflow_history"
+    HIST_QUERY=$(jq -n --arg wid "$WF_ID" --arg vid "$ACTIVE_VERSION_ID" '
+      ($wid | gsub("\u0027"; "\u0027\u0027")) as $w |
+      ($vid | gsub("\u0027"; "\u0027\u0027")) as $v |
+      {query: ("SELECT nodes, connections FROM workflow_history WHERE \"workflowId\" = \u0027\($w)\u0027 AND \"versionId\" = \u0027\($v)\u0027"), params: {}, source: "export-n8n-workflows"}
+    ')
+    HIST_ROW=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -d "$HIST_QUERY")
+    HIST_NODES=$(echo "$HIST_ROW" | jq -c '.[0].nodes // empty')
+    HIST_CONNECTIONS=$(echo "$HIST_ROW" | jq -c '.[0].connections // empty')
+
+    if [ -z "$HIST_NODES" ] || [ -z "$HIST_CONNECTIONS" ]; then
+      echo "[export] WARN: $WF_NAME - could not read activeVersionId $ACTIVE_VERSION_ID from workflow_history, falling back to draft (MAY BE WRONG)"
+    else
+      WF_JSON=$(echo "$WF_JSON" | jq --argjson n "$HIST_NODES" --argjson c "$HIST_CONNECTIONS" '.nodes = $n | .connections = $c')
+      FROM_HISTORY=$((FROM_HISTORY + 1))
+    fi
   fi
 
-  # Save to file
-  echo "$WF_JSON" | jq '.' > "$OUTPUT_DIR/${WF_NAME}.json"
+  echo "$WF_JSON" | jq '{name, nodes, connections, settings, active}' \
+    > "$OUTPUT_DIR/${WF_NAME}.json"
   echo "[export] Exported: $WF_NAME -> n8n/workflows/${WF_NAME}.json"
   EXPORTED=$((EXPORTED + 1))
 done
 
 echo ""
-echo "[export] Done. Exported: $EXPORTED, Failed: $FAILED"
+echo "[export] Done. Exported: $EXPORTED (from workflow_history: $FROM_HISTORY), Failed: $FAILED"
 echo "[export] Output: $OUTPUT_DIR/"
+echo "[export] Review the diff, then commit - this is the record import-n8n-workflows.sh deploys from."

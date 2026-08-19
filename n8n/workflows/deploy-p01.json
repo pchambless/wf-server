@@ -1,0 +1,112 @@
+{
+  "name": "deploy-p01",
+  "nodes": [
+    {
+      "id": "3b21e92b-e878-4a45-b213-717142b561a6",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        -624
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deploy-p01",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "a8e6c149-983d-4b32-aed2-e832d4eb1931"
+    },
+    {
+      "id": "b6862584-e417-438e-aa1d-9cf1d3a1f677",
+      "name": "Plan Deployment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        320,
+        -536
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM deployment.f_p01_plan($1, $2, $3, $4, $5)",
+        "options": {
+          "queryReplacement": "={{ $json.body?.environment || $json.environment }},{{ $json.body?.pipeline || $json.pipeline }},{{ $json.body?.version || $json.version || $now.toISO() }},{{ $json.body?.git_commit || $json.git_commit || \"none\" }},{{ $json.body?.created_by || $json.created_by || \"n8n\" }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "id": "9d3dc6af-174c-4a82-8da2-7e916bd33c9d",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        640,
+        -536
+      ],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    },
+    {
+      "id": "fdb7cde7-c45d-4909-8d0a-47ea4c697d61",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        -448
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Plan Deployment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Deployment": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Plan Deployment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

@@ -1,0 +1,112 @@
+{
+  "name": "deploy-p03",
+  "nodes": [
+    {
+      "id": "72a96878-3076-4def-8f1d-ab33a22b6d60",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -128,
+        -624
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deploy-p03",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "1ea6491b-c6b5-4147-a767-237f5f91ef85"
+    },
+    {
+      "id": "38503633-e4ef-43d6-ba31-f750e059de7c",
+      "name": "Run Data Phase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        320,
+        -536
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM deployment.f_p03_data($1, $2, $3)",
+        "options": {
+          "queryReplacement": "={{ $json.body?.run_id ?? $json.run_id }},{{ $json.body?.dry_run ?? $json.dry_run ?? true }},{{ $json.body?.force_refresh ?? $json.force_refresh ?? false }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "id": "466502f8-f0af-4d61-98df-bc771a338577",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        640,
+        -536
+      ],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    },
+    {
+      "id": "2a5a46c7-cfa1-4748-98c6-42d6acc65dc7",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        -448
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Run Data Phase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Data Phase": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Run Data Phase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

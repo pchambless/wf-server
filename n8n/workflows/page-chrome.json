@@ -1,0 +1,121 @@
+{
+  "name": "page-chrome",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "page-chrome",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8934946a-4115-4765-90c8-d7d0e51b6bf8",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "2bf4a509-2c31-4be7-b60e-5d558d9af3b0"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', false))\nSELECT whatsfresh.f_account(whatsfresh.c_getval('account_id')::int) as account_name,\n       whatsfresh.c_getval('first_name') as first_name,\n       vp.page_title\nFROM _ctx, studio.vw_pages vp\nWHERE page_id = whatsfresh.c_getval('page_id')::int",
+        "options": {}
+      },
+      "id": "302b1620-09ad-48a6-9b27-6feef1a9695c",
+      "name": "Resolve Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Resolve Context').first().json;\nconst pageTitle = ctx.page_title || 'WhatsFresh';\nconst accountName = ctx.account_name || '';\nconst firstName = ctx.first_name || '';\n\nconst actions = {\n  click: [\n    { action: 'clearvals', context_keys: ['account_id', 'first_name'] },\n    { action: 'redirect', redirectUrl: '/login' }\n  ]\n};\n\nconst html = `<div class=\"appbar\" id=\"appbar\" data-actions='${JSON.stringify(actions)}'>`\n  + `<img src=\"/wf-icon.png\" alt=\"WhatsFresh\" class=\"wf-icon\">`\n  + `<span class=\"title\">${pageTitle}</span>`\n  + (firstName ? `<span class=\"first-name\">${firstName}</span>` : '')\n  + (accountName ? `<span class=\"account-name\">${accountName}</span>` : '')\n  + `<button id=\"logout_btn\" class=\"logout-btn\" data-trigger=\"click\">Log Out</button>`\n  + `</div>`;\n\nreturn [{ json: { html } }];"
+      },
+      "id": "bca3ed97-1ba3-4e9a-8b2b-5215acbd8921",
+      "name": "Build Chrome HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "be75833c-812e-445c-abef-9372ef1f76eb",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Resolve Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Context": {
+      "main": [
+        [
+          {
+            "node": "Build Chrome HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Chrome HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "active": true
+}

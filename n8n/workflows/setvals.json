@@ -1,0 +1,140 @@
+{
+  "name": "setvals",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "setvals",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -352,
+        0
+      ],
+      "id": "d3d8eb9e-82e9-47e5-acd3-3aa49a418cb4",
+      "name": "Webhook",
+      "webhookId": "1fba7a78-310e-4293-b965-55d61ec3cedf"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        272,
+        0
+      ],
+      "id": "19c8102e-cbd5-448b-a8e9-cdbf54b1c2c2",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { email, vals } = $input.first().json.body;\nconst rows = vals.map(v => \n  `('${email}', '${v.param_name}', '${v.param_val}', 1, now(), '${email}')`\n).join(',\\n');\n\nconst sql = `\n  INSERT INTO whatsfresh.context_store (email, param_name, param_val, updates, created_at, created_by)\n  VALUES ${rows}\n  ON CONFLICT (email, param_name)\n  DO UPDATE SET \n    param_val = EXCLUDED.param_val,\n    updates = context_store.updates + 1,\n    updated_at = now(),\n    updated_by = EXCLUDED.created_by\n`;\nreturn [{ json: { sql } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "1a5c3745-9ab3-45fe-89e9-c837bb74fff3",
+      "name": "L01",
+      "notesInFlow": true,
+      "notes": "Build Multi-insert SQL"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        64,
+        0
+      ],
+      "id": "7493d87a-cd26-46e7-8202-147796ff58bc",
+      "name": "L02",
+      "notesInFlow": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "notes": "upsert param_vals"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "663734f9-4a68-40d7-bfe9-699518d66c6b",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        -160
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01": {
+      "main": [
+        [
+          {
+            "node": "L02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L02": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": true
+}

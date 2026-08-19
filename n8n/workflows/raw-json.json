@@ -1,0 +1,52 @@
+{
+  "name": "raw-json",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "33cf8646-d6b2-4e8d-9cc5-b8aa8c281c6f",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $json.data.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -288
+      ],
+      "id": "0d2e1a10-2f6f-4e7f-ae82-627eb120b18f",
+      "name": "L01",
+      "notesInFlow": true,
+      "notes": "Return the JSON rows."
+    }
+  ],
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "active": true
+}

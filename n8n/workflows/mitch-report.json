@@ -1,0 +1,109 @@
+{
+  "name": "mitch-report",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bd1dbdfa-2224-4f72-85b5-abc170597933",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -96
+      ],
+      "id": "5e480cdb-2ada-4d02-a2d6-0d4fd1803960",
+      "name": "Webhook",
+      "webhookId": "bd1dbdfa-2224-4f72-85b5-abc170597933"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16,
+        -192
+      ],
+      "id": "a79b3e61-5bfe-413e-a3ee-5b0d1314a5b4",
+      "name": "L99-respond"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "b9a967f5-3648-4e12-827b-752d706de7a6",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const html_raw = $json.styled_html || '';\nconst data = Array.isArray($json.data) ? $json.data : [];\nconst groupByField = $json.group_by;\n\nlet html = html_raw;\nconst eachRegex = /\\{\\{#each data\\}\\}([\\s\\S]*?)\\{\\{\\/each\\}\\}/;\nconst match = html.match(eachRegex);\n\nif (match) {\n  const rowTemplate = match[1];\n  const rows = data.map((item, index) => {\n    let row = '';\n    if (groupByField && (index === 0 || item[groupByField] !== data[index-1][groupByField])) {\n      row += `<tr class=\"group-hdr\"><td colspan=\"99\"><strong>${item[groupByField]}</strong></td></tr>`;\n    }\n    row += rowTemplate;\n    for (const [key, value] of Object.entries(item)) {\n      row = row.replace(new RegExp(`\\\\{\\\\{${key}\\\\}\\\\}`, 'g'), value ?? '');\n    }\n    return row;\n  }).join('');\n  html = html.replace(eachRegex, rows);\n}\n\nreturn [{ json: { html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -192
+      ],
+      "id": "4741b804-a29d-42c7-8ac5-932c040e23a4",
+      "name": "L01 - html"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L01 - html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L99-respond": {
+      "main": [
+        []
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L01 - html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01 - html": {
+      "main": [
+        [
+          {
+            "node": "L99-respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "active": true
+}

@@ -1,0 +1,51 @@
+{
+  "name": "form-selects",
+  "nodes": [
+    {
+      "id": "ca882af1-6d39-4478-a9c1-db24cc61db8d",
+      "name": "When Called",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "c6828e38-83bf-47a8-b1a2-bef226a8ac1e",
+      "name": "Enrich Form Selects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const items = $input.all();\nconst { data, html } = items[0].json;\n\nif (!html || !Array.isArray(data) || data.length === 0) {\n  return [{ json: { data, html } }];\n}\n\n// Find all {{{token}}} inside select-field class divs\nconst selectFieldRegex = /select-field[^>]*>[\\s\\S]*?\\{\\{\\{([a-zA-Z0-9_]+)\\}\\}\\}/g;\nconst selectTemplates = [];\nlet match;\nwhile ((match = selectFieldRegex.exec(html)) !== null) {\n  selectTemplates.push(match[1]);\n}\n\nif (selectTemplates.length === 0) {\n  return [{ json: { data, html } }];\n}\n\nconst record = data[0];\n\nfor (const templateName of selectTemplates) {\n  // Strip f_ prefix — form templates reference f_*_dd but base templates use *_dd\n  const baseTemplateName = templateName.startsWith('f_') ? templateName.slice(2) : templateName;\n\n  const hydrateResult = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://n8n.whatsfresh.app/webhook/hydrate-guide',\n    body: {\n      template_name: baseTemplateName,\n      source: 'wf-server',\n      format: 'html'\n    },\n    json: true\n  });\n\n  let selectHtml = '';\n  if (typeof hydrateResult === 'string') {\n    selectHtml = hydrateResult;\n  } else if (hydrateResult?.html) {\n    selectHtml = hydrateResult.html;\n  } else if (Array.isArray(hydrateResult) && hydrateResult[0]?.html) {\n    selectHtml = hydrateResult[0].html;\n  }\n\n  // Store under original token name so template replacement works\n  record[templateName] = selectHtml;\n}\n\nreturn [{ json: { data: [record], html } }];"
+      }
+    }
+  ],
+  "connections": {
+    "When Called": {
+      "main": [
+        [
+          {
+            "node": "Enrich Form Selects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

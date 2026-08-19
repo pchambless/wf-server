@@ -1,0 +1,144 @@
+{
+  "name": "etl-nightly",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -512,
+        0
+      ],
+      "id": "a72bfc1e-e0bc-44cd-9aa9-051ff1455e79",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hHApSKfp_kzjXc7bSIZLq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/hHApSKfp_kzjXc7bSIZLq",
+          "cachedResultName": "etl-p01"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "249d9046-e1d4-4cae-92fe-833a6f82ccbd",
+      "name": "etl-p01",
+      "notesInFlow": true,
+      "notes": "etl-P01"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "bpNSvgKMkId5Uacj",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bpNSvgKMkId5Uacj",
+          "cachedResultName": "etl-p02"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "5ba9cf76-b8ab-4f45-949b-6aa3093a1c37",
+      "name": "etl-p02",
+      "notesInFlow": true,
+      "notes": "etl-P02"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -256
+      ],
+      "id": "543bb5a6-2215-4bd2-a213-6c0eacebbfc2",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "etl-p01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "etl-p01": {
+      "main": [
+        [
+          {
+            "node": "etl-p02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "etl-p02": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "etl-p01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": true
+}

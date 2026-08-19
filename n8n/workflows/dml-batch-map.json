@@ -1,0 +1,121 @@
+{
+  "name": "dml-batch-map",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dml-batch-map",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2460bdf0-6d7d-4420-9c4b-828aebf3202b",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "45e268e9-6ee0-4bcd-8022-28898c8bb3e9"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body || $json;\nconst { mode, event_type, map_id, user } = body;\n\nconst safeUser = (user || 'system').replace(/'/g, \"''\");\nconst safeEventType = (event_type || 'Shop->Prod').replace(/'/g, \"''\");\n\nlet sql;\nif (mode === 'INSERT') {\n  sql = `WITH _ctx AS (SELECT set_config('app.current_email', '${safeUser}', false))\nINSERT INTO whatsfresh.lineage (account_id, event_type, source_batch_id, target_batch_id, created_at, created_by)\nSELECT\n  whatsfresh.c_getval('account_id')::integer,\n  '${safeEventType}',\n  whatsfresh.c_getval('source_batch_id')::integer,\n  whatsfresh.c_getval('target_batch_id')::integer,\n  now(),\n  whatsfresh.c_getval('firstName')\nFROM _ctx\nRETURNING jsonb_build_object('success', true, 'mode', 'insert', 'data', to_jsonb(lineage.*)) as result`;\n} else if (mode === 'DELETE') {\n  if (!map_id) {\n    return { json: { result: JSON.stringify({ success: false, error: 'DELETE requires map_id' }) } };\n  }\n  sql = `WITH _ctx AS (SELECT set_config('app.current_email', '${safeUser}', false))\nDELETE FROM whatsfresh.lineage\nWHERE id = ${parseInt(map_id)}\nRETURNING jsonb_build_object('success', true, 'mode', 'hard-delete', 'data', to_jsonb(lineage.*)) as result`;\n} else {\n  return { json: { result: JSON.stringify({ success: false, error: 'Invalid mode: ' + mode }) } };\n}\n\nreturn { json: { sql } };"
+      },
+      "id": "2e1de148-6051-43fb-822e-34c91e4deeb0",
+      "name": "L01 - Build SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {}
+      },
+      "id": "01ee2086-191d-44ea-9b8d-148262c00fb9",
+      "name": "L02 - Execute",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "064fba0a-af7d-4368-84da-a9450be1df29",
+      "name": "L99 - Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L01 - Build SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01 - Build SQL": {
+      "main": [
+        [
+          {
+            "node": "L02 - Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L02 - Execute": {
+      "main": [
+        [
+          {
+            "node": "L99 - Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "L99 - Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "active": true
+}

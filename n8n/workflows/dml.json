@@ -1,0 +1,145 @@
+{
+  "name": "dml",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dml",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adbc76ef-4a40-4d19-894c-18b6a82b18bb",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "66beb42a-5875-42f7-9e9e-31c46de1fb36"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body || $json;\nconst { page_id, mode, user } = body;\n\n// Collect f_ prefixed fields and strip prefix\nconst p_data = {};\nlet pk_val = null;\n\nfor (const [key, value] of Object.entries(body)) {\n  if (key === 'f_id' || key === 'id') {\n    pk_val = value ? parseInt(value, 10) : null;\n    continue;\n  }\n  if (key.startsWith('f_')) {\n    const colName = key.slice(2);\n    p_data[colName] = value === '' ? null : value;\n  }\n}\n\n// For DELETE mode, pk_val may come from body.pk_val\nif (mode === 'DELETE' && !pk_val && body.pk_val) {\n  pk_val = parseInt(body.pk_val, 10);\n}\n\n// Build the SQL query - set session email first so c_getval() works\nconst dataJson = JSON.stringify(p_data).replace(/'/g, \"''\");\nconst pkExpr = pk_val === null ? 'NULL::integer' : pk_val;\nconst safeUser = (user || 'system').replace(/'/g, \"''\");\nconst sql = `WITH _ctx AS (SELECT set_config('app.current_email', '${safeUser}', false)) SELECT studio.dml(${parseInt(page_id, 10)}, '${mode || 'INSERT'}', '${dataJson}'::jsonb, ${pkExpr}, '${safeUser}') as result FROM _ctx`;\n\nreturn { json: { sql } };"
+      },
+      "id": "25945e6c-a4dd-4f71-a661-444184bc4d0b",
+      "name": "L01 - Build payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.sql }}",
+        "options": {}
+      },
+      "id": "6f3cc31b-b0fd-4528-b46d-2f9fd190d5b7",
+      "name": "L02 - Execute DML",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        96
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "76b83cae-f295-444a-b1e7-b0dfff3edd7c",
+      "name": "L99 - Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "ce8225bd-992c-4dc4-89d4-d21e402d7d13",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L01 - Build payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01 - Build payload": {
+      "main": [
+        [
+          {
+            "node": "L02 - Execute DML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L02 - Execute DML": {
+      "main": [
+        [
+          {
+            "node": "L99 - Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "L99 - Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L01 - Build payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "binaryMode": "separate"
+  },
+  "active": true
+}

@@ -1,0 +1,54 @@
+{
+  "name": "agile-json",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "f7117695-f069-44f6-9aad-4f8e02c3b7ff",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json.data || [];\nreturn data.length ? data.map(item => ({ json: item })) : [{ json: {} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -288
+      ],
+      "id": "2bff4dcd-50b7-46c3-a7b9-900a6ce49e2e",
+      "name": "L01",
+      "notesInFlow": true,
+      "notes": "Return the JSON rows."
+    }
+  ],
+  "connections": {
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": true
+}

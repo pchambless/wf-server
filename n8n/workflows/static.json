@@ -1,0 +1,107 @@
+{
+  "name": "static",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "static",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "5dab0b3a-bc39-430c-9c74-aa86c270d163",
+      "name": "Webhook",
+      "webhookId": "938d24d8-a620-4936-9360-f352e87a42b5"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.styled_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        96
+      ],
+      "id": "11c61a5f-b56f-413b-93b2-626815e44ded",
+      "name": "L99-respond"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "f45e37f0-169a-4daa-ba71-6c84b63141b4",
+      "name": "When Called by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { html: $json.styled_html };\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ],
+      "id": "bab1740c-e2fb-4dba-a332-6ce84cd5911e",
+      "name": "L03",
+      "notesInFlow": true,
+      "notes": "html or json (magic)"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L03",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "L03",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L03": {
+      "main": [
+        [
+          {
+            "node": "L99-respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "active": true
+}

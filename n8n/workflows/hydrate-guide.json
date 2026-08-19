@@ -1,0 +1,221 @@
+{
+  "name": "hydrate-guide",
+  "nodes": [
+    {
+      "id": "4b134b5b-65c1-4b95-b700-9cd9e474bf6e",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hydrate-guide",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "da858255-850a-4969-833d-0c338add248b"
+    },
+    {
+      "id": "f42ba27f-377f-4711-8a07-acfa0b625c7d",
+      "name": "L00a",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{$json.body.email}}', false))\nselect a.id,\n    a.page_id,\n   a.platform,\n    a.workflow,\n    studio.f_workflow_id(a.workflow) as workflow_id,\n    a.template_name, \n\ta.title, \n\ta.description, \n\ta.hydrate, \n\ta.html,\n    a.group_by, \n\ta.css\nfrom _ctx, studio.tf_template_router('{{$json.body.source }}',\n      '{{$json.body.template_name }}') a",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "id": "8838b1c6-2b31-4f87-aeaa-f6f7befaf7ac",
+      "name": "L01b",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', false))\nselect \n'{{ $json.template_name }}' as template_name,\n'{{ $json.page_id }}' as page_id, \n{{ $json.group_by ? \"'\" + $json.group_by + \"'\" : \"null\" }} as group_by,\nstudio.f_workflow_id('{{ $json.workflow }}') workflow_id,\nstudio.tf_html_styled('{{ $json.template_name }}') styled_html\nFROM _ctx",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "id": "0f97ef99-41cd-4da4-ae73-70307aa3ede9",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "template_name",
+        "options": {}
+      }
+    },
+    {
+      "id": "c99d7810-d55b-4392-99b5-71807b965d7d",
+      "name": "L01a",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', false))\nSELECT '{{ $json.template_name }}' as template_name,\n  json_agg(row_to_json(t)) as data \nFROM _ctx, ({{ $json.hydrate }}) t\n",
+        "options": {
+          "queryReplacement": "=p_id"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      }
+    },
+    {
+      "id": "99f960e8-5dc1-49f2-a6cc-27464a8bc6be",
+      "name": "L02",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflow_id }}",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "cbfabcba-7a74-415b-8f9e-9c403d731d90",
+      "name": "L99-respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        96
+      ],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L00a",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L00a": {
+      "main": [
+        [
+          {
+            "node": "L01b",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "L01a",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01b": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "L02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01a": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "L02": {
+      "main": [
+        [
+          {
+            "node": "L99-respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "active": true
+}
