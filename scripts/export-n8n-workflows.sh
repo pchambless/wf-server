@@ -1,6 +1,17 @@
 #!/bin/bash
-# Export active n8n workflows from source (dev by default) to
+# Export prod-scoped n8n workflows from source (dev by default) to
 # wf-server/n8n/workflows/*.json for version control.
+#
+# SCOPE, not just "active": which workflows are production-relevant is a
+# deliberate decision, not something "active=true" can answer on its own -
+# dev's n8n also hosts agent tooling (Agile, Agents folders) and unrelated
+# projects (Mitch, TMG) on the same instance, all of which can be active
+# without belonging in prod. The scope is n8n folder membership: a workflow
+# is exported if it's active AND sits in a folder prefixed 'wf-'
+# (wf-controllers, wf-hydrate, ...), via knowledge_base.tf_n8n_workflows().
+# Folder assignment is a deliberate, human-made choice - same spirit as
+# object_policy for database objects (task 213) - not inferred from a proxy
+# signal. See task 270 discussion 2026-08-19 for how this was arrived at.
 #
 # This is the first leg of git-as-record deploy: export -> commit/review ->
 # import-n8n-workflows.sh reads FROM these files, not from a live API. That
@@ -45,14 +56,17 @@ SRC_KEY="${N8N_API_KEY:?N8N_API_KEY not set in .env}"
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_DIR"/*.json
 
-echo "[export] Fetching active workflows from $SRC_URL..."
-ACTIVE=$(curl -s -H "X-N8N-API-KEY: $SRC_KEY" "$SRC_URL/api/v1/workflows?active=true&limit=250")
-IDS=$(echo "$ACTIVE" | jq -r '.data[].id')
+echo "[export] Discovering wf-* scoped workflows via knowledge_base.tf_n8n_workflows()..."
+SCOPE_QUERY=$(jq -n '{query: "SELECT id, name, folder_name FROM knowledge_base.tf_n8n_workflows() WHERE folder_name LIKE '"'"'wf-%'"'"' ORDER BY folder_name, name", params: {}, source: "export-n8n-workflows"}')
+SCOPE_ROWS=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -d "$SCOPE_QUERY")
+IDS=$(echo "$SCOPE_ROWS" | jq -r '.[].id // empty')
 
 if [ -z "$IDS" ]; then
-  echo "[export] No active workflows found - check N8N_BASE_URL/N8N_API_KEY."
+  echo "[export] No wf-* scoped workflows found - check folder assignment or knowledge_base.tf_n8n_workflows()."
   exit 1
 fi
+
+echo "$SCOPE_ROWS" | jq -r '.[] | "  - [\(.folder_name)] \(.name)"'
 
 EXPORTED=0
 FAILED=0
