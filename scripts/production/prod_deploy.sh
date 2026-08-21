@@ -25,6 +25,13 @@
 #   bash /root/wf-server/scripts/production/prod_deploy.sh
 #   or from dev machine:
 #   ssh root@<prod-ip> 'bash /root/wf-server/scripts/production/prod_deploy.sh'
+#   --worker is internal, not for direct use.
+#
+# Task 288: install/restart/verify runs as one deploy_code step under
+# scripts/deploy-lib/run_step.sh, which re-invokes this script with --worker
+# to do it. That is what creates deployment.deployment_runs +
+# deployment_run_steps rows for the wf-server pipeline - previously code
+# deploys to prod recorded nothing at all in the deployment schema.
 #
 ################################################################################
 
@@ -56,6 +63,13 @@ log_section() {
 # Configuration
 WF_SERVER_DIR="/root/wf-server"
 
+WORKER_MODE=0
+if [ "$1" = "--worker" ]; then
+    WORKER_MODE=1
+fi
+
+if [ "$WORKER_MODE" -eq 0 ]; then
+
 ################################################################################
 # Check prerequisites
 ################################################################################
@@ -85,6 +99,34 @@ git checkout main
 git pull origin main
 
 log_info "Code updated to latest main branch"
+
+################################################################################
+# Hand off to a worker invocation of this same script under run_step.sh
+# (task 288), so the install/restart/verify work below is logged as one
+# deploy_code step in deployment.deployment_run_steps - step_name matches
+# deployment.deploy_steps.step_key id 9 exactly. Does not pin a sha - this
+# still deploys whatever "git pull origin main" resolved to above, that is
+# a separate open decision (task 248).
+################################################################################
+GIT_SHA=$(git rev-parse HEAD)
+RUN_ID=$("$WF_SERVER_DIR/scripts/deploy-lib/start_run.sh" wf-server prod "$GIT_SHA" prod_deploy.sh)
+log_info "deployment_run $RUN_ID started (sha $GIT_SHA)"
+
+set +e
+"$WF_SERVER_DIR/scripts/deploy-lib/run_step.sh" "$RUN_ID" deploy_code -- "$WF_SERVER_DIR/scripts/production/prod_deploy.sh" --worker
+STEP_EXIT=$?
+set -e
+
+if [ "$STEP_EXIT" -eq 0 ]; then
+    "$WF_SERVER_DIR/scripts/deploy-lib/finish_run.sh" "$RUN_ID"
+else
+    log_error "deployment_run $RUN_ID failed - see deployment.deployment_run_steps"
+fi
+exit "$STEP_EXIT"
+
+fi
+
+cd "$WF_SERVER_DIR"
 
 ################################################################################
 # 2. Install/update dependencies
