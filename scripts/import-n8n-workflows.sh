@@ -20,16 +20,25 @@
 #   marks needs_deploy=true.
 #   With a workflow name: imports just that one, regardless of diff state -
 #   for testing a single workflow before running the full batch.
+#   --worker is internal, not for direct use - see the deployment_run_steps
+#   note below.
 #
 # Requires: curl, jq, git
 # Requires in .env: N8N_PROD_API_KEY, N8N_PROD_BASE_URL (target/prod)
+#
+# Task 285/287: the actual import work runs as one deploy_n8n step under
+# scripts/deploy-lib/run_step.sh, which re-invokes this same script with
+# --worker to do it. That is what creates deployment.deployment_runs +
+# deployment_run_steps rows - previously this script wrote only to
+# deployment.deployments directly and n8n had zero run rows despite
+# deploy_steps step 8 claiming coverage.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 WORKFLOWS_DIR="$REPO_DIR/n8n/workflows"
-ONLY_WF="$1"
+SELF="$SCRIPT_DIR/import-n8n-workflows.sh"
 
 if [ -f "$REPO_DIR/.env" ]; then
   export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_(PROD_API_KEY|PROD_BASE_URL)=' | xargs)
@@ -45,27 +54,54 @@ SRC_CRED_NAME="postgres-cred"
 TGT_CRED_ID="cqQBJ3dwZJrFkefC"
 TGT_CRED_NAME="Postgres Prod"
 
-if [ -n "$ONLY_WF" ]; then
-  NEEDED="$ONLY_WF"
-  echo "[import] Single-workflow mode: $ONLY_WF"
+WORKER_MODE=0
+if [ "$1" = "--worker" ]; then
+  WORKER_MODE=1
+  NEEDED="$2"
 else
-  echo "[import] Checking deployment.f_n8n_diff('prod') for workflows needing deploy..."
-  DIFF_PAYLOAD=$(jq -n --arg q "SELECT workflow_name FROM deployment.f_n8n_diff('prod') WHERE needs_deploy = true" \
-    '{query: $q, params: {}, source: "direct"}')
-  NEEDED=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
-    -H "Content-Type: application/json" -d "$DIFF_PAYLOAD" | jq -r '.[].workflow_name')
+  ONLY_WF="$1"
+  if [ -n "$ONLY_WF" ]; then
+    NEEDED="$ONLY_WF"
+    echo "[import] Single-workflow mode: $ONLY_WF"
+  else
+    echo "[import] Checking deployment.f_n8n_diff('prod') for workflows needing deploy..."
+    DIFF_PAYLOAD=$(jq -n --arg q "SELECT workflow_name FROM deployment.f_n8n_diff('prod') WHERE needs_deploy = true" \
+      '{query: $q, params: {}, source: "direct"}')
+    NEEDED=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
+      -H "Content-Type: application/json" -d "$DIFF_PAYLOAD" | jq -r '.[].workflow_name')
 
-  if [ -z "$NEEDED" ]; then
-    echo "[import] Nothing to do - prod already in sync."
-    exit 0
+    if [ -z "$NEEDED" ]; then
+      echo "[import] Nothing to do - prod already in sync."
+      exit 0
+    fi
+    echo "[import] Workflows needing deploy:"
+    echo "$NEEDED" | sed 's/^/  - /'
   fi
-  echo "[import] Workflows needing deploy:"
-  echo "$NEEDED" | sed 's/^/  - /'
+
+  # Diff resolved (or single-workflow mode chosen) - hand off to a worker
+  # invocation of this same script wrapped in run_step.sh, so the actual
+  # import work is logged as one deploy_n8n step rather than running
+  # untracked. NEEDED is passed through explicitly rather than letting the
+  # worker recompute the diff, so both invocations act on the same list.
+  GIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
+  RUN_ID=$("$SCRIPT_DIR/deploy-lib/start_run.sh" n8n prod "$GIT_SHA" import-n8n-workflows.sh)
+  echo "[import] deployment_run $RUN_ID started"
+
+  set +e
+  "$SCRIPT_DIR/deploy-lib/run_step.sh" "$RUN_ID" deploy_n8n -- "$SELF" --worker "$NEEDED"
+  STEP_EXIT=$?
+  set -e
+
+  if [ "$STEP_EXIT" -eq 0 ]; then
+    "$SCRIPT_DIR/deploy-lib/finish_run.sh" "$RUN_ID"
+  else
+    echo "[import] deployment_run $RUN_ID failed - see deployment.deployment_run_steps"
+  fi
+  exit "$STEP_EXIT"
 fi
 
 IMPORTED=0
 FAILED=0
-IMPORTED_NAMES=()
 
 for WF_NAME in $NEEDED; do
   WF_FILE="$WORKFLOWS_DIR/${WF_NAME}.json"
@@ -151,21 +187,16 @@ for WF_NAME in $NEEDED; do
 
   echo "[import] $ACTION: $WF_NAME -> $TGT_ID (active=$SRC_ACTIVE)"
   IMPORTED=$((IMPORTED+1))
-  IMPORTED_NAMES+=("$WF_NAME")
 done
 
 echo ""
 echo "[import] Done. Imported: $IMPORTED, Failed: $FAILED"
 
-if [ "$IMPORTED" -gt 0 ]; then
-  GIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
-  NAMES_JSON=$(printf '%s\n' "${IMPORTED_NAMES[@]}" | jq -R . | jq -s .)
-  DEPLOY_PAYLOAD=$(jq -n --arg sha "$GIT_SHA" --argjson names "$NAMES_JSON" --argjson failed "$FAILED" '
-    (({imported: $names, failed: $failed} | tojson) | gsub("\u0027"; "\u0027\u0027")) as $notes_esc |
-    ($sha | gsub("\u0027"; "\u0027\u0027")) as $sha_esc |
-    {query: ("INSERT INTO deployment.deployments (environment_id, pipeline_id, version, git_commit, notes, created_by) VALUES (2, 3, \u0027\($sha_esc)\u0027, \u0027\($sha_esc)\u0027, \u0027\($notes_esc)\u0027::jsonb, \u0027import-n8n-workflows.sh\u0027)"),
-     params: {}, source: "import-n8n-workflows"}
-  ')
-  curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query -H "Content-Type: application/json" -d "$DEPLOY_PAYLOAD" > /dev/null
-  echo "[import] Recorded deployment.deployments: prod, n8n pipeline, sha $GIT_SHA"
+# Worker mode only reaches here - the outer (non-worker) branch above always
+# exits before this point. Exit status is what run_step.sh reads to decide
+# success vs error for this deploy_n8n step; deployment.deployments and
+# deployment_runs are already recorded by start_run.sh in the outer branch,
+# nothing left to write here.
+if [ "$FAILED" -gt 0 ]; then
+  exit 1
 fi
