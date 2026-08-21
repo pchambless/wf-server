@@ -158,10 +158,12 @@ fi
 ################################################################################
 log_section "Verifying wf-server"
 
+HEALTH_STATUS="ok"
 if curl -f http://localhost:3001/health > /dev/null 2>&1; then
     log_info "wf-server health check: ✓"
 else
     log_warn "wf-server health check failed (may still be starting)"
+    HEALTH_STATUS="check manually"
 fi
 
 ################################################################################
@@ -175,3 +177,10 @@ log_info ""
 log_info "Logs: journalctl -u wf-server -f"
 log_info "URL:  https://v2.whatsfresh.app"
 log_info ""
+
+# Genuinely last line printed in worker mode - run_step.sh (task 285) reads
+# the last non-blank output line as the deployment_run_steps.detail summary.
+# The decorative Logs/URL footer above would otherwise win that slot instead
+# of anything meaningful (found 2026-08-21 running this for real against
+# prod - detail came back as a bare log_info "" spacer's "[INFO]" tag).
+echo "[deploy] Deployed and restarted, health check: $HEALTH_STATUS"

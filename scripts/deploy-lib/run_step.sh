@@ -38,7 +38,11 @@ trap 'rm -f "$OUTPUT_FILE"' EXIT
 "$@" 2>&1 | tee "$OUTPUT_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
-DETAIL=$(grep -v '^[[:space:]]*$' "$OUTPUT_FILE" | tail -n1 | cut -c1-500)
+# Strip ANSI color codes before the blank-line check - prod_deploy.sh's
+# colored log_info "" spacer lines are invisible but not byte-empty, so they
+# survived the filter and became the "detail" instead of a real message
+# (found 2026-08-21 running this for real against prod).
+DETAIL=$(sed 's/\x1b\[[0-9;]*m//g' "$OUTPUT_FILE" | grep -v '^[[:space:]]*$' | tail -n1 | cut -c1-500)
 DETAIL_ESC=$(esc_sql "$DETAIL")
 
 if [ "$EXIT_CODE" -eq 0 ]; then
