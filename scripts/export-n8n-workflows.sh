@@ -71,6 +71,7 @@ echo "$SCOPE_ROWS" | jq -r '.[] | "  - [\(.folder_name)] \(.name)"'
 EXPORTED=0
 FAILED=0
 FROM_HISTORY=0
+REDACTED=0
 
 for WF_ID in $IDS; do
   WF_JSON=$(curl -s -H "X-N8N-API-KEY: $SRC_KEY" "$SRC_URL/api/v1/workflows/$WF_ID")
@@ -105,12 +106,19 @@ for WF_ID in $IDS; do
   fi
 
   echo "$WF_JSON" | jq '{name, nodes, connections, settings, active}' \
+    | jq 'walk(if type == "string" and (test("AIza[A-Za-z0-9_-]{35}") or test("ya29\\.[A-Za-z0-9_-]+") or test("sk-[A-Za-z0-9]{40,}") or test("xox[bpras]-[A-Za-z0-9-]+")) then "REDACTED_BY_EXPORT" else . end)' \
     > "$OUTPUT_DIR/${WF_NAME}.json"
+
+  if grep -q "REDACTED_BY_EXPORT" "$OUTPUT_DIR/${WF_NAME}.json"; then
+    echo "[export] ⚠️  REDACTED secrets in: $WF_NAME"
+    REDACTED=$((REDACTED + 1))
+  fi
+
   echo "[export] Exported: $WF_NAME -> n8n/workflows/${WF_NAME}.json"
   EXPORTED=$((EXPORTED + 1))
 done
 
 echo ""
-echo "[export] Done. Exported: $EXPORTED (from workflow_history: $FROM_HISTORY), Failed: $FAILED"
+echo "[export] Done. Exported: $EXPORTED (from workflow_history: $FROM_HISTORY), Failed: $FAILED, Redacted: $REDACTED"
 echo "[export] Output: $OUTPUT_DIR/"
 echo "[export] Review the diff, then commit - this is the record import-n8n-workflows.sh deploys from."

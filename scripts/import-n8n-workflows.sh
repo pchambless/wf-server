@@ -79,13 +79,22 @@ for WF_NAME in $NEEDED; do
   # settings is also rejected if it carries fields only valid on read (binaryMode,
   # availableInMCP, etc - discovered by a real 400 on first test), so it is
   # reduced to just executionOrder here rather than passed through verbatim.
-  # Two remaps needed, both found the hard way:
+  # Three remaps needed, all found the hard way:
   # - the postgres credential, from dev's name to target's id+name (credential ids
   #   are never portable across n8n instances)
   # - any httpRequest node whose URL is hardcoded to dev's n8n base URL - found
   #   because it silently made a "prod" login write session context into DEV's
   #   database instead. As of task 259 this remap is a NO-OP (login's L03-setvals
   #   is gone), kept deliberately as a guard against it being reintroduced.
+  # - any Code node whose jsCode has the dev base URL baked into a string literal
+  #   (e.g. styled-html's L03-html calling server-query directly for the
+  #   {{{template:field}}} dropdown-enrichment pattern). Found 2026-08-21: this
+  #   is NOT caught by f_n8n_diff, because dev's own copy is correctly
+  #   self-referencing, so dev-hash == prod-hash even though prod's copy is
+  #   silently calling DEV's database for every dropdown render. The httpRequest
+  #   remap above only touches .parameters.url, never node source code - Code
+  #   nodes need their own pass. Literal split/join, not jq gsub (regex), since
+  #   "." in the URL would otherwise match any character.
   CREATE_PAYLOAD=$(echo "$SRC_WF" | jq \
     --arg tid "$TGT_CRED_ID" --arg tname "$TGT_CRED_NAME" --arg sname "$SRC_CRED_NAME" \
     --arg src_base "https://n8n.whatsfresh.app" --arg tgt_base "$TGT_URL" '
@@ -95,6 +104,9 @@ for WF_NAME in $NEEDED; do
            else . end) |
         (if .parameters.url != null and (.parameters.url | startswith($src_base))
            then .parameters.url = ($tgt_base + (.parameters.url | ltrimstr($src_base)))
+           else . end) |
+        (if .parameters.jsCode != null and (.parameters.jsCode | contains($src_base))
+           then .parameters.jsCode = (.parameters.jsCode | split($src_base) | join($tgt_base))
            else . end)],
      connections, settings: {executionOrder: (.settings.executionOrder // "v1")}}
   ')
