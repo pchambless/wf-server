@@ -83,8 +83,17 @@ else
   # import work is logged as one deploy_n8n step rather than running
   # untracked. NEEDED is passed through explicitly rather than letting the
   # worker recompute the diff, so both invocations act on the same list.
+  RELEASE_PAYLOAD=$(jq -n --arg q "SELECT id FROM deployment.releases WHERE status='pending'" \
+    '{query: $q, params: {}, source: "direct"}')
+  RELEASE_ID=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
+    -H "Content-Type: application/json" -d "$RELEASE_PAYLOAD" | jq -r '.[0].id // empty')
+  if [ -z "$RELEASE_ID" ]; then
+    echo "[import] No pending release found - create one in deployment.releases before deploying" >&2
+    exit 1
+  fi
+
   GIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
-  RUN_ID=$("$SCRIPT_DIR/deploy-lib/start_run.sh" n8n prod "$GIT_SHA" import-n8n-workflows.sh)
+  RUN_ID=$("$SCRIPT_DIR/deploy-lib/start_run.sh" n8n prod "$RELEASE_ID" "$GIT_SHA" import-n8n-workflows.sh)
   echo "[import] deployment_run $RUN_ID started"
 
   set +e

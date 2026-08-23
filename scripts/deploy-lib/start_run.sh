@@ -9,15 +9,16 @@
 #
 # Prints the new run_id on stdout on success, nothing else.
 #
-# Usage: start_run.sh <pipeline> <environment> [git_commit] [created_by]
+# Usage: start_run.sh <pipeline> <environment> <release_id> [git_commit] [created_by]
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/pg-query.sh"
 
-PIPELINE="${1:?Usage: start_run.sh <pipeline> <environment> [git_commit] [created_by]}"
-ENVIRONMENT="${2:?Usage: start_run.sh <pipeline> <environment> [git_commit] [created_by]}"
-GIT_COMMIT="${3:-}"
-CREATED_BY="${4:-deploy-lib}"
+PIPELINE="${1:?Usage: start_run.sh <pipeline> <environment> <release_id> [git_commit] [created_by]}"
+ENVIRONMENT="${2:?Usage: start_run.sh <pipeline> <environment> <release_id> [git_commit] [created_by]}"
+RELEASE_ID="${3:?Usage: start_run.sh <pipeline> <environment> <release_id> [git_commit] [created_by]}"
+GIT_COMMIT="${4:-}"
+CREATED_BY="${5:-deploy-lib}"
 
 PIPELINE_ESC=$(esc_sql "$PIPELINE")
 ENV_ESC=$(esc_sql "$ENVIRONMENT")
@@ -28,8 +29,8 @@ SHA_SQL="NULL"
 [ -n "$GIT_COMMIT" ] && SHA_SQL="'$SHA_ESC'"
 
 SQL="WITH new_deployment AS (
-  INSERT INTO deployment.deployments (environment_id, pipeline_id, git_commit, created_by)
-  SELECT e.id, p.id, $SHA_SQL, '$BY_ESC'
+  INSERT INTO deployment.deployments (environment_id, pipeline_id, release_id, git_commit, created_by)
+  SELECT e.id, p.id, $RELEASE_ID, $SHA_SQL, '$BY_ESC'
     FROM deployment.environments e, deployment.pipelines p
    WHERE e.name = '$ENV_ESC' AND p.name = '$PIPELINE_ESC'
   RETURNING id
@@ -44,7 +45,7 @@ RESULT=$(pg_query "$SQL")
 RUN_ID=$(printf '%s' "$RESULT" | jq -r '.[0].run_id // empty')
 
 if [ -z "$RUN_ID" ]; then
-  echo "start_run: no run_id returned - check pipeline '$PIPELINE' and environment '$ENVIRONMENT' exist. Response: $RESULT" >&2
+  echo "start_run: no run_id returned - check pipeline '$PIPELINE', environment '$ENVIRONMENT', release '$RELEASE_ID' exist. Response: $RESULT" >&2
   exit 1
 fi
 

@@ -109,7 +109,15 @@ log_info "Code updated to latest main branch"
 # a separate open decision (task 248).
 ################################################################################
 GIT_SHA=$(git rev-parse HEAD)
-RUN_ID=$("$WF_SERVER_DIR/scripts/deploy-lib/start_run.sh" wf-server prod "$GIT_SHA" prod_deploy.sh)
+
+source "$WF_SERVER_DIR/scripts/deploy-lib/pg-query.sh"
+RELEASE_ID=$(pg_query "SELECT id FROM deployment.releases WHERE status='pending'" | jq -r '.[0].id // empty')
+if [ -z "$RELEASE_ID" ]; then
+    log_error "No pending release found - create one in deployment.releases before deploying"
+    exit 1
+fi
+
+RUN_ID=$("$WF_SERVER_DIR/scripts/deploy-lib/start_run.sh" wf-server prod "$RELEASE_ID" "$GIT_SHA" prod_deploy.sh)
 log_info "deployment_run $RUN_ID started (sha $GIT_SHA)"
 
 set +e
