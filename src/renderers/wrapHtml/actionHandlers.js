@@ -144,7 +144,12 @@ export const actionHandlersCode = `
           const pageId = resolvedAction.page_id || window.__pageContext?.pageId;
           const mode = resolvedAction.mode || 'INSERT';
           const fields = resolvedAction.fields || {};
-          const pkVal = resolvedAction.pk_val || null;
+          // pk_val normally comes from a grid row's own {{id}} placeholder. A standalone
+          // button (not inside a .grid-row) has no rowData to resolve against, so fall back
+          // to whatever a prior row_click stashed in contextStore under pk_field (default 'id') -
+          // same source row_delete already reads for its own pk lookup.
+          const pkField = resolvedAction.pk_field || 'id';
+          const pkVal = resolvedAction.pk_val || window.contextStore?.[pkField] || null;
           const refresh = resolvedAction.refresh || [];
           const confirmMsg = resolvedAction.confirm;
 
