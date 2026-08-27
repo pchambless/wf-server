@@ -52,7 +52,13 @@ export function buildHtmxDiv(component, slotAttrs = {}) {
     `id="${comp_name}"`,
     `data-template-name="${escapeHtmlAttr(template_name)}"`,
     `hx-post="/api/hydrate"`,
-    `hx-trigger="load"`,
+    // "load" is htmx's special one-shot pseudo-event - it fires once when the element
+    // is first processed and is NOT a real recurring listener, so re-dispatching it
+    // via htmx.trigger(el, 'load') later does nothing (confirmed live 2026-08-26,
+    // refreshComponents produced zero new /api/hydrate calls). refresh-component is a
+    // real custom event name htmx binds a genuine addEventListener for, which
+    // refreshComponents (actionEngine.js) fires to force a re-fetch on demand.
+    `hx-trigger="load, refresh-component"`,
     `hx-vals='${JSON.stringify(hxVals)}'`,
     `hx-swap="innerHTML"`
   ];
