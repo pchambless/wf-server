@@ -85,13 +85,37 @@ export const actionEngineCode = `
         return rowData;
       };
 
+      const BOUND_EVENT_TYPES = ['change', 'click', 'dblclick', 'input', 'submit'];
+
       const deriveTrigger = (event, source) => {
+        // Explicit data-trigger wins even inside a .grid-row - an element that opts
+        // into its own trigger (e.g. a per-row checkbox's "change") must not be
+        // swallowed by the row-click catch-all just because it sits inside a row.
+        //
+        // data-trigger has two different uses in this codebase and they need
+        // different handling. hydrateSlots.js builds "<component_name>_click" labels
+        // for context buttons app-wide - arbitrary semantic keys, always suffixed
+        // "_click", never literally one of the five bound event names, and each such
+        // element only ever receives ONE qualifying native event per interaction, so
+        // no gating is needed (confirmed live 2026-08-26: gating unconditionally broke
+        // every context button, e.g. "<- Ingredients"/"ingredients_nav_click", since a
+        // real click event never equals that string).
+        // A checkbox's own data-trigger="change" is different: it names a REAL event
+        // type, and a checkbox fires click, input, AND change for one toggle - all
+        // three are bound on document, so without gating they'd all resolve to the
+        // same trigger and fire the action three times per click.
+        // Distinguish the two: only gate when the declared value literally IS one of
+        // the five bound event names.
+        const explicitTrigger = source?.dataset?.trigger || source?.closest('[data-trigger]')?.dataset?.trigger;
+        if (explicitTrigger) {
+          if (BOUND_EVENT_TYPES.includes(explicitTrigger)) {
+            return event.type === explicitTrigger ? explicitTrigger : null;
+          }
+          return explicitTrigger;
+        }
         if (source?.closest('.grid-row')) {
           return event.type === 'dblclick' ? 'row_dblclick' : 'row_click';
         }
-        if (source?.dataset?.trigger) return source.dataset.trigger;
-        const triggerEl = source?.closest('[data-trigger]');
-        if (triggerEl) return triggerEl.dataset.trigger;
         if (source?.matches('select')) return 'select_change';
         if (source?.matches('input, textarea')) return 'input';
         if (event.type === 'submit') return 'submit';
@@ -102,8 +126,11 @@ export const actionEngineCode = `
         if (!Array.isArray(componentIds)) return;
         for (const id of componentIds) {
           const el = document.getElementById(id);
+          // 'load' is htmx's one-shot pseudo-event, already consumed at initial
+          // insertion - re-triggering it does nothing. 'refresh-component' is a real
+          // event htmx binds a genuine listener for (see buildHtmxDiv.js hx-trigger).
           if (el && window.htmx) {
-            window.htmx.trigger(el, 'load');
+            window.htmx.trigger(el, 'refresh-component');
           }
         }
       };

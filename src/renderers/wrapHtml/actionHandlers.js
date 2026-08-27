@@ -94,6 +94,17 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- hide_element ---
+        // Uses classList('hidden'), matching inline_form_panel's own close button
+        // (formActions.js ".inline-form-close" handler) and open_inline_form's
+        // classList.remove('hidden') - not style.display, which would fight with
+        // that class-based convention on the next open.
+        if (resolvedAction.action === 'hide_element') {
+          const el = document.getElementById(resolvedAction.target);
+          if (el) el.classList.add(resolvedAction.hide_class || 'hidden');
+          return 'handled';
+        }
+
         // --- open_report ---
         if (resolvedAction.action === 'open_report') {
           const templates = resolvedAction.templates || [];
@@ -172,7 +183,11 @@ export const actionHandlersCode = `
             });
             const result = await response.json();
             if (result.success) {
-              window.location.reload();
+              if (refresh.length > 0) {
+                refreshComponents(refresh);
+              } else {
+                window.location.reload();
+              }
             } else {
               alert(result.error || mode + ' failed');
             }
