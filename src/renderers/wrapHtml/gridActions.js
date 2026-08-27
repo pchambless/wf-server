@@ -19,6 +19,14 @@ export const gridActionsCode = `
           wrapper = page?.querySelector('.page-grid, .table');
         }
 
+        // grid-form-page shell: search box lives in .grid-panel-toolbar,
+        // outside the grid component's own [data-template-name] wrapper -
+        // find the grid inside the same .grid-panel instead.
+        if (!wrapper) {
+          const panel = input.closest('.grid-form-page')?.querySelector('.grid-panel');
+          wrapper = panel?.querySelector('.page-grid, .table');
+        }
+
         if (!wrapper) return;
 
         const searchTerm = input.value.trim().toLowerCase();
