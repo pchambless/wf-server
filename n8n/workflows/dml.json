@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "dml",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +17,13 @@
         0,
         0
       ],
-      "webhookId": "66beb42a-5875-42f7-9e9e-31c46de1fb36"
+      "webhookId": "66beb42a-5875-42f7-9e9e-31c46de1fb36",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TvoyiaXbgltxI5nf",
+          "name": "wf-webhook-secret"
+        }
+      }
     },
     {
       "parameters": {

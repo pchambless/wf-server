@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "dml-batch-map",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +17,13 @@
         0,
         0
       ],
-      "webhookId": "45e268e9-6ee0-4bcd-8022-28898c8bb3e9"
+      "webhookId": "45e268e9-6ee0-4bcd-8022-28898c8bb3e9",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TvoyiaXbgltxI5nf",
+          "name": "wf-webhook-secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -35,7 +42,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ $json.sql }}",
+        "query": "{{ $json.sql }}",
         "options": {}
       },
       "id": "01ee2086-191d-44ea-9b8d-148262c00fb9",

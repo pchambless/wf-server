@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "server-query",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +17,13 @@
       ],
       "id": "610b3c28-c518-4dec-b676-1f05cdd7fd52",
       "name": "Webhook",
-      "webhookId": "fa5672f2-1f7d-47c1-9e0e-e21fc3c3271d"
+      "webhookId": "fa5672f2-1f7d-47c1-9e0e-e21fc3c3271d",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TvoyiaXbgltxI5nf",
+          "name": "wf-webhook-secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -99,7 +106,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        780,
+        784,
         48
       ],
       "notes": "Failed query -> HTTP 500 + Postgres message. Without this the workflow stopped at L02, L99 never fired, and the webhook returned a bare 200 with an empty body - indistinguishable from a valid query returning no rows."
@@ -142,17 +149,8 @@
       "notes": "Did the query fail? IF matches the live house pattern (login, Auto Export) - the only Switch nodes left in this instance are in archived workflows. L02 emits its error into the MAIN output via continueRegularOutput, so exactly one branch fires. L02's error OUTPUT cannot be used instead: alwaysOutputData puts an empty item on the success branch even when the query failed, so both respond nodes raced and the 200 won."
     },
     {
-      "id": "f8128cee-65ff-4adb-9269-61a06828e0d8",
-      "name": "L04-Notify-Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.5,
-      "position": [
-        560,
-        48
-      ],
       "parameters": {
-        "resource": "message",
-        "operation": "post",
+        "authentication": "oAuth2",
         "select": "channel",
         "channelId": {
           "__rl": true,
@@ -161,18 +159,25 @@
           "cachedResultName": "development"
         },
         "text": "={{ $workflow.name }} failed: {{ $json.message ?? (typeof $json.error === 'string' ? $json.error : ($json.error?.message ?? $json.error?.description ?? JSON.stringify($json.error))) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
-        "otherOptions": {},
-        "authentication": "oAuth2"
+        "otherOptions": {}
       },
+      "id": "f8128cee-65ff-4adb-9269-61a06828e0d8",
+      "name": "L04-Notify-Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "position": [
+        560,
+        48
+      ],
+      "webhookId": "82523929-9c61-49aa-b383-c73d9f7c47f3",
       "credentials": {
         "slackOAuth2Api": {
           "id": "tRuM5DU9yKZPXkfk",
           "name": "Slack account"
         }
       },
-      "notes": "Best-effort Slack alert on failure. onError=continueRegularOutput so a Slack/credential problem never blocks the caller's HTTP error response.",
       "onError": "continueRegularOutput",
-      "webhookId": "82523929-9c61-49aa-b383-c73d9f7c47f3"
+      "notes": "Best-effort Slack alert on failure. onError=continueRegularOutput so a Slack/credential problem never blocks the caller's HTTP error response."
     }
   ],
   "connections": {

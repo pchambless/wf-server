@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "login",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +17,13 @@
       ],
       "id": "1c8d3097-e782-4272-b7fa-f7625a4b6cf5",
       "name": "Webhook",
-      "webhookId": "5b8a01c5-b8e0-4b97-81bb-bf9c32fc281e"
+      "webhookId": "5b8a01c5-b8e0-4b97-81bb-bf9c32fc281e",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TvoyiaXbgltxI5nf",
+          "name": "wf-webhook-secret"
+        }
+      }
     },
     {
       "parameters": {

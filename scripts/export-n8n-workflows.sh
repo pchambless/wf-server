@@ -47,7 +47,7 @@ OUTPUT_DIR="$REPO_DIR/n8n/workflows"
 SERVER_QUERY_URL="https://n8n.whatsfresh.app/webhook/server-query"
 
 if [ -f "$REPO_DIR/.env" ]; then
-  export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_(API_KEY|BASE_URL)=' | xargs)
+  export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_(API_KEY|BASE_URL|WEBHOOK_SECRET)=' | xargs)
 fi
 
 SRC_URL="${N8N_BASE_URL:-https://n8n.whatsfresh.app}"
@@ -58,7 +58,7 @@ rm -f "$OUTPUT_DIR"/*.json
 
 echo "[export] Discovering wf-* scoped workflows via knowledge_base.tf_n8n_workflows()..."
 SCOPE_QUERY=$(jq -n '{query: "SELECT id, name, folder_name FROM knowledge_base.tf_n8n_workflows() WHERE folder_name LIKE '"'"'wf-%'"'"' ORDER BY folder_name, name", params: {}, source: "export-n8n-workflows"}')
-SCOPE_ROWS=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -d "$SCOPE_QUERY")
+SCOPE_ROWS=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$SCOPE_QUERY")
 IDS=$(echo "$SCOPE_ROWS" | jq -r '.[].id // empty')
 
 if [ -z "$IDS" ]; then
@@ -93,7 +93,7 @@ for WF_ID in $IDS; do
       ($vid | gsub("\u0027"; "\u0027\u0027")) as $v |
       {query: ("SELECT nodes, connections FROM workflow_history WHERE \"workflowId\" = \u0027\($w)\u0027 AND \"versionId\" = \u0027\($v)\u0027"), params: {}, source: "export-n8n-workflows"}
     ')
-    HIST_ROW=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -d "$HIST_QUERY")
+    HIST_ROW=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$HIST_QUERY")
     HIST_NODES=$(echo "$HIST_ROW" | jq -c '.[0].nodes // empty')
     HIST_CONNECTIONS=$(echo "$HIST_ROW" | jq -c '.[0].connections // empty')
 
