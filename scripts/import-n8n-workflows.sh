@@ -41,7 +41,7 @@ WORKFLOWS_DIR="$REPO_DIR/n8n/workflows"
 SELF="$SCRIPT_DIR/import-n8n-workflows.sh"
 
 if [ -f "$REPO_DIR/.env" ]; then
-  export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_(PROD_API_KEY|PROD_BASE_URL)=' | xargs)
+  export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_(PROD_API_KEY|PROD_BASE_URL|WEBHOOK_SECRET)=' | xargs)
 fi
 
 TGT_URL="${N8N_PROD_BASE_URL:?N8N_PROD_BASE_URL not set in .env}"
@@ -53,6 +53,15 @@ TGT_KEY="${N8N_PROD_API_KEY:?N8N_PROD_API_KEY not set in .env}"
 SRC_CRED_NAME="postgres-cred"
 TGT_CRED_ID="cqQBJ3dwZJrFkefC"
 TGT_CRED_NAME="Postgres Prod"
+
+# Fourth remap, added 2026-09-01: task 334's headerAuth credential on webhook
+# trigger nodes, discovered missing here when this script hadn't been run
+# since that task landed. Both dev and prod name it identically
+# ("wf-webhook-secret") so only the id needs remapping. id looked up via
+# GET /api/v1/credentials on prod - metadata only, never the secret value.
+SRC_HEADERAUTH_CRED_NAME="wf-webhook-secret"
+TGT_HEADERAUTH_CRED_ID="teZn2ZQi9tFaJlyI"
+TGT_HEADERAUTH_CRED_NAME="wf-webhook-secret"
 
 WORKER_MODE=0
 if [ "$1" = "--worker" ]; then
@@ -68,7 +77,7 @@ else
     DIFF_PAYLOAD=$(jq -n --arg q "SELECT workflow_name FROM deployment.f_n8n_diff('prod') WHERE needs_deploy = true" \
       '{query: $q, params: {}, source: "direct"}')
     NEEDED=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
-      -H "Content-Type: application/json" -d "$DIFF_PAYLOAD" | jq -r '.[].workflow_name')
+      -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$DIFF_PAYLOAD" | jq -r '.[].workflow_name')
 
     if [ -z "$NEEDED" ]; then
       echo "[import] Nothing to do - prod already in sync."
@@ -86,7 +95,7 @@ else
   RELEASE_PAYLOAD=$(jq -n --arg q "SELECT id FROM deployment.releases WHERE status='pending'" \
     '{query: $q, params: {}, source: "direct"}')
   RELEASE_ID=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
-    -H "Content-Type: application/json" -d "$RELEASE_PAYLOAD" | jq -r '.[0].id // empty')
+    -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$RELEASE_PAYLOAD" | jq -r '.[0].id // empty')
   if [ -z "$RELEASE_ID" ]; then
     echo "[import] No pending release found - create one in deployment.releases before deploying" >&2
     exit 1
@@ -142,10 +151,14 @@ for WF_NAME in $NEEDED; do
   #   "." in the URL would otherwise match any character.
   CREATE_PAYLOAD=$(echo "$SRC_WF" | jq \
     --arg tid "$TGT_CRED_ID" --arg tname "$TGT_CRED_NAME" --arg sname "$SRC_CRED_NAME" \
+    --arg htid "$TGT_HEADERAUTH_CRED_ID" --arg htname "$TGT_HEADERAUTH_CRED_NAME" --arg hsname "$SRC_HEADERAUTH_CRED_NAME" \
     --arg src_base "https://n8n.whatsfresh.app" --arg tgt_base "$TGT_URL" '
     {name, nodes: [.nodes[] |
         (if .credentials.postgres.name == $sname
            then .credentials.postgres = {id: $tid, name: $tname}
+           else . end) |
+        (if .credentials.httpHeaderAuth.name == $hsname
+           then .credentials.httpHeaderAuth = {id: $htid, name: $htname}
            else . end) |
         (if .parameters.url != null and (.parameters.url | startswith($src_base))
            then .parameters.url = ($tgt_base + (.parameters.url | ltrimstr($src_base)))
