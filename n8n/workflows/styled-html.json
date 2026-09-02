@@ -15,8 +15,8 @@
       }
     },
     {
-      "id": "afc3a985-a835-4612-86ff-30b2ee20e6ab",
-      "name": "L03 - html",
+      "id": "d99230d2-eed9-4349-b980-316ec0fa9fef",
+      "name": "L03a - detect tokens",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -24,7 +24,47 @@
         0
       ],
       "parameters": {
-        "jsCode": "const html_raw = $json.styled_html || '';\nlet data = Array.isArray($json.data) ? $json.data : [];\nconst groupByField = $json.group_by;\nconst isInsertMode = data.length === 0 && html_raw.includes('<form');\n\n// INSERT mode: if no data and template is a form, render with empty fields\nif (isInsertMode) {\n  data = [{}];\n}\n\n// --- Form select enrichment ---\n// Detect {{{template_name:field_name}}} tokens\nconst selectTokenRegex = /\\{\\{\\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]+)\\}\\}\\}/g;\nconst selectConfigs = [];\nlet selectMatch;\nwhile ((selectMatch = selectTokenRegex.exec(html_raw)) !== null) {\n  selectConfigs.push({ templateName: selectMatch[1], fieldName: selectMatch[2], fullToken: selectMatch[0] });\n}\n\nlet html = html_raw;\n\nif (selectConfigs.length > 0 && data.length > 0) {\n  const record = data[0];\n  for (const config of selectConfigs) {\n    // Strip f_ prefix from template name for lookup\n    const baseTemplateName = config.templateName.startsWith('f_') ? config.templateName.slice(2) : config.templateName;\n    const currentVal = record[config.fieldName] || 0;\n    try {\n      const result = await this.helpers.httpRequest({\n        method: 'POST',\n        url: 'https://n8n.whatsfresh.app/webhook/server-query',\n        body: {\n          query: \"SELECT studio.api_select_form(:template_name::text, :current_val::int, :field_name::text) as html\",\n          params: { template_name: baseTemplateName, current_val: currentVal, field_name: config.fieldName },\n          source: 'styled-html'\n        },\n        json: true\n      });\n\n      let selectHtml = '';\n      if (Array.isArray(result) && result[0]?.html) {\n        selectHtml = result[0].html;\n      } else if (typeof result === 'string') {\n        selectHtml = result;\n      }\n      // Replace the full token directly with the rendered HTML\n      html = html.split(config.fullToken).join(selectHtml);\n    } catch (e) {\n      html = html.split(config.fullToken).join('');\n    }\n  }\n}\n// --- End form select enrichment ---\n\nconst eachRegex = /\\{\\{#each data\\}\\}([\\s\\S]*?)\\{\\{\\/each\\}\\}/;\nconst match = html.match(eachRegex);\n\nif (match) {\n  const rowTemplate = match[1];\n  const rows = data.map((item, index) => {\n    let row = '';\n    if (groupByField && (index === 0 || item[groupByField] !== data[index-1][groupByField])) {\n      row += `<tr class=\"group-hdr\"><td colspan=\"99\"><strong>${item[groupByField]}</strong></td></tr>`;\n    }\n    row += rowTemplate;\n\n    // Preserve {{slot:*}} patterns by temporarily replacing them\n    const slotRegex = /\\{\\{slot:[^\\}]+\\}\\}/g;\n    const slots = [];\n    let slotIndex = 0;\n    const placeholder = '___SLOT_PLACEHOLDER_';\n    row = row.replace(slotRegex, (match) => {\n      slots.push(match);\n      return placeholder + (slotIndex++) + '___';\n    });\n\n    // Replace data field placeholders (using function replacer to avoid $ interpretation)\n    for (const [key, value] of Object.entries(item)) {\n      const safeVal = String(value ?? '');\n      row = row.replace(new RegExp(`\\\\{\\\\{\\\\{${key}\\\\}\\\\}\\\\}`, 'g'), () => safeVal);\n      row = row.replace(new RegExp(`\\\\{\\\\{${key}\\\\}\\\\}`, 'g'), () => safeVal);\n    }\n\n    // Restore {{slot:*}} patterns\n    for (let i = 0; i < slots.length; i++) {\n      row = row.replace(placeholder + i + '___', slots[i]);\n    }\n\n    // Handle {{#if condition}}content{{/if}} blocks\n    const ifRegex = /\\{\\{#if\\s+(\\w+)\\}\\}(.*?)\\{\\{\\/if\\}\\}/g;\n    row = row.replace(ifRegex, (match, condition, content) => {\n      return item[condition] ? content : '';\n    });\n    return row;\n  }).join('');\n  // Use function replacer to avoid $ back-reference interpretation in compiled rows\n  html = html.replace(eachRegex, () => rows);\n}\n\nreturn [{ json: { html, isInsertMode } }];",
+        "jsCode": "const html_raw = $json.styled_html || '';\nlet data = Array.isArray($json.data) ? $json.data : [];\nconst groupByField = $json.group_by;\nconst isInsertMode = data.length === 0 && html_raw.includes('<form');\n\nif (isInsertMode) {\n  data = [{}];\n}\n\nconst selectTokenRegex = /\\{\\{\\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]+)\\}\\}\\}/g;\nconst selectConfigs = [];\nlet selectMatch;\nwhile ((selectMatch = selectTokenRegex.exec(html_raw)) !== null) {\n  selectConfigs.push({ templateName: selectMatch[1], fieldName: selectMatch[2], fullToken: selectMatch[0] });\n}\n\nconst base = { html_raw, data, groupByField, isInsertMode };\n\nif (selectConfigs.length > 0 && data.length > 0) {\n  const record = data[0];\n  return selectConfigs.map(config => {\n    const baseTemplateName = config.templateName.startsWith('f_') ? config.templateName.slice(2) : config.templateName;\n    const currentVal = record[config.fieldName] || 0;\n    return { json: { ...base, fullToken: config.fullToken, templateName: baseTemplateName, fieldName: config.fieldName, currentVal } };\n  });\n}\n\nreturn [{ json: { ...base, fullToken: '__NONE__', templateName: '__NONE__', fieldName: '__NONE__', currentVal: 0 } }];",
+        "language": "javaScript",
+        "mode": "runOnceForAllItems"
+      }
+    },
+    {
+      "id": "5d83953f-2ba1-49cb-95d8-794561261c35",
+      "name": "L03c - resolve dropdown",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT $1::text as full_token, CASE WHEN $2 <> '__NONE__' THEN studio.api_select_form($2::text, $3::int, $4::text) ELSE NULL END as html",
+        "options": {
+          "queryReplacement": "={{ $json.fullToken }}, {{ $json.templateName }}, {{ $json.currentVal }}, {{ $json.fieldName }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "FU6JwAApAwqlhRyL",
+          "name": "postgres-cred"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "8b243d62-8ff5-435c-acd2-d55fde1555f4",
+      "name": "L03b - render",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst first = $('L03a - detect tokens').first().json;\nconst html_raw = first.html_raw || '';\nlet data = Array.isArray(first.data) ? first.data : [];\nconst groupByField = first.groupByField;\nconst isInsertMode = first.isInsertMode;\n\nlet html = html_raw;\nfor (const item of items) {\n  const fullToken = item.json.full_token;\n  if (fullToken && fullToken !== '__NONE__') {\n    const selectHtml = (!item.json.error && item.json.html) ? item.json.html : '';\n    html = html.split(fullToken).join(selectHtml);\n  }\n}\n\nconst eachRegex = /\\{\\{#each data\\}\\}([\\s\\S]*?)\\{\\{\\/each\\}\\}/;\nconst match = html.match(eachRegex);\n\nif (match) {\n  const rowTemplate = match[1];\n  const rows = data.map((item, index) => {\n    let row = '';\n    if (groupByField && (index === 0 || item[groupByField] !== data[index-1][groupByField])) {\n      row += `<tr class=\"group-hdr\"><td colspan=\"99\"><strong>${item[groupByField]}</strong></td></tr>`;\n    }\n    row += rowTemplate;\n\n    const slotRegex = /\\{\\{slot:[^\\}]+\\}\\}/g;\n    const slots = [];\n    let slotIndex = 0;\n    const placeholder = '___SLOT_PLACEHOLDER_';\n    row = row.replace(slotRegex, (match) => {\n      slots.push(match);\n      return placeholder + (slotIndex++) + '___';\n    });\n\n    for (const [key, value] of Object.entries(item)) {\n      const safeVal = String(value ?? '');\n      row = row.replace(new RegExp(`\\\\{\\\\{\\\\{${key}\\\\}\\\\}\\\\}`, 'g'), () => safeVal);\n      row = row.replace(new RegExp(`\\\\{\\\\{${key}\\\\}\\\\}`, 'g'), () => safeVal);\n    }\n\n    for (let i = 0; i < slots.length; i++) {\n      row = row.replace(placeholder + i + '___', slots[i]);\n    }\n\n    const ifRegex = /\\{\\{#if\\s+(\\w+)\\}\\}(.*?)\\{\\{\\/if\\}\\}/g;\n    row = row.replace(ifRegex, (match, condition, content) => {\n      return item[condition] ? content : '';\n    });\n    return row;\n  }).join('');\n  html = html.replace(eachRegex, () => rows);\n}\n\nreturn [{ json: { html, isInsertMode } }];",
         "language": "javaScript",
         "mode": "runOnceForAllItems"
       }
@@ -50,14 +90,36 @@
       "main": [
         [
           {
-            "node": "L03 - html",
+            "node": "L03a - detect tokens",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "L03 - html": {
+    "L03a - detect tokens": {
+      "main": [
+        [
+          {
+            "node": "L03c - resolve dropdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L03c - resolve dropdown": {
+      "main": [
+        [
+          {
+            "node": "L03b - render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L03b - render": {
       "main": [
         [
           {
