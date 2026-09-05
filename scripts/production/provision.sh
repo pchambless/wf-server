@@ -11,7 +11,7 @@
 #   - PostgreSQL 16 via the official PGDG repo, extensions: dblink, pgcrypto
 #     (mysql_fdw and git_fdw exist on dev but are dev-only tooling / an
 #     abandoned experiment - not installed here)
-#   - n8n via Docker, pinned to n8nio/n8n:2.30.5 (dev's actual running
+#   - n8n via Docker, pinned to n8nio/n8n:2.37.7 (dev's actual running
 #     version, not :latest - a fresh box should match what's proven, not
 #     whatever's newest today)
 #
@@ -195,7 +195,7 @@ chown -R n8n:n8n /home/n8n
 ################################################################################
 # 8. n8n via Docker (pinned version, host networking - matches dev)
 ################################################################################
-log_info "Starting n8n container (pinned n8nio/n8n:2.30.5)..."
+log_info "Starting n8n container (pinned n8nio/n8n:2.37.7)..."
 docker run -d \
   --name n8n \
   --network host \
@@ -226,7 +226,7 @@ docker run -d \
   -e N8N_ENABLE_COMMANDS=true \
   -e N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true \
   -e TZ=America/Chicago \
-  n8nio/n8n:2.30.5
+  n8nio/n8n:2.37.7
 
 log_info "n8n started without @wf/custom-nodes (WfDbQuery) - unused by any active workflow as of 2026-08-10."
 log_info "Source is at wf-agents/n8n/custom-nodes/n8n-nodes-whatsfresh if it's ever needed again."
