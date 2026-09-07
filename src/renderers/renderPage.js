@@ -150,6 +150,11 @@ export async function renderPage(req, res, next) {
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
   res.set('Cache-Control', 'no-store');
-  const pageMetaScript = `<script>window.__pageContext = { pageId: ${pageInfo.pageID}, contextKey: "${pageInfo.contextKey || 'id'}", form: "${pageInfo.formTemplate || ''}", hideCrud: ${pageInfo.hideCrud || false} };</script>`;
+  // The grid component's comp_name becomes its DOM id (buildHtmxDiv). Exposing it
+  // lets a form Save refresh just the grid instead of reloading the whole page;
+  // absent (page with no grid slot) the form handler falls back to a full reload.
+  const gridComponent = components.find(c => c.slot_name === 'grid');
+  const gridComponentId = gridComponent?.comp_name || '';
+  const pageMetaScript = `<script>window.__pageContext = { pageId: ${pageInfo.pageID}, contextKey: "${pageInfo.contextKey || 'id'}", form: "${pageInfo.formTemplate || ''}", hideCrud: ${pageInfo.hideCrud || false}, gridComponentId: "${escapeAttr(gridComponentId)}" };</script>`;
   res.send(wrapHtml(pageInfo.pageTitle || pageInfo.pageName, pageMetaScript + layoutHtml));
 }
