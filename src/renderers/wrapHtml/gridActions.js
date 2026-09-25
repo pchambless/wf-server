@@ -63,7 +63,7 @@ export const gridActionsCode = `
         row.classList.add('selected');
 
         // Show row-click buttons in the nav context-btn group. Targeted by
-        // id, not the shared .wf-context-btn-group class - the Add New
+        // id, not the shared .action-bar--context class - the Add New
         // button wrapper (wrapHtml/index.js) uses that same class, and a
         // scoped lookup can match it instead of the real nav group once
         // Add New lives near the grid (task 220).

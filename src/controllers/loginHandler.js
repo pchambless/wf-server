@@ -81,9 +81,9 @@ export async function handleLogin(req, res) {
           path: '/api/auth/login',
           success: true,
           status: 200,
-          redirectTo: '/wf-dashboard'
+          redirectTo: '/dashboard'
         });
-        return res.json({ success: true, redirectTo: '/wf-dashboard' });
+        return res.json({ success: true, redirectTo: '/dashboard' });
       });
     }
 

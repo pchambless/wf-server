@@ -62,7 +62,7 @@ export async function handleRegister(req, res) {
         user_id: row.user_id,
         account_id: row.account_id
       });
-      return res.json({ success: true, redirectTo: '/wf-dashboard' });
+      return res.json({ success: true, redirectTo: '/dashboard' });
     });
   } catch (err) {
     logger.error('[api] Response', {
