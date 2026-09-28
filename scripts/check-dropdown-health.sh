@@ -22,34 +22,50 @@
 #   4. FAIL if select count < expected token count (a dropdown vanished)
 #      FAIL if any select has zero <option> elements (a dropdown is empty)
 #
-# Usage: check-dropdown-health.sh [dev|prod|all] [test-email]
-#   Default: all, testbed@whatsfresh.app (account 3 "Test Bed" - a dedicated
-#   fixture account seeded by setup-test-bed.sh, deliberately labeled and
-#   scoped to account_id=3 only. Previously defaulted to pc7900@gmail.com,
-#   which only worked because that real account happened to already have
-#   every context key populated from ordinary use - not a fixture, a
-#   coincidence. Run setup-test-bed.sh first if this account is missing.
+# Usage: check-dropdown-health.sh [dev|prod|dev2|all] [test-email]
+#   Default: all, Demo@wf.com (account 3 "Test Bed", a real login-capable
+#   account already in ordinary use - see wf-agents/.env DEMO_TEST_EMAIL).
+#   Its context_store is populated from real usage, not synthetic fixture
+#   rows; two keys (ingredient_type_id, ingredient_batch_id) were found
+#   blank and patched 2026-09-28 with real existing account-3 data rather
+#   than inventing a separate never-login testbed@whatsfresh.app identity.
+#   dev2 targets wf-v2-dev directly over the SSH tunnel documented in
+#   import-n8n-workflows-dev2.sh (N8N_DEV2_BASE_URL, default
+#   http://127.0.0.1:15678) since it is not yet DNS-reachable (task 433).
+#   Not included in "all" - request it explicitly.
 #
 # Requires: curl, jq
+# Requires in .env: N8N_WEBHOOK_SECRET (task 334's header-auth gate on the
+# server-query/hydrate-guide webhook triggers - this script silently 403'd
+# with no such header since that task landed 2026-08-30 until fixed here
+# 2026-09-28; "Authorization data is wrong!" is not JSON, so jq choked on it
+# and TEMPLATE_NAMES came back empty with no clear error).
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+if [ -f "$REPO_DIR/.env" ]; then
+  export $(grep -v '^#' "$REPO_DIR/.env" | grep -E '^N8N_WEBHOOK_SECRET=' | xargs)
+fi
+AUTH_HEADER="X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}"
+
 SCOPE="${1:-all}"
-TEST_EMAIL="${2:-testbed@whatsfresh.app}"
+TEST_EMAIL="${2:-Demo@wf.com}"
 SERVER_QUERY_URL="https://n8n.whatsfresh.app/webhook/server-query"
 
-declare -A ENV_URLS=( [dev]="https://n8n.whatsfresh.app" [prod]="https://v2-n8n.whatsfresh.app" )
+declare -A ENV_URLS=( [dev]="https://n8n.whatsfresh.app" [prod]="https://v2-n8n.whatsfresh.app" [dev2]="${N8N_DEV2_BASE_URL:-http://127.0.0.1:15678}" )
 
 case "$SCOPE" in
-  dev|prod) TARGETS=("$SCOPE") ;;
+  dev|prod|dev2) TARGETS=("$SCOPE") ;;
   all)      TARGETS=(dev prod) ;;
-  *) echo "Usage: check-dropdown-health.sh [dev|prod|all] [test-email]" >&2; exit 1 ;;
+  *) echo "Usage: check-dropdown-health.sh [dev|prod|dev2|all] [test-email]" >&2; exit 1 ;;
 esac
 
 echo "[dropdown-check] Finding templates with {{{template:field}}} tokens..."
 SQL='SELECT name, html FROM studio.html_templates WHERE html ~ '"'"'\{\{\{[a-zA-Z0-9_]+:[a-zA-Z0-9_]+\}\}\}'"'"''
 TEMPLATES_QUERY=$(jq -n --arg q "$SQL" '{query: $q, params: {}, source: "check-dropdown-health"}')
-TEMPLATES=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -d "$TEMPLATES_QUERY")
+TEMPLATES=$(curl -s -X POST "$SERVER_QUERY_URL" -H "Content-Type: application/json" -H "$AUTH_HEADER" -d "$TEMPLATES_QUERY")
 
 TEMPLATE_NAMES=$(echo "$TEMPLATES" | jq -r '.[].name' 2>/dev/null)
 if [ -z "$TEMPLATE_NAMES" ]; then
@@ -69,7 +85,7 @@ for TPL in $TEMPLATE_NAMES; do
     TOTAL_CHECKED=$((TOTAL_CHECKED + 1))
 
     PAYLOAD=$(jq -n --arg t "$TPL" --arg e "$TEST_EMAIL" '{template_name: $t, source: "wf-server", email: $e}')
-    RESPONSE=$(curl -s -X POST "$BASE_URL/webhook/hydrate-guide" -H "Content-Type: application/json" -d "$PAYLOAD")
+    RESPONSE=$(curl -s -X POST "$BASE_URL/webhook/hydrate-guide" -H "Content-Type: application/json" -H "$AUTH_HEADER" -d "$PAYLOAD")
     HTML_OUT=$(echo "$RESPONSE" | jq -r '.[0].html // empty')
 
     if [ -z "$HTML_OUT" ]; then
