@@ -3,7 +3,6 @@ import { wrapHtml } from './wrapHtml/index.js';
 import { normalizeHtml } from './normalizeHtml.js';
 import { resolveLayout } from './resolveLayout.js';
 import { hydrateSlots } from './hydrateSlots.js';
-import { buildCrudButtons } from './buildCrudButtons.js';
 
 let cachedRoutes = [];
 
@@ -135,14 +134,6 @@ export async function renderPage(req, res, next) {
     template_name: pageInfo.templateName, source: 'wf-server', email
   });
   let pageHtml = normalizeHtml(templateResult);
-
-  // Inject CRUD buttons if page is crud type
-  const crudButtonsHtml = buildCrudButtons(pageInfo);
-  if (crudButtonsHtml) {
-    pageHtml = pageHtml.split('{{slot:page-buttons}}').join(crudButtonsHtml);
-  } else {
-    pageHtml = pageHtml.split('{{slot:page-buttons}}').join('');
-  }
 
   pageHtml = await hydrateSlots(pageHtml, components, slotActions, email);
 

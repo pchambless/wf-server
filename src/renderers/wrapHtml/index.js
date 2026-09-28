@@ -58,7 +58,6 @@ export function wrapHtml(title, body) {
               formContainer.innerHTML = html;
               if (window.htmx) window.htmx.process(formContainer);
               applyModeVisibility(formContainer, 'INSERT');
-              hydrateEmbeddedDropdowns(formContainer);
               const form = formContainer.querySelector('form');
               if (form) form.id = 'inline_form_element';
               const titleEl = document.getElementById('inline_form_title');

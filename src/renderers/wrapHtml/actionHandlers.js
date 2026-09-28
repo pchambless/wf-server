@@ -31,17 +31,6 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
-        // --- open_modal ---
-        if (resolvedAction.action === 'open_modal') {
-          const formTemplate = resolvedAction.form_template;
-          const actionValues = resolvedAction.values || {};
-          const hydrateData = { ...(window.contextStore || {}), ...elementContext, ...actionValues };
-          if (window.formModal && formTemplate) {
-            window.formModal.open(formTemplate, hydrateData);
-          }
-          return 'handled';
-        }
-
         // --- open_inline_form ---
         if (resolvedAction.action === 'open_inline_form') {
           const formTemplate = resolvedAction.form_template;
@@ -64,7 +53,6 @@ export const actionHandlersCode = `
 
           const mode = hydrateData.mode || window.contextStore?.mode || 'INSERT';
           applyModeVisibility(container, mode);
-          hydrateEmbeddedDropdowns(container);
 
           const form = container.querySelector('form');
           if (form) form.id = 'inline_form_element';
