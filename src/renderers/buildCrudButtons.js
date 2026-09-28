@@ -41,11 +41,11 @@ export function buildCrudButtons(pageInfo) {
 
   const buttons = [];
   if (formTemplate) {
-    buttons.push('<button type="button" data-trigger="add_new" class="wf-slot-action-btn">Add New</button>');
+    buttons.push('<button type="button" data-trigger="add_new" class="action-btn">Add New</button>');
   }
   if (gridTemplate) {
-    buttons.push('<button type="button" data-trigger="delete_selected" class="wf-slot-action-btn wf-btn-danger">Delete Selected</button>');
+    buttons.push('<button type="button" data-trigger="delete_selected" class="action-btn">Delete Selected</button>');
   }
 
-  return `<div class="wf-slot-actions" data-actions='${escapeAttr(JSON.stringify(actions))}'>${buttons.join('')}</div>`;
+  return `<div class="action-bar" data-actions='${escapeAttr(JSON.stringify(actions))}'>${buttons.join('')}</div>`;
 }

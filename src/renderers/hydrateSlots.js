@@ -30,11 +30,11 @@ function buildSlotActionsHtml(slotActions = [], slotName = '') {
       } else {
         actions[trigger] = { action: item.action_type, ...item.actions };
       }
-      const visibilityClass = item.visible_when === 'always' ? 'wf-always-visible' : 'wf-row-click-only';
-      return `<button type="button" class="wf-slot-action-btn wf-context-btn ${visibilityClass}" data-trigger="${trigger}">${String(item.label || item.component_name)}</button>`;
+      const visibilityClass = item.visible_when === 'always' ? '' : ' row-click-only';
+      return `<button type="button" class="action-btn action-btn--context${visibilityClass}" data-trigger="${trigger}">${String(item.label || item.component_name)}</button>`;
     }).join('');
 
-    return `<div id="context_actions" class="wf-slot-actions wf-context-btn-group" data-actions='${JSON.stringify(actions)}'>${buttons}</div>`;
+    return `<div id="context_actions" class="action-bar action-bar--context" data-actions='${JSON.stringify(actions)}'>${buttons}</div>`;
   }
 
   // Default rendering for other slots
@@ -42,11 +42,11 @@ function buildSlotActionsHtml(slotActions = [], slotName = '') {
     .map((action) => {
       const id = String(action?.component_name || action?.id || 'slot_action');
       const label = String(action?.label || id);
-      return `<button type="button" id="${id}" class="wf-slot-action-btn">${label}</button>`;
+      return `<button type="button" id="${id}" class="action-btn">${label}</button>`;
     })
     .join('');
 
-  return `<div class="wf-slot-actions">${buttons}</div>`;
+  return `<div class="action-bar">${buttons}</div>`;
 }
 
 function parseSlotAttrs(attrString) {

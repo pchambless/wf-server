@@ -39,11 +39,11 @@ export function wrapHtml(title, body) {
 
         if (container && ctx?.form && !ctx.hideCrud) {
           const wrapper = document.createElement('div');
-          wrapper.className = 'wf-slot-actions wf-context-btn-group';
+          wrapper.className = 'action-bar action-bar--context';
 
           const addBtn = document.createElement('button');
           addBtn.type = 'button';
-          addBtn.className = 'wf-slot-action-btn';
+          addBtn.className = 'action-btn';
           addBtn.textContent = 'Add New';
           addBtn.addEventListener('click', () => {
             window.contextStore = { ...(window.contextStore || {}), mode: 'INSERT', [ctx.contextKey]: null };
@@ -105,8 +105,8 @@ export function wrapHtml(title, body) {
     // Global loading indicator
     (() => {
       const overlay = document.createElement('div');
-      overlay.className = 'wf-loading-overlay';
-      overlay.innerHTML = '<div class="wf-spinner"></div>';
+      overlay.className = 'loading-overlay';
+      overlay.innerHTML = '<div class="spinner"></div>';
       document.addEventListener('DOMContentLoaded', () => document.body.appendChild(overlay));
 
       let activeRequests = 0;

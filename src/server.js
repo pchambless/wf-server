@@ -40,7 +40,7 @@ async function initializeRoutes() {
         SELECT route_path as route, page_name, page_id, group_name
         FROM studio.vw_pages
         UNION ALL
-        SELECT '/wf-dashboard' as route, 'wf-dashboard' as page_name, 32 as page_id, 'admin' as group_name
+        SELECT '/dashboard' as route, 'dashboard' as page_name, 32 as page_id, 'admin' as group_name
       `);
       cachedRoutes = Array.isArray(fallbackRouteData) ? fallbackRouteData : [];
     }

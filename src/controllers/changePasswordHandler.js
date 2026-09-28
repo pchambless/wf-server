@@ -35,7 +35,7 @@ export async function handleChangePassword(req, res) {
     }
 
     logger.info('[api] Response', { path: '/api/auth/change-password', success: true, email });
-    return res.json({ success: true, redirectTo: '/wf-dashboard' });
+    return res.json({ success: true, redirectTo: '/dashboard' });
   } catch (err) {
     logger.error('[api] Response', { path: '/api/auth/change-password', success: false, error: err.message });
     return res.status(500).json({ success: false, message: 'Password service unavailable' });
