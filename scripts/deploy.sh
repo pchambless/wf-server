@@ -9,6 +9,20 @@ LOG_FILE="/home/n8n/wf-server/logs/deploy.log"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"; }
 
+# Closes out the deployment_run on any exit path, success or failure. A
+# captured status var, not an inline $? inside the trap command itself -
+# the latter is fragile once the trap body runs more than one command.
+RUN_ID=""
+finish_tracking() {
+  local exit_status=$?
+  if [ -n "$RUN_ID" ]; then
+    local final_status="failed"
+    [ "$exit_status" -eq 0 ] && final_status="succeeded"
+    bash "$REPO_DIR/scripts/deploy-lib/finish_run.sh" "$RUN_ID" "$final_status" >/dev/null 2>&1 || true
+  fi
+}
+trap finish_tracking EXIT
+
 cd "$REPO_DIR" || exit 1
 
 log "=== Starting deploy ==="
@@ -18,6 +32,28 @@ PREV_SHA=$(git rev-parse HEAD)
 log "Pulling latest from origin/main..."
 git pull origin main 2>&1 | tee -a "$LOG_FILE"
 NEW_SHA=$(git rev-parse HEAD)
+
+# Record this deploy in deployment.deployments/deployment_runs (task 248) -
+# dev's counterpart to prod_deploy.sh's tracking (task 288/298). Mirrors that
+# script's start_run.sh call, but skips its run_step.sh/--worker wrapping -
+# that exists there solely to solve prod_deploy.sh re-invoking itself as a
+# subprocess after git pull, which this flat script never does. finish_tracking
+# (trapped on EXIT above) closes the run out with the real exit status.
+#
+# Soft-fails on purpose: if this can't reach the tracking webhook, that must
+# never block a real deploy. Logs a warning and continues either way.
+source "$REPO_DIR/scripts/deploy-lib/pg-query.sh"
+RELEASE_ID=$(pg_query "SELECT id FROM deployment.releases WHERE status='pending'" 2>/dev/null | jq -r '.[0].id // empty' 2>/dev/null || true)
+if [ -n "$RELEASE_ID" ]; then
+  RUN_ID=$("$REPO_DIR/scripts/deploy-lib/start_run.sh" wf-server dev "$RELEASE_ID" "$NEW_SHA" deploy.sh 2>/dev/null || true)
+  if [ -n "$RUN_ID" ]; then
+    log "deployment_run $RUN_ID started (sha $NEW_SHA)"
+  else
+    log "WARNING: could not start deployment tracking run - deploy continuing untracked"
+  fi
+else
+  log "WARNING: no pending release found - deploy continuing untracked (see task 248)"
+fi
 
 # 2. Install any new dependencies
 # Diff against the sha we were on BEFORE the pull. The old test was
