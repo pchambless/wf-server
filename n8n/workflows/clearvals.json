@@ -20,7 +20,7 @@
       "webhookId": "e8d06646-4606-48f8-b872-3cc8c4ad9710",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "TvoyiaXbgltxI5nf",
+          "id": "Cr5FofBlVGzpKoKv",
           "name": "wf-webhook-secret"
         }
       }
@@ -70,8 +70,8 @@
       "notesInFlow": true,
       "credentials": {
         "postgres": {
-          "id": "FU6JwAApAwqlhRyL",
-          "name": "postgres-cred"
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
         }
       },
       "notes": "upsert param_vals"
@@ -137,11 +137,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": true,
-    "timeSavedMode": "fixed",
-    "callerPolicy": "workflowsFromSameOwner"
+    "executionOrder": "v1"
   },
   "active": true
 }

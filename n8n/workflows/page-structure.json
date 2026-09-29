@@ -2,6 +2,15 @@
   "name": "page-structure",
   "nodes": [
     {
+      "id": "414e6441-be74-4efb-ae93-9348faf7a7f2",
+      "name": "Webhook",
+      "webhookId": "0a345393-68f3-4c0d-836b-309063d11dd7",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "page-structure",
@@ -9,28 +18,14 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "414e6441-be74-4efb-ae93-9348faf7a7f2",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        0,
-        0
-      ],
-      "webhookId": "0a345393-68f3-4c0d-836b-309063d11dd7",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "TvoyiaXbgltxI5nf",
+          "id": "Cr5FofBlVGzpKoKv",
           "name": "wf-webhook-secret"
         }
       }
     },
     {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', false))\nselect api_page_structure::JSONB as structure\nfrom _ctx, studio.api_page_structure()",
-        "options": {}
-      },
       "id": "0d9d18f2-85d2-4982-8c2a-4e7a0f510f53",
       "name": "Execute a SQL query",
       "type": "n8n-nodes-base.postgres",
@@ -39,19 +34,19 @@
         224,
         96
       ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', false))\nselect api_page_structure::JSONB as structure\nfrom _ctx, studio.api_page_structure()",
+        "options": {}
+      },
       "credentials": {
         "postgres": {
-          "id": "FU6JwAApAwqlhRyL",
-          "name": "postgres-cred"
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
         }
       }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json.structure }}",
-        "options": {}
-      },
       "id": "7ec087d6-ee04-4222-97c7-8500a7604be1",
       "name": "L99-respond",
       "type": "n8n-nodes-base.respondToWebhook",
@@ -59,12 +54,14 @@
       "position": [
         448,
         96
-      ]
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.structure }}",
+        "options": {}
+      }
     },
     {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
       "id": "2d94c506-503e-4153-bb29-a612beb2c670",
       "name": "When Called by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
@@ -72,7 +69,10 @@
       "position": [
         0,
         192
-      ]
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
     }
   ],
   "connections": {
@@ -111,9 +111,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": true
+    "executionOrder": "v1"
   },
   "active": true
 }

@@ -2,6 +2,15 @@
   "name": "login",
   "nodes": [
     {
+      "id": "1c8d3097-e782-4272-b7fa-f7625a4b6cf5",
+      "name": "Webhook",
+      "webhookId": "5b8a01c5-b8e0-4b97-81bb-bf9c32fc281e",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        -48
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "login",
@@ -9,47 +18,46 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        -192,
-        -48
-      ],
-      "id": "1c8d3097-e782-4272-b7fa-f7625a4b6cf5",
-      "name": "Webhook",
-      "webhookId": "5b8a01c5-b8e0-4b97-81bb-bf9c32fc281e",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "TvoyiaXbgltxI5nf",
+          "id": "Cr5FofBlVGzpKoKv",
           "name": "wf-webhook-secret"
         }
       }
     },
     {
+      "id": "c2466ae6-1a65-44ef-aa3b-0573ab2dca9c",
+      "name": "L01",
+      "notesInFlow": true,
+      "notes": "Verify User",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "position": [
+        64,
+        -48
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "SELECT * \n  FROM whatsfresh.api_login_verify('{{ $json.body.email }}', \n  '{{ $json.body.password }}')",
         "options": {}
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        64,
-        -48
-      ],
-      "id": "c2466ae6-1a65-44ef-aa3b-0573ab2dca9c",
-      "name": "L01",
-      "notesInFlow": true,
-      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
-          "id": "FU6JwAApAwqlhRyL",
-          "name": "postgres-cred"
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
         }
-      },
-      "notes": "Verify User"
+      }
     },
     {
+      "id": "d7f18670-2bc0-48fa-9046-08fb981aafd0",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        256,
+        -48
+      ],
       "parameters": {
         "conditions": {
           "options": {
@@ -85,50 +93,39 @@
         "options": {
           "ignoreCase": false
         }
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        256,
-        -48
-      ],
-      "id": "d7f18670-2bc0-48fa-9046-08fb981aafd0",
-      "name": "If"
+      }
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: 'Successfully Logged In.', user: { email: $('L01').item.json.email, user_id: $('L01').item.json.user_id, first_name: $('L01').item.json.first_name, last_name: $('L01').item.json.last_name, role_id: $('L01').item.json.role_id, default_account_id: $('L01').item.json.default_account_id } }) }}",
-        "options": {}
-      },
+      "id": "ba19e9e6-5dc4-45da-ba33-cc96d3509ed6",
+      "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
         656,
         -160
       ],
-      "id": "ba19e9e6-5dc4-45da-ba33-cc96d3509ed6",
-      "name": "Respond Success"
-    },
-    {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "{\n  \"success\": false,\n  \"message\": \"Invalid email or password\"\n}\n",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Successfully Logged In.', user: { email: $('L01').item.json.email, user_id: $('L01').item.json.user_id, first_name: $('L01').item.json.first_name, last_name: $('L01').item.json.last_name, role_id: $('L01').item.json.role_id, default_account_id: $('L01').item.json.default_account_id } }) }}",
         "options": {}
-      },
+      }
+    },
+    {
+      "id": "a391b001-ab8d-4368-b42d-1a8ada9d84f4",
+      "name": "Respond Failed",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
         656,
         48
       ],
-      "id": "a391b001-ab8d-4368-b42d-1a8ada9d84f4",
-      "name": "Respond Failed"
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"message\": \"Invalid email or password\"\n}\n",
+        "options": {}
+      }
     },
     {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
       "id": "b202a602-802b-46a3-9515-457ab37d2c95",
       "name": "When Called by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
@@ -136,7 +133,34 @@
       "position": [
         -192,
         -256
-      ]
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "e1a2b3c4-1111-4a2b-9c3d-a1b2c3d4e5f6",
+      "name": "L02",
+      "notesInFlow": true,
+      "notes": "Set last_login",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "position": [
+        456,
+        -160
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE whatsfresh.users SET last_login = now() WHERE id = {{ $json.user_id }} RETURNING id",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
     }
   ],
   "connections": {
@@ -166,7 +190,7 @@
       "main": [
         [
           {
-            "node": "Respond Success",
+            "node": "L02",
             "type": "main",
             "index": 0
           }
@@ -190,12 +214,21 @@
           }
         ]
       ]
+    },
+    "L02": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": true
+    "executionOrder": "v1"
   },
   "active": true
 }

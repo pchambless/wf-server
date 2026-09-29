@@ -34,6 +34,8 @@
       "name": "L03c - resolve dropdown",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
+      "continueOnFail": true,
+      "onError": "continueRegularOutput",
       "position": [
         448,
         0
@@ -47,12 +49,10 @@
       },
       "credentials": {
         "postgres": {
-          "id": "FU6JwAApAwqlhRyL",
-          "name": "postgres-cred"
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
         }
-      },
-      "continueOnFail": true,
-      "onError": "continueRegularOutput"
+      }
     },
     {
       "id": "8b243d62-8ff5-435c-acd2-d55fde1555f4",
@@ -132,9 +132,7 @@
     }
   },
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate",
-    "availableInMCP": true
+    "executionOrder": "v1"
   },
   "active": true
 }
