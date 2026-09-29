@@ -19,6 +19,12 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "cd /home/paul/Projects/support-app && set -a && source .env && set +a && node server.js"],
       "port": 3002
+    },
+    {
+      "name": "wf-marketing",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "/home/paul/Projects/wf-marketing/site", "-p", "8010", "-c-1"],
+      "port": 8010
     }
   ]
 }
