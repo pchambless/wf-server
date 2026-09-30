@@ -55,7 +55,7 @@
           "value": "C0C5RD2BKA6",
           "cachedResultName": "feedback"
         },
-        "text": "={{ 'Submitted: ' + $json.submitted + '\\nType: ' + $json.category.toUpperCase() + '\\nFrom: ' + $json.user_name + '\\nPage: ' + $json.page_name + '\\nTitle: ' + $json.title + '\\nMessage: ' + $json.message }}",
+        "text": "={{ '*Submitted:* ' + $json.submitted + '\\n*Type:* ' + $json.category.toUpperCase() + '\\n*From:* ' + $json.user_name + '\\n*Page:* ' + $json.page_name + '\\n*Title:* ' + $json.title + '\\n*Message:* ' + $json.message }}",
         "otherOptions": {}
       },
       "credentials": {
