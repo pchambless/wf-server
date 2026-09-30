@@ -29,7 +29,7 @@
       "position": [-64, -48],
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT title, category, message, user_name, to_char(created_at, 'YYYY-MM-DD') AS submitted FROM whatsfresh.vw_feedback WHERE id = {{ $json.body.feedback_id }}",
+        "query": "SELECT title, category, message, user_name, page_name, to_char(created_at, 'YYYY-MM-DD') AS submitted FROM whatsfresh.vw_feedback WHERE id = {{ $json.body.feedback_id }}",
         "options": {}
       },
       "credentials": {
@@ -55,7 +55,7 @@
           "value": "C0C5RD2BKA6",
           "cachedResultName": "feedback"
         },
-        "text": "={{ 'Submitted: ' + $json.submitted + '\\nType: ' + $json.category.toUpperCase() + '\\nFrom: ' + $json.user_name + '\\nTitle: ' + $json.title + '\\nMessage: ' + $json.message }}",
+        "text": "={{ 'Submitted: ' + $json.submitted + '\\nType: ' + $json.category.toUpperCase() + '\\nFrom: ' + $json.user_name + '\\nPage: ' + $json.page_name + '\\nTitle: ' + $json.title + '\\nMessage: ' + $json.message }}",
         "otherOptions": {}
       },
       "credentials": {
