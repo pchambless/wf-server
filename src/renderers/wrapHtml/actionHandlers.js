@@ -75,6 +75,22 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- open_pop_modal ---
+        // Same popModal scaffold the dd-add-btn quick-add buttons use (popActions.js) -
+        // reused here so an action_component-driven button (e.g. the appbar Feedback
+        // button) can open a form as a page-agnostic modal. open_inline_form is NOT
+        // reusable for this: it targets #inline_form_panel/#inline_form_container,
+        // which only exist on whatever CRUD page happens to be loaded, not globally
+        // on the injected appbar.
+        if (resolvedAction.action === 'open_pop_modal') {
+          const formTemplate = resolvedAction.form_template;
+          if (window.popModal && formTemplate) {
+            window.__popPageId = resolvedAction.page_id;
+            await window.popModal.open(formTemplate, resolvedAction.dropdown_slot || null);
+          }
+          return 'handled';
+        }
+
         // --- show_element ---
         if (resolvedAction.action === 'show_element') {
           const el = document.getElementById(resolvedAction.target);
