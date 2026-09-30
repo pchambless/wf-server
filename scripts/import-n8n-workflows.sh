@@ -50,7 +50,22 @@ TGT_KEY="${N8N_PROD_API_KEY:?N8N_PROD_API_KEY not set in .env}"
 # Dev's credential name -> prod's credential id/name. Static by design (see
 # deployment.f_n8n_diff's header comment) - update this pair if prod's
 # credential is ever recreated with a new id.
-SRC_CRED_NAME="postgres-cred"
+#
+# FIXED 2026-09-30 (task 441 fallout): this was still "postgres-cred", the
+# name from before the wf-v2-dev migration (task 427-430) renamed the dev
+# credential to "Postgres Dev2". The jq match on .credentials.postgres.name
+# had therefore been silently failing for EVERY node on EVERY workflow
+# imported since that rename - any node using a Postgres credential got
+# dev's raw credential id pushed to prod verbatim instead of being remapped.
+# Login's L01 (pre-existing, previously fine via an earlier manual UI fix)
+# and L02 (new, added this session for last_login) both got clobbered back
+# to dev's id the moment this script next touched login.json, breaking
+# login on prod entirely (n8n error: "Credential with ID ... does not exist
+# for type postgres") until caught live. Audit every OTHER prod workflow
+# for the same silent corruption - this bug affected all of them equally,
+# it just only surfaces the moment a workflow with a postgres node is
+# next re-imported.
+SRC_CRED_NAME="Postgres Dev2"
 TGT_CRED_ID="cqQBJ3dwZJrFkefC"
 TGT_CRED_NAME="Postgres Prod"
 
