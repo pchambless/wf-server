@@ -38,10 +38,17 @@ export const popActionsCode = `
 
           popModal._dropdownSlot = dropdownSlot;
 
+          // Quick-add forms hydrate via c_getval('<entity>_id') the same way the
+          // main Add New button's inline form does (see wrapHtml/index.js) - without
+          // explicitly nulling that context key here, a stale id left over from
+          // editing/adding that entity elsewhere makes this "new" form come back
+          // pre-populated with the last row instead of blank.
+          const contextKey = templateName.replace(/_form$/, "") + "_id";
+
           const response = await fetch("/api/hydrate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ template_name: templateName, mode: "INSERT" })
+            body: JSON.stringify({ template_name: templateName, mode: "INSERT", [contextKey]: null })
           });
 
           const formHtml = await response.text();
