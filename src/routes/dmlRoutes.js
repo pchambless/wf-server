@@ -47,12 +47,9 @@ router.post('/dml', async (req, res) => {
       // Never blocks or fails the save itself: the feedback row is already
       // committed by this point, and a Slack hiccup must not surface as a
       // save error to the person who just submitted it.
-      if (Number(page_id) === 102 && mode === 'INSERT') {
+      if (Number(page_id) === 102 && mode === 'INSERT' && parsed?.data?.id) {
         callWorkflow('feedback-notify', {
-          title: formFields.f_title,
-          category: formFields.f_category,
-          message: formFields.f_message,
-          email: formFields.f_email
+          feedback_id: parsed.data.id
         }).catch(err => {
           logger.error('[api] feedback-notify failed', { error: err.message });
         });
