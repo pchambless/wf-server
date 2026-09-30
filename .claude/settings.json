@@ -1,14 +1,10 @@
 {
   "mcpServers": {
     "n8n-mcp": {
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "-y",
-        "supergateway",
-        "--streamableHttp",
-        "https://n8n.whatsfresh.app/mcp-server/http",
-        "--header",
-        "authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyMjQwYmFmZC1lODg2LTRiMjItOTNkNC1mNGUxNGMxMDQ1NzkiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6ImRiOTZiNmQyLTlkYzMtNGQ1Ny04MmNiLTUwOTFiZGNiYzIzMSIsImlhdCI6MTc3Nzk5MjI0M30.we7nZbDVKQYLEtW6bo4FmYP2OWyqc4OCJeZ1pJBIZQQ"
+        "-c",
+        "set -a; source /home/paul/Projects/wf-agents/.env; set +a; exec npx -y supergateway --streamableHttp https://n8n.whatsfresh.app/mcp-server/http --header \"authorization:Bearer $DEV_N8N_MCP_SERVER_TOKEN\""
       ]
     }
   }
