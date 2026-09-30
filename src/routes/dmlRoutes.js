@@ -42,6 +42,22 @@ router.post('/dml', async (req, res) => {
     });
 
     if (parsed?.success) {
+      // Feedback page_id (studio.pages id=102) - best-effort Slack notify on
+      // a new submission only, never on an edit from the admin triage page.
+      // Never blocks or fails the save itself: the feedback row is already
+      // committed by this point, and a Slack hiccup must not surface as a
+      // save error to the person who just submitted it.
+      if (Number(page_id) === 102 && mode === 'INSERT') {
+        callWorkflow('feedback-notify', {
+          title: formFields.f_title,
+          category: formFields.f_category,
+          message: formFields.f_message,
+          email: formFields.f_email
+        }).catch(err => {
+          logger.error('[api] feedback-notify failed', { error: err.message });
+        });
+      }
+
       res.json({ success: true, mode: parsed.mode, data: parsed.data });
     } else {
       res.status(422).json({ success: false, error: parsed?.error || 'DML failed' });
