@@ -130,6 +130,21 @@ export const actionEngineCode = `
           // insertion - re-triggering it does nothing. 'refresh-component' is a real
           // event htmx binds a genuine listener for (see buildHtmxDiv.js hx-trigger).
           if (el && window.htmx) {
+            // A refresh re-swaps the grid's innerHTML wholesale, including the
+            // .grid-scroll div itself, which resets scrollTop to 0 - jarring when
+            // toggling rows one at a time down a long list (e.g. deactivating
+            // obsolete Brands). Capture/restore scroll position across the swap
+            // so the view lands back where it was instead of snapping to the top.
+            const scroller = el.querySelector('.grid-scroll');
+            const scrollTop = scroller ? scroller.scrollTop : null;
+            if (scrollTop !== null) {
+              const restoreScroll = () => {
+                const newScroller = el.querySelector('.grid-scroll');
+                if (newScroller) newScroller.scrollTop = scrollTop;
+                el.removeEventListener('htmx:afterSwap', restoreScroll);
+              };
+              el.addEventListener('htmx:afterSwap', restoreScroll);
+            }
             window.htmx.trigger(el, 'refresh-component');
           }
         }
