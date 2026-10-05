@@ -28,8 +28,9 @@ export const popActionsCode = `
       const popModal = {
         _onSuccess: null,
         _dropdownSlot: null,
+        _refreshTargets: null,
 
-        open: async (templateName, dropdownSlot) => {
+        open: async (templateName, dropdownSlot, refreshTargets) => {
           const scaffold = await ensurePopModalScaffold();
           const container = scaffold.container;
           const modal = scaffold.modal;
@@ -37,6 +38,7 @@ export const popActionsCode = `
           if (!container || !modal) return;
 
           popModal._dropdownSlot = dropdownSlot;
+          popModal._refreshTargets = refreshTargets || null;
 
           // Quick-add forms hydrate via c_getval('<entity>_id') the same way the
           // main Add New button's inline form does (see wrapHtml/index.js) - without
@@ -77,6 +79,40 @@ export const popActionsCode = `
           if (modal) modal.classList.add("hidden");
           if (container) container.innerHTML = "";
           popModal._dropdownSlot = null;
+          popModal._refreshTargets = null;
+        },
+
+        // Non-dropdown quick-adds (e.g. "+ Add Worker" next to a checkbox list,
+        // not a <select>) refresh a named component instead. These targets are
+        // NOT standalone htmx components - {{slot:X}} composes them into the
+        // parent template's HTML once at render time, with no hx-post/hx-trigger
+        // of their own, so htmx.trigger(el, 'refresh-component') is a silent
+        // no-op here (confirmed live 2026-10-05 - nothing is listening). Fetch
+        // and swap directly by template name instead, same as refreshDropdown
+        // does for a <select>. worker_checkboxes specifically needs
+        // initWorkerPicker() re-run afterward - its checked state and
+        // change-listener live on the OUTER wrapper, which survives the
+        // innerHTML swap, but the pre-check-from-f_workers step only runs when
+        // initWorkerPicker() is called.
+        refreshTargets: async (targets) => {
+          for (const id of targets) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+
+            const response = await fetch("/api/hydrate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ template_name: id })
+            });
+            if (!response.ok) continue;
+
+            el.innerHTML = await response.text();
+            if (window.htmx) window.htmx.process(el);
+
+            if (id === "worker_checkboxes" && typeof initWorkerPicker === "function") {
+              initWorkerPicker();
+            }
+          }
         },
 
         refreshDropdown: async (newId) => {
@@ -173,7 +209,12 @@ export const popActionsCode = `
 
           if (result.success) {
             const newId = result.data?.id;
-            await popModal.refreshDropdown(newId);
+            if (popModal._dropdownSlot) {
+              await popModal.refreshDropdown(newId);
+            }
+            if (popModal._refreshTargets) {
+              await popModal.refreshTargets(popModal._refreshTargets);
+            }
             popModal.close();
           } else {
             const errMsg = typeof result.error === "object" ? JSON.stringify(result.error) : (result.error || "Save failed");

@@ -23,6 +23,32 @@ export const actionEngineCode = `
       const applySwap = (targetId, html, swapMode) => {
         const target = document.getElementById(targetId);
         if (!target) return;
+
+        // Cascading dropdowns (Product Type -> Product -> Batch) refresh through
+        // here on every select_change. Replacing the widget wholesale tears out
+        // the <select> DOM node and drops in a new one - if the user clicks to
+        // open its native popup right as/after that swap lands, Chrome can show
+        // a stale/truncated popup, since the browser's native widget state was
+        // tracking the element that just got removed (reported + reproduced
+        // 2026-10-05, isolated to the most-recently-refreshed dropdown in a
+        // cascade - exactly what this predicts). Fix: when the target already
+        // has a <select> and the incoming html also has one, update the
+        // EXISTING select's options in place instead of replacing the element,
+        // so no native interaction in flight ever has its DOM node pulled out
+        // from under it. Falls through to full replacement for every other
+        // kind of swap target (grids, forms, etc).
+        const existingSelect = target.tagName === 'SELECT' ? target : target.querySelector('select');
+        if (existingSelect) {
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+          const newSelect = temp.querySelector('select');
+          if (newSelect) {
+            existingSelect.innerHTML = newSelect.innerHTML;
+            if (window.htmx) window.htmx.process(target);
+            return;
+          }
+        }
+
         if (swapMode === 'outerHTML') {
           target.outerHTML = html;
           const replacement = document.getElementById(targetId);

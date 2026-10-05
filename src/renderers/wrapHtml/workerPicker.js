@@ -18,6 +18,13 @@ export const workerPickerCode = `
           }
         });
 
+        // Re-running this (e.g. after a "+ Add Worker" refresh replaces the
+        // checkbox list) must still re-check boxes from f_workers above, but
+        // must NOT re-attach the change listener to the same persisting
+        // outer container - it survives an innerHTML swap of its children.
+        if (container.dataset.wpInit) return;
+        container.dataset.wpInit = '1';
+
         // On any checkbox change, rebuild the workers string
         container.addEventListener('change', (e) => {
           if (!e.target.classList.contains('worker-cb')) return;
