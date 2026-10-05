@@ -56,6 +56,17 @@ app.use(session({
   cookie: { secure: 'auto', httpOnly: true, maxAge: SESSION_MAX_AGE_MS }
 }));
 
+// wf-server used to serve its own landing page here (public/index.html) -
+// a separate, independently-built copy of wf-marketing's pitch that never
+// got the dedicated /features/*/ pages wf-marketing has. Redirect to the
+// real, maintained marketing site instead of serving the stale duplicate.
+// 302 (not 301) deliberately - this architecture is still settling
+// pre-launch, and a 301 gets aggressively cached by browsers, making it
+// hard to walk back later if the domain layout changes again.
+app.get('/', (req, res) => {
+  res.redirect(302, process.env.MARKETING_URL || 'https://v2-market.whatsfresh.app');
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/health', (req, res) => {
