@@ -73,9 +73,27 @@ export const popActionsCode = `
           modal.classList.remove("hidden");
         },
 
+        // Read-only content (e.g. a page's help_text) in the same scaffold. The
+        // header Save button submits #pop_form_element, which doesn't exist here,
+        // so hide it; close() restores it for the next form open.
+        openContent: async (title, html) => {
+          const scaffold = await ensurePopModalScaffold();
+          if (!scaffold.container || !scaffold.modal) return;
+
+          scaffold.container.innerHTML = html;
+          const modalTitle = document.getElementById("pop_modal_title");
+          if (modalTitle) modalTitle.textContent = title;
+          const saveBtn = scaffold.modal.querySelector('button[form="pop_form_element"]');
+          if (saveBtn) saveBtn.style.display = "none";
+
+          scaffold.modal.classList.remove("hidden");
+        },
+
         close: () => {
           const modal = document.getElementById("pop_modal");
           const container = document.getElementById("pop_container");
+          const saveBtn = modal?.querySelector('button[form="pop_form_element"]');
+          if (saveBtn) saveBtn.style.display = "";
           if (modal) modal.classList.add("hidden");
           if (container) container.innerHTML = "";
           popModal._dropdownSlot = null;

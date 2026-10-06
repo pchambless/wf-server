@@ -91,6 +91,17 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- show_help ---
+        // Page help_text arrives inside the appbar as a <template> emitted by the
+        // page-chrome workflow, so no extra fetch or context passing is needed.
+        if (resolvedAction.action === 'show_help') {
+          const helpEl = document.getElementById('page_help_content');
+          if (window.popModal && helpEl) {
+            await window.popModal.openContent('Help', helpEl.innerHTML);
+          }
+          return 'handled';
+        }
+
         // --- show_element ---
         if (resolvedAction.action === 'show_element') {
           const el = document.getElementById(resolvedAction.target);
