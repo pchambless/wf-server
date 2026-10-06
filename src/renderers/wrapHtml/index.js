@@ -7,6 +7,7 @@ import { reportActionsCode } from './reportActions.js';
 import { popActionsCode } from './popActions.js';
 import { workerPickerCode } from './workerPicker.js';
 import { formHydrationCode } from './formHydration.js';
+import { filterHintCode } from './filterHint.js';
 
 export function wrapHtml(title, body) {
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
@@ -31,6 +32,7 @@ export function wrapHtml(title, body) {
       ${reportActionsCode}
       ${popActionsCode}
       ${workerPickerCode}
+      ${filterHintCode}
 
       // Build CRUD buttons dynamically from __pageContext
       document.addEventListener('DOMContentLoaded', () => {
