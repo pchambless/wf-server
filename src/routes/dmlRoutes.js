@@ -4,6 +4,45 @@ import logger from '../utils/logger.js';
 
 const router = Router();
 
+// Feedback (studio.pages id=102, the appbar Feedback button) no longer writes through the generic
+// dml: every environment's feedback lands in ONE table (support.feedback on the dev droplet) via
+// the feedback-intake workflow, which also posts the Slack notice (task 477). Same code
+// everywhere: dev and local call their own n8n; prod sets FEEDBACK_INTAKE_URL to dev's webhook
+// (prod n8n has no Slack credential and must not hold a login to dev's database).
+const FEEDBACK_PAGE_ID = 102;
+const SOURCE_ENV = process.env.APP_ENV || 'dev';
+const FEEDBACK_INTAKE_URL = process.env.FEEDBACK_INTAKE_URL || '';
+
+async function submitFeedback(email, fields) {
+  const payload = {
+    email,
+    account_id: Number(fields.f_account_id) || 0,
+    page_id: Number(fields.f_page_id),
+    title: fields.f_title,
+    category: fields.f_category,
+    message: fields.f_message,
+    source_env: SOURCE_ENV
+  };
+
+  if (!FEEDBACK_INTAKE_URL) {
+    const result = await callWorkflow('feedback-intake', payload);
+    return Array.isArray(result) ? result[0] : result;
+  }
+
+  const response = await fetch(FEEDBACK_INTAKE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(process.env.N8N_WEBHOOK_SECRET ? { 'X-Webhook-Secret': process.env.N8N_WEBHOOK_SECRET } : {})
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw new Error(`feedback-intake returned ${response.status}`);
+  const result = await response.json();
+  return Array.isArray(result) ? result[0] : result;
+}
+
 router.post('/dml', async (req, res) => {
   const email = req.session?.current_user_email;
   if (!email) return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -20,6 +59,20 @@ router.post('/dml', async (req, res) => {
   }
 
   logger.info('[api] Request', { path: '/api/dml', page_id, mode, email });
+
+  if (Number(page_id) === FEEDBACK_PAGE_ID && mode === 'INSERT') {
+    try {
+      const saved = await submitFeedback(email, formFields);
+      if (!saved?.success) throw new Error('feedback-intake did not confirm the save');
+      return res.json({ success: true, mode: 'INSERT', data: { id: saved.id } });
+    } catch (err) {
+      logger.error('[api] feedback-intake failed', { error: err.message, source_env: SOURCE_ENV });
+      return res.status(502).json({
+        success: false,
+        error: 'We could not send your feedback just now. Please try again in a minute.'
+      });
+    }
+  }
 
   try {
     const result = await callWorkflow('dml', {
@@ -42,19 +95,6 @@ router.post('/dml', async (req, res) => {
     });
 
     if (parsed?.success) {
-      // Feedback page_id (studio.pages id=102) - best-effort Slack notify on
-      // a new submission only, never on an edit from the admin triage page.
-      // Never blocks or fails the save itself: the feedback row is already
-      // committed by this point, and a Slack hiccup must not surface as a
-      // save error to the person who just submitted it.
-      if (Number(page_id) === 102 && mode === 'INSERT' && parsed?.data?.id) {
-        callWorkflow('feedback-notify', {
-          feedback_id: parsed.data.id
-        }).catch(err => {
-          logger.error('[api] feedback-notify failed', { error: err.message });
-        });
-      }
-
       res.json({ success: true, mode: parsed.mode, data: parsed.data });
     } else {
       res.status(422).json({ success: false, error: parsed?.error || 'DML failed' });
