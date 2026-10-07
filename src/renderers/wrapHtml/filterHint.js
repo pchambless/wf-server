@@ -9,8 +9,14 @@
 // hidden, not prevented from loading.
 export const filterHintCode = `
       const filterHint = {
+        // The slot renders <div class="dropdown-label"> then a component wrapper
+        // div (htmx target) as siblings in the bar, with the <select> nested inside
+        // the wrapper - so climb to the bar's direct child before looking back.
         label: (select) => {
-          const prev = select.previousElementSibling;
+          const bar = select.closest('.dropdown-container');
+          let wrap = select;
+          while (wrap && wrap.parentElement !== bar) wrap = wrap.parentElement;
+          const prev = wrap ? wrap.previousElementSibling : null;
           const text = prev && prev.classList.contains('dropdown-label') ? prev.textContent : '';
           return (text || '').trim() || 'value';
         },
@@ -19,10 +25,7 @@ export const filterHintCode = `
 
         message: (labels) => {
           const parts = labels.map(l => filterHint.article(l) + ' ' + l);
-          const list = parts.length > 1
-            ? parts.slice(0, -1).join(', ') + ', then ' + parts[parts.length - 1]
-            : parts[0];
-          return 'Select ' + list + ' to continue.';
+          return 'Select ' + parts.join(', then ') + ' to continue.';
         },
 
         update: () => {
