@@ -6,14 +6,15 @@
 # SEPARATE from export-deployment-functions.sh on purpose (task 470): the
 # deployment schema is deploy machinery and lives in scripts/deploy-lib/sql/;
 # these are application functions the renderer and n8n call at runtime and
-# live under db/. Each run regenerates ONLY the requested schema's folder, so
+# live under db/ (intake + support are dev-only schemas, never deployed, so git is their only record).
+# Each run regenerates ONLY the requested schema's folder, so
 # one export can never touch another schema's files or the deployment ones.
 #
 # Usage:
 #   export-db-functions.sh <schema>            regenerate db/<schema>/functions/
 #   export-db-functions.sh <schema> --check    compare live DB to committed files,
 #                                              exit 1 on drift (nothing written)
-#   Allowed schemas: studio, whatsfresh, agile
+#   Allowed schemas: studio, whatsfresh, agile, support, intake
 #
 # The DB stays the source of truth; git is the record. Re-run and commit after
 # any CREATE OR REPLACE on one of these functions. Reads pg_get_functiondef
@@ -24,8 +25,8 @@ set -euo pipefail
 SCHEMA="${1:-}"
 MODE="${2:-export}"
 case "$SCHEMA" in
-    studio|whatsfresh|agile) ;;
-    *) echo "Usage: export-db-functions.sh <studio|whatsfresh|agile> [--check]" >&2; exit 1 ;;
+    studio|whatsfresh|agile|support|intake) ;;
+    *) echo "Usage: export-db-functions.sh <studio|whatsfresh|agile|support|intake> [--check]" >&2; exit 1 ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
