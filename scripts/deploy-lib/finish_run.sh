@@ -20,8 +20,14 @@ RUN_ID="${1:?Usage: finish_run.sh <run_id> [status]}"
 STATUS="${2:-succeeded}"
 STATUS_ESC=$(esc_sql "$STATUS")
 
-if [ "$STATUS" = "succeeded" ]; then
-  VIOLATIONS=$(pg_query "SELECT rule || ': ' || detail AS v FROM deployment.f_check_run($RUN_ID)" | jq -r '.[].v // empty')
+# deployment.f_finish_run gates 'succeeded' on f_check_run and never overwrites
+# a failed run; same function the n8n orchestrator calls.
+RESULT=$(pg_query "SELECT deployment.f_finish_run($RUN_ID, '$STATUS_ESC') AS r")
+OK=$(printf '%s' "$RESULT" | jq -r '.[0].r.ok // empty')
+ACTUAL=$(printf '%s' "$RESULT" | jq -r '.[0].r.status // "unknown"')
+
+if [ "$OK" != "true" ]; then
+  VIOLATIONS=$(printf '%s' "$RESULT" | jq -r '.[0].r.violations // empty')
   if [ -n "$VIOLATIONS" ]; then
     echo "finish_run: run $RUN_ID fails deployment.f_check_run:" >&2
     printf '  %s\n' "$VIOLATIONS" >&2
@@ -30,10 +36,5 @@ if [ "$STATUS" = "succeeded" ]; then
   fi
 fi
 
-pg_query "UPDATE deployment.deployment_runs SET status='$STATUS_ESC', finished_at=now() WHERE id=$RUN_ID AND status <> 'failed'" > /dev/null
-
-# Report what actually landed, not the target status - the guard above can
-# silently no-op (run already failed), and echoing $STATUS regardless would
-# have said "succeeded" for a run that stayed failed.
-ACTUAL=$(pg_query "SELECT status AS s FROM deployment.deployment_runs WHERE id=$RUN_ID" | jq -r '.[0].s // "unknown"')
+# Report what actually landed, not the target status (a failed run stays failed).
 echo "finish_run: run $RUN_ID -> $ACTUAL"

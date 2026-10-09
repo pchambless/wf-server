@@ -25,38 +25,15 @@ ENV_ESC=$(esc_sql "$ENVIRONMENT")
 SHA_ESC=$(esc_sql "$GIT_COMMIT")
 BY_ESC=$(esc_sql "$CREATED_BY")
 
-SHA_SQL="NULL"
-[ -n "$GIT_COMMIT" ] && SHA_SQL="'$SHA_ESC'"
-
-# Holistic run: pipeline 'all' (or empty) creates a deployment with
-# pipeline_id = NULL - one run that covers every leg (studio+whatsfresh DB,
-# n8n, wf-server), the way a real deployment ships them together. A specific
-# pipeline name still pins that one leg (used for targeted re-runs).
-# deployments.pipeline_id is nullable, so NULL = "all legs".
-if [ -z "$PIPELINE" ] || [ "$PIPELINE" = "all" ]; then
-  PIPE_SQL="NULL"
-else
-  PIPE_SQL="(SELECT id FROM deployment.pipelines WHERE name = '$PIPELINE_ESC')"
-fi
-
-SQL="WITH new_deployment AS (
-  INSERT INTO deployment.deployments (environment_id, pipeline_id, release_id, git_commit, created_by)
-  SELECT e.id, $PIPE_SQL, $RELEASE_ID, $SHA_SQL, '$BY_ESC'
-    FROM deployment.environments e
-   WHERE e.name = '$ENV_ESC'
-  RETURNING id
-), new_run AS (
-  INSERT INTO deployment.deployment_runs (deployment_id, attempt, status, triggered_by)
-  SELECT id, 1, 'running', '$BY_ESC' FROM new_deployment
-  RETURNING id
-)
-SELECT id AS run_id FROM new_run"
-
-RESULT=$(pg_query "$SQL")
+# The run lifecycle lives in deployment.f_start_run (shared with the n8n
+# orchestrator). Pipeline 'all'/empty = holistic run (pipeline_id NULL, every
+# leg); a name pins one leg. RELEASE_ID is accepted for caller compatibility but
+# f_start_run always attaches the pending release.
+RESULT=$(pg_query "SELECT deployment.f_start_run('$PIPELINE_ESC', '$ENV_ESC', '$SHA_ESC', '$BY_ESC') AS run_id")
 RUN_ID=$(printf '%s' "$RESULT" | jq -r '.[0].run_id // empty')
 
 if [ -z "$RUN_ID" ]; then
-  echo "start_run: no run_id returned - check pipeline '$PIPELINE', environment '$ENVIRONMENT', release '$RELEASE_ID' exist. Response: $RESULT" >&2
+  echo "start_run: no run_id returned - check pipeline '$PIPELINE', environment '$ENVIRONMENT' and that a pending release exists. Response: $RESULT" >&2
   exit 1
 fi
 
