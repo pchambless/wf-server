@@ -6,6 +6,8 @@ DECLARE
   v_release  integer;
   v_pipeline integer;
   v_env      integer;
+  v_is_target boolean;
+  v_platform  text;
   v_dep      integer;
   v_run      integer;
 BEGIN
@@ -27,6 +29,15 @@ BEGIN
     IF v_pipeline IS NULL THEN
       RAISE EXCEPTION 'f_start_run: unknown pipeline %', p_pipeline;
     END IF;
+  END IF;
+
+  -- Only code-only runs (the wf-server pipeline) may target a non-deploy-target
+  -- environment such as dev. A holistic run or a database/n8n pipeline there is
+  -- refused up front, not three steps in (task 517: run 77 wiped dev's studio data).
+  SELECT is_target INTO v_is_target FROM deployment.environments WHERE id = v_env;
+  SELECT platform INTO v_platform FROM deployment.pipelines WHERE id = v_pipeline;
+  IF NOT v_is_target AND (v_pipeline IS NULL OR v_platform <> 'wf-server') THEN
+    RAISE EXCEPTION 'f_start_run: environment % is not a deploy target - only the wf-server (code) pipeline may run there, not % ', p_env, coalesce(nullif(p_pipeline, ''), 'all');
   END IF;
 
   INSERT INTO deployment.deployments (environment_id, pipeline_id, release_id, git_commit, created_by)
