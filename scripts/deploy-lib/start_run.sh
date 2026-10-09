@@ -28,11 +28,22 @@ BY_ESC=$(esc_sql "$CREATED_BY")
 SHA_SQL="NULL"
 [ -n "$GIT_COMMIT" ] && SHA_SQL="'$SHA_ESC'"
 
+# Holistic run: pipeline 'all' (or empty) creates a deployment with
+# pipeline_id = NULL - one run that covers every leg (studio+whatsfresh DB,
+# n8n, wf-server), the way a real deployment ships them together. A specific
+# pipeline name still pins that one leg (used for targeted re-runs).
+# deployments.pipeline_id is nullable, so NULL = "all legs".
+if [ -z "$PIPELINE" ] || [ "$PIPELINE" = "all" ]; then
+  PIPE_SQL="NULL"
+else
+  PIPE_SQL="(SELECT id FROM deployment.pipelines WHERE name = '$PIPELINE_ESC')"
+fi
+
 SQL="WITH new_deployment AS (
   INSERT INTO deployment.deployments (environment_id, pipeline_id, release_id, git_commit, created_by)
-  SELECT e.id, p.id, $RELEASE_ID, $SHA_SQL, '$BY_ESC'
-    FROM deployment.environments e, deployment.pipelines p
-   WHERE e.name = '$ENV_ESC' AND p.name = '$PIPELINE_ESC'
+  SELECT e.id, $PIPE_SQL, $RELEASE_ID, $SHA_SQL, '$BY_ESC'
+    FROM deployment.environments e
+   WHERE e.name = '$ENV_ESC'
   RETURNING id
 ), new_run AS (
   INSERT INTO deployment.deployment_runs (deployment_id, attempt, status, triggered_by)
