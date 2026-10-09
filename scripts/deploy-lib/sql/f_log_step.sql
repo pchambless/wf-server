@@ -29,6 +29,10 @@ BEGIN
     UPDATE deployment.deployment_runs
        SET status = 'failed', error = left(p_detail, 500), error_stage = 'execute', finished_at = now()
      WHERE id = p_run_id AND status <> 'failed';
+
+    UPDATE agile.agile_cache a SET status = 'Blocked', updated_at = now(), updated_by = 'deploy'
+      FROM deployment.deployment_runs r JOIN deployment.deployments d ON d.id = r.deployment_id
+     WHERE r.id = p_run_id AND d.task_id = a.id AND NOT r.dry_run AND a.status = 'In Progress';
   END IF;
 
   RETURN v_id;
