@@ -32,11 +32,14 @@ AS $function$
     FROM first_ok c JOIN first_ok d ON d.step_name = 'data'
    WHERE c.step_name = 'deploy_code' AND c.ts < d.ts
   UNION ALL
-  -- GATES_FIRST: a mutating step succeeded before the gating checks did
+  -- GATES_FIRST: a mutating step succeeded before the gating checks did. The gating checks are derived
+  -- from the catalog (enabled kind='check' steps ordered before 'structure'), not named here.
   SELECT 'GATES_FIRST'::text,
          m.step_name || ' succeeded before gate ' || g.step_name
     FROM first_ok m
-    JOIN first_ok g ON g.step_name IN ('compare', 'compare_sequences')
+    JOIN first_ok g ON g.step_name IN (SELECT step_key FROM deployment.deploy_steps
+                                       WHERE enabled AND kind = 'check'
+                                         AND ordr < (SELECT ordr FROM deployment.deploy_steps WHERE step_key = 'structure'))
    WHERE m.step_name IN ('structure', 'data', 'deploy_n8n', 'deploy_code')
      AND m.ts < g.ts
 $function$

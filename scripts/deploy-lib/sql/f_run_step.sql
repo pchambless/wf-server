@@ -29,7 +29,10 @@ BEGIN
 
     EXECUTE 'SELECT coalesce(jsonb_agg(to_jsonb(t)), ''[]''::jsonb) FROM (' || v_sql || ') t' INTO v_rows;
 
-    v_detail := left(coalesce(v_rows -> 0, '{}'::jsonb)::text, 500);
+    -- one row: that row; several: the count plus the first (run detail used to show only the first row)
+    v_detail := CASE WHEN jsonb_array_length(v_rows) > 1
+                     THEN jsonb_array_length(v_rows)::text || ' rows; first: ' || left((v_rows -> 0)::text, 400)
+                     ELSE left(coalesce(v_rows -> 0, '{}'::jsonb)::text, 500) END;
     PERFORM deployment.f_log_step(p_run_id, p_step, 'success', v_detail);
     RETURN jsonb_build_object('ok', true, 'step', p_step, 'rows', v_rows);
   EXCEPTION WHEN OTHERS THEN
