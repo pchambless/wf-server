@@ -6,13 +6,10 @@
 # run already failed (WHERE status <> 'failed'), so a late call after an
 # earlier error can't paper over it.
 #
-# Holistic runs (deployments.pipeline_id IS NULL = "all legs") must have EVERY
-# enabled deploy_steps row logged 'success' before they can be marked
-# succeeded - otherwise a run that only did one leg would read as a complete
-# deploy (found 2026-10-09, run 79). The run is left 'running' and the missing
-# steps are listed; close an abandoned one with: finish_run.sh <run_id> aborted
-# Pipeline-pinned runs (a single leg on purpose) skip the check, as do
-# non-succeeded statuses.
+# 'succeeded' is gated by deployment.f_check_run(run_id) - the single rule set
+# (holistic runs need every enabled step, data before code, gates first).
+# Violations leave the run 'running' and are printed; close an abandoned one
+# with: finish_run.sh <run_id> aborted. Other statuses skip the check.
 #
 # Usage: finish_run.sh <run_id> [status]   # status defaults to 'succeeded'
 set -euo pipefail
@@ -24,15 +21,10 @@ STATUS="${2:-succeeded}"
 STATUS_ESC=$(esc_sql "$STATUS")
 
 if [ "$STATUS" = "succeeded" ]; then
-  MISSING=$(pg_query "SELECT string_agg(ds.step_key, ', ' ORDER BY ds.ordr) AS m
-    FROM deployment.deployment_runs r
-    JOIN deployment.deployments d ON d.id = r.deployment_id
-    JOIN deployment.deploy_steps ds ON ds.enabled
-    WHERE r.id = $RUN_ID AND d.pipeline_id IS NULL
-      AND NOT EXISTS (SELECT 1 FROM deployment.deployment_run_steps rs
-                       WHERE rs.run_id = r.id AND rs.step_name = ds.step_key AND rs.status = 'success')" | jq -r '.[0].m // empty')
-  if [ -n "$MISSING" ]; then
-    echo "finish_run: run $RUN_ID is holistic but these steps have no success: $MISSING" >&2
+  VIOLATIONS=$(pg_query "SELECT rule || ': ' || detail AS v FROM deployment.f_check_run($RUN_ID)" | jq -r '.[].v // empty')
+  if [ -n "$VIOLATIONS" ]; then
+    echo "finish_run: run $RUN_ID fails deployment.f_check_run:" >&2
+    printf '  %s\n' "$VIOLATIONS" >&2
     echo "finish_run: left 'running'. Finish the steps, or close it with: finish_run.sh $RUN_ID aborted" >&2
     exit 1
   fi
