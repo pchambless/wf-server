@@ -58,7 +58,7 @@ if [ -z "$STEP_SQL" ] || [ "$STEP_SQL" = "null" ]; then
 fi
 
 # --- 1. mark running ---------------------------------------------------------
-pg_query "INSERT INTO deployment.deployment_run_steps (run_id, step_name, status) VALUES ($RUN_ID, '$STEP_ESC', 'running')" > /dev/null
+pg_query "SELECT deployment.f_log_step($RUN_ID, '$STEP_ESC', 'running')" > /dev/null
 
 # --- 2. execute the step via server-query (it does :token substitution) ------
 # server-query lives in wf-agents; pg-query.sh hits the same webhook but with
@@ -93,14 +93,12 @@ DETAIL_ESC=$(esc_sql "$DETAIL")
 
 # --- 4. mark success/error; on error fail the run ---------------------------
 if [ "$OK" -eq 0 ]; then
-  pg_query "INSERT INTO deployment.deployment_run_steps (run_id, step_name, status, detail) VALUES ($RUN_ID, '$STEP_ESC', 'success', '$DETAIL_ESC')" > /dev/null
+  pg_query "SELECT deployment.f_log_step($RUN_ID, '$STEP_ESC', 'success', '$DETAIL_ESC')" > /dev/null
   printf '%s\n' "$BODY"
   exit 0
 else
-  pg_query "INSERT INTO deployment.deployment_run_steps (run_id, step_name, status, detail) VALUES ($RUN_ID, '$STEP_ESC', 'error', '$DETAIL_ESC')" > /dev/null
-  # error_stage is coarse (connect/plan/execute/verify); step_name is the precise
-  # record. Land it in the existing bucket, same as run_step.sh.
-  pg_query "UPDATE deployment.deployment_runs SET status='failed', error='$DETAIL_ESC', error_stage='execute', finished_at=now() WHERE id=$RUN_ID" > /dev/null
+  # f_log_step also fails the run on error (error_stage 'execute' bucket).
+  pg_query "SELECT deployment.f_log_step($RUN_ID, '$STEP_ESC', 'error', '$DETAIL_ESC')" > /dev/null
   echo "deploy_step: step '$STEP_KEY' FAILED - see deployment.deployment_run_steps run $RUN_ID" >&2
   [ -n "$BODY" ] && echo "$BODY" >&2
   exit 1

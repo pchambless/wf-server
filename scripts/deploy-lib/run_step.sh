@@ -31,7 +31,7 @@ fi
 
 STEP_ESC=$(esc_sql "$STEP_NAME")
 
-pg_query "INSERT INTO deployment.deployment_run_steps (run_id, step_name, status) VALUES ($RUN_ID, '$STEP_ESC', 'running')" > /dev/null
+pg_query "SELECT deployment.f_log_step($RUN_ID, '$STEP_ESC', 'running')" > /dev/null
 
 OUTPUT_FILE=$(mktemp)
 trap 'rm -f "$OUTPUT_FILE"' EXIT
@@ -45,14 +45,12 @@ EXIT_CODE=${PIPESTATUS[0]}
 DETAIL=$(sed 's/\x1b\[[0-9;]*m//g' "$OUTPUT_FILE" | grep -v '^[[:space:]]*$' | tail -n1 | cut -c1-500)
 DETAIL_ESC=$(esc_sql "$DETAIL")
 
+# f_log_step writes the event and, on error, fails the run (one writer shared
+# with deploy_step.sh and the n8n orchestrator).
 if [ "$EXIT_CODE" -eq 0 ]; then
-  pg_query "INSERT INTO deployment.deployment_run_steps (run_id, step_name, status, detail) VALUES ($RUN_ID, '$STEP_ESC', 'success', '$DETAIL_ESC')" > /dev/null
+  pg_query "SELECT deployment.f_log_step($RUN_ID, '$STEP_ESC', 'success', '$DETAIL_ESC')" > /dev/null
 else
-  pg_query "INSERT INTO deployment.deployment_run_steps (run_id, step_name, status, detail) VALUES ($RUN_ID, '$STEP_ESC', 'error', '$DETAIL_ESC')" > /dev/null
-  # error_stage is constrained to connect/plan/execute/verify (deployment_runs_stage_chk) -
-  # coarser than step_key. deployment_run_steps.step_name is the precise record now,
-  # this just needs to land in the existing bucket every one of our steps falls under.
-  pg_query "UPDATE deployment.deployment_runs SET status='failed', error='$DETAIL_ESC', error_stage='execute', finished_at=now() WHERE id=$RUN_ID" > /dev/null
+  pg_query "SELECT deployment.f_log_step($RUN_ID, '$STEP_ESC', 'error', '$DETAIL_ESC')" > /dev/null
 fi
 
 exit "$EXIT_CODE"
