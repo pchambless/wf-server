@@ -42,6 +42,17 @@ BEGIN
         RAISE EXCEPTION 'f_p03_data: environment % has no dblink_server configured', v_env.name;
     END IF;
 
+    -- Source and target must be different clusters (task 517 incident). Runs in dry
+    -- runs too: a read-only identity compare, so a misconfigured env fails early.
+    BEGIN
+        PERFORM deployment.f_assert_distinct_target(v_env.dblink_server);
+    EXCEPTION WHEN OTHERS THEN
+        UPDATE deployment.deployment_runs
+           SET status = 'failed', error = left(SQLERRM, 500), error_stage = 'connect', finished_at = now()
+         WHERE id = p_run_id;
+        RAISE;
+    END;
+
     -- p_force_refresh exists to let practice/rehearsal runs re-seed repeatedly
     -- without permanently changing object_policy.data (which must stay an honest,
     -- permanent statement of intent - not a switch someone forgets to flip back

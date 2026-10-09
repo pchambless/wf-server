@@ -40,6 +40,17 @@ BEGIN
         RAISE EXCEPTION 'f_p02_structure: environment % has no dblink_server configured', v_env.name;
     END IF;
 
+    -- Source and target must be different clusters (task 517 incident). Runs in dry
+    -- runs too: a read-only identity compare, so a misconfigured env fails early.
+    BEGIN
+        PERFORM deployment.f_assert_distinct_target(v_env.dblink_server);
+    EXCEPTION WHEN OTHERS THEN
+        UPDATE deployment.deployment_runs
+           SET status = 'failed', error = left(SQLERRM, 500), error_stage = 'connect', finished_at = now()
+         WHERE id = p_run_id;
+        RAISE;
+    END;
+
     -- Defensive: clear any stale connection left over from an aborted prior call
     BEGIN
         PERFORM dblink_disconnect(v_conn);
