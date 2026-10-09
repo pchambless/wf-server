@@ -241,8 +241,11 @@ BEGIN
            SET status = 'failed', error = v_fail_reason, error_stage = 'execute', finished_at = now()
          WHERE id = p_run_id;
     ELSE
+        -- Do NOT finalize the run here: a run spans more steps than this one (n8n and code
+        -- legs, verify). Closing it is f_finish_run's job, gated by f_check_run. Marking it
+        -- succeeded here made the later legs refuse to join (run 406, 2026-10-09).
         UPDATE deployment.deployment_runs
-           SET status = 'succeeded', error = NULL, error_stage = NULL, finished_at = now()
+           SET status = 'running', error = NULL, error_stage = NULL
          WHERE id = p_run_id;
     END IF;
 
