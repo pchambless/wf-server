@@ -102,7 +102,7 @@ else
     DIFF_PAYLOAD=$(jq -n --arg q "SELECT workflow_name FROM deployment.f_n8n_diff('prod') WHERE needs_deploy = true" \
       '{query: $q, params: {}, source: "direct"}')
     NEEDED=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
-      -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$DIFF_PAYLOAD" | jq -r '.[].workflow_name')
+      -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$DIFF_PAYLOAD" | jq -r '.[].workflow_name // empty')
 
     if [ -z "$NEEDED" ]; then
       echo "[import] Nothing to do - prod already in sync."
