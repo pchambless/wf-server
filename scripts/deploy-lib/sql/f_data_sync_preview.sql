@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION deployment.f_data_sync_preview(p_env text DEFAULT 'prod'::text)
+CREATE OR REPLACE FUNCTION deployment.f_data_sync_preview(p_env text DEFAULT 'prod'::text, p_policy text DEFAULT 'refresh_always'::text)
  RETURNS TABLE(schema_path text, dev_rows bigint, rows_added bigint, rows_modified bigint, rows_deleted bigint, status text)
  LANGUAGE plpgsql
 AS $function$
@@ -17,6 +17,11 @@ BEGIN
   -- (dev has them, target does not), UPDATE (content differs) and DELETE (target
   -- has them, dev does not). Built on f_data_diff (PK + row hash, audit columns
   -- excluded), so the preview and the future apply cannot disagree. Writes nothing.
+  -- p_policy 'seed_once' previews the whatsfresh client tables (pre-launch exploration only:
+  -- they are seeded once and never refreshed after cutover).
+  IF p_policy NOT IN ('refresh_always', 'seed_once') THEN
+    RAISE EXCEPTION 'f_data_sync_preview: policy must be refresh_always or seed_once (never_touch is never compared), got %', p_policy;
+  END IF;
   SELECT * INTO v_env FROM deployment.environments WHERE name = p_env;
   IF NOT FOUND THEN RAISE EXCEPTION 'f_data_sync_preview: unknown environment %', p_env; END IF;
   IF NOT v_env.is_target THEN RAISE EXCEPTION 'f_data_sync_preview: environment % is not a deploy target', p_env; END IF;
@@ -24,7 +29,7 @@ BEGIN
 
   FOR v_pol IN
     SELECT o.schema_path AS sp FROM deployment.object_policy o
-     WHERE o.object_type = 'table' AND o.data = 'refresh_always' AND o.structure = 'deploy'
+     WHERE o.object_type = 'table' AND o.data = p_policy AND o.structure = 'deploy'
      ORDER BY o.schema_path
   LOOP
     v_sch := split_part(v_pol.sp, '.', 1);
