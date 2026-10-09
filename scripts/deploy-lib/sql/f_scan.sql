@@ -53,7 +53,7 @@ BEGIN
             SELECT string_agg(a.attname || ':' || format_type(a.atttypid, a.atttypmod)
                               || ':' || a.attnotnull::text
                               || ':' || COALESCE(pg_get_expr(d.adbin, d.adrelid), '')
-                              || ':' || COALESCE(a.attidentity, ''), ',' ORDER BY a.attname) AS def
+                              || ':' || COALESCE(a.attidentity::text, ''), ',' ORDER BY a.attname) AS def
               FROM pg_attribute a
               LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
              WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped) cols ON true
