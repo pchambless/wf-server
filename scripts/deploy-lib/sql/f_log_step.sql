@@ -15,8 +15,11 @@ BEGIN
     RAISE EXCEPTION 'f_log_step: run % not found', p_run_id;
   END IF;
 
-  INSERT INTO deployment.deployment_run_steps (run_id, step_name, status, detail)
-  VALUES (p_run_id, p_step, p_status, left(p_detail, 500))
+  -- ts = clock_timestamp(), not the column default now(): now() is the transaction
+  -- start, so the running+success rows f_run_step writes in one call would tie and
+  -- readers ordering by ts (monitor, deploy_trajectory) could pick the wrong one.
+  INSERT INTO deployment.deployment_run_steps (run_id, step_name, status, detail, ts)
+  VALUES (p_run_id, p_step, p_status, left(p_detail, 500), clock_timestamp())
   RETURNING id INTO v_id;
 
   -- An error ends the run (same contract run_step.sh had). error_stage is the
