@@ -25,6 +25,10 @@
 #   bash /root/wf-server/scripts/production/prod_deploy.sh
 #   or from dev machine:
 #   ssh root@<prod-ip> 'bash /root/wf-server/scripts/production/prod_deploy.sh'
+#   --run-id N joins an existing holistic deployment run (started with
+#   start_run.sh ... all) instead of creating and finishing its own; the
+#   caller owns start/finish. e.g.
+#   ssh root@<prod-ip> 'bash /root/wf-server/scripts/production/prod_deploy.sh --run-id 77'
 #   --worker is internal, not for direct use.
 #
 # Task 288: install/restart/verify runs as one deploy_code step under
@@ -62,6 +66,12 @@ log_section() {
 
 # Configuration
 WF_SERVER_DIR="/root/wf-server"
+
+JOIN_RUN_ID=""
+if [ "$1" = "--run-id" ]; then
+    JOIN_RUN_ID="${2:?--run-id needs a value}"
+    shift 2
+fi
 
 WORKER_MODE=0
 if [ "$1" = "--worker" ]; then
@@ -111,14 +121,20 @@ log_info "Code updated to latest main branch"
 GIT_SHA=$(git rev-parse HEAD)
 
 source "$WF_SERVER_DIR/scripts/deploy-lib/pg-query.sh"
-RELEASE_ID=$(pg_query "SELECT id FROM deployment.releases WHERE status='pending'" | jq -r '.[0].id // empty')
-if [ -z "$RELEASE_ID" ]; then
-    log_error "No pending release found - create one in deployment.releases before deploying"
-    exit 1
-fi
+if [ -n "$JOIN_RUN_ID" ]; then
+    "$WF_SERVER_DIR/scripts/deploy-lib/check_run.sh" "$JOIN_RUN_ID" prod || exit 1
+    RUN_ID="$JOIN_RUN_ID"
+    log_info "joining deployment_run $RUN_ID (sha $GIT_SHA)"
+else
+    RELEASE_ID=$(pg_query "SELECT id FROM deployment.releases WHERE status='pending'" | jq -r '.[0].id // empty')
+    if [ -z "$RELEASE_ID" ]; then
+        log_error "No pending release found - create one in deployment.releases before deploying"
+        exit 1
+    fi
 
-RUN_ID=$("$WF_SERVER_DIR/scripts/deploy-lib/start_run.sh" wf-server prod "$RELEASE_ID" "$GIT_SHA" prod_deploy.sh)
-log_info "deployment_run $RUN_ID started (sha $GIT_SHA)"
+    RUN_ID=$("$WF_SERVER_DIR/scripts/deploy-lib/start_run.sh" wf-server prod "$RELEASE_ID" "$GIT_SHA" prod_deploy.sh)
+    log_info "deployment_run $RUN_ID started (sha $GIT_SHA)"
+fi
 
 set +e
 "$WF_SERVER_DIR/scripts/deploy-lib/run_step.sh" "$RUN_ID" deploy_code -- "$WF_SERVER_DIR/scripts/production/prod_deploy.sh" --worker
@@ -126,7 +142,8 @@ STEP_EXIT=$?
 set -e
 
 if [ "$STEP_EXIT" -eq 0 ]; then
-    "$WF_SERVER_DIR/scripts/deploy-lib/finish_run.sh" "$RUN_ID"
+    # A joined run is finished by whoever started it (more legs may follow).
+    [ -z "$JOIN_RUN_ID" ] && "$WF_SERVER_DIR/scripts/deploy-lib/finish_run.sh" "$RUN_ID"
 else
     log_error "deployment_run $RUN_ID failed - see deployment.deployment_run_steps"
 fi

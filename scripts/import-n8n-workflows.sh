@@ -15,7 +15,11 @@
 #
 # Counterpart to export-n8n-workflows.sh.
 #
-# Usage: import-n8n-workflows.sh [workflow-name]
+# Usage: import-n8n-workflows.sh [--run-id N] [workflow-name]
+#   --run-id N: join an existing holistic deployment run (started with
+#   start_run.sh ... all) instead of creating and finishing a run of its own.
+#   The caller owns the run lifecycle (start/finish); this script only logs
+#   its deploy_n8n step into run N. Run N must be open and target prod.
 #   With no argument: imports every workflow deployment.f_n8n_diff('prod')
 #   marks needs_deploy=true.
 #   With a workflow name: imports just that one, regardless of diff state -
@@ -78,6 +82,12 @@ SRC_HEADERAUTH_CRED_NAME="wf-webhook-secret"
 TGT_HEADERAUTH_CRED_ID="teZn2ZQi9tFaJlyI"
 TGT_HEADERAUTH_CRED_NAME="wf-webhook-secret"
 
+JOIN_RUN_ID=""
+if [ "$1" = "--run-id" ]; then
+  JOIN_RUN_ID="${2:?--run-id needs a value}"
+  shift 2
+fi
+
 WORKER_MODE=0
 if [ "$1" = "--worker" ]; then
   WORKER_MODE=1
@@ -96,6 +106,12 @@ else
 
     if [ -z "$NEEDED" ]; then
       echo "[import] Nothing to do - prod already in sync."
+      # A joined run still needs its deploy_n8n step recorded, or the monitor
+      # shows it pending forever.
+      if [ -n "$JOIN_RUN_ID" ]; then
+        "$SCRIPT_DIR/deploy-lib/check_run.sh" "$JOIN_RUN_ID" prod
+        "$SCRIPT_DIR/deploy-lib/run_step.sh" "$JOIN_RUN_ID" deploy_n8n -- echo "[import] Nothing to do - prod already in sync"
+      fi
       exit 0
     fi
     echo "[import] Workflows needing deploy:"
@@ -107,26 +123,33 @@ else
   # import work is logged as one deploy_n8n step rather than running
   # untracked. NEEDED is passed through explicitly rather than letting the
   # worker recompute the diff, so both invocations act on the same list.
-  RELEASE_PAYLOAD=$(jq -n --arg q "SELECT id FROM deployment.releases WHERE status='pending'" \
-    '{query: $q, params: {}, source: "direct"}')
-  RELEASE_ID=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
-    -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$RELEASE_PAYLOAD" | jq -r '.[0].id // empty')
-  if [ -z "$RELEASE_ID" ]; then
-    echo "[import] No pending release found - create one in deployment.releases before deploying" >&2
-    exit 1
-  fi
+  if [ -n "$JOIN_RUN_ID" ]; then
+    "$SCRIPT_DIR/deploy-lib/check_run.sh" "$JOIN_RUN_ID" prod
+    RUN_ID="$JOIN_RUN_ID"
+    echo "[import] joining deployment_run $RUN_ID"
+  else
+    RELEASE_PAYLOAD=$(jq -n --arg q "SELECT id FROM deployment.releases WHERE status='pending'" \
+      '{query: $q, params: {}, source: "direct"}')
+    RELEASE_ID=$(curl -s -X POST https://n8n.whatsfresh.app/webhook/server-query \
+      -H "Content-Type: application/json" -H "X-Webhook-Secret: ${N8N_WEBHOOK_SECRET:-}" -d "$RELEASE_PAYLOAD" | jq -r '.[0].id // empty')
+    if [ -z "$RELEASE_ID" ]; then
+      echo "[import] No pending release found - create one in deployment.releases before deploying" >&2
+      exit 1
+    fi
 
-  GIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
-  RUN_ID=$("$SCRIPT_DIR/deploy-lib/start_run.sh" n8n prod "$RELEASE_ID" "$GIT_SHA" import-n8n-workflows.sh)
-  echo "[import] deployment_run $RUN_ID started"
+    GIT_SHA=$(git -C "$REPO_DIR" rev-parse HEAD)
+    RUN_ID=$("$SCRIPT_DIR/deploy-lib/start_run.sh" n8n prod "$RELEASE_ID" "$GIT_SHA" import-n8n-workflows.sh)
+    echo "[import] deployment_run $RUN_ID started"
+  fi
 
   set +e
   "$SCRIPT_DIR/deploy-lib/run_step.sh" "$RUN_ID" deploy_n8n -- "$SELF" --worker "$NEEDED"
   STEP_EXIT=$?
   set -e
 
+  # A joined run is finished by whoever started it (more legs may follow).
   if [ "$STEP_EXIT" -eq 0 ]; then
-    "$SCRIPT_DIR/deploy-lib/finish_run.sh" "$RUN_ID"
+    [ -z "$JOIN_RUN_ID" ] && "$SCRIPT_DIR/deploy-lib/finish_run.sh" "$RUN_ID"
   else
     echo "[import] deployment_run $RUN_ID failed - see deployment.deployment_run_steps"
   fi
