@@ -123,6 +123,8 @@ backup() {
   BK="$BACKUP_DIR/n8n_${TS}_from_${FROM}"
   log "backup: n8n tables (schema public) -> $BK.dump"
   PGDUMP -Fc -n public --no-owner --no-acl n8n > "$BK.dump" || return 1
+  # TEST HOOK (evals/n8n-upgrade/live_eval.py): only acts when N8N_UPGRADE_FAULT is set in the environment
+  [ "${N8N_UPGRADE_FAULT:-}" != bad-dump ] || truncate -s $(( $(stat -c %s "$BK.dump") / 2 )) "$BK.dump"
   if [ "$MODE" = droplet ]; then   # the postgres user must be able to read it back (list now, restore later)
     chgrp postgres "$BACKUP_DIR" "$BK.dump"; chmod 750 "$BACKUP_DIR"; chmod 640 "$BK.dump"
   fi
@@ -159,6 +161,8 @@ verify() {
   v=$(installed_version)
   [ "$v" = "$TO" ] || { log "VERIFY FAIL: running version is '$v', wanted $TO"; return 1; }
   log "  ok    healthy, version $v"
+  # TEST HOOK: pretend the upgrade silently deactivated a workflow
+  [ "${N8N_UPGRADE_FAULT:-}" != count-drift ] || SQL -c "update workflow_entity set active=false where id=(select id from workflow_entity where active limit 1)" >/dev/null
   for i in 1 2 3 4 5 6; do post=$(counts); [ "$post" = "$PRE" ] && break; sleep 10; done   # activation settles after start
   [ "$post" = "$PRE" ] || { log "VERIFY FAIL: workflows|active|credentials|webhooks was $PRE before, $post now"; return 1; }
   log "  ok    workflows|active|credentials|webhooks unchanged ($post)"
