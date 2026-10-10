@@ -37,7 +37,7 @@ case "$MODE" in
   droplet)
     COMPOSE_DIR=/home/n8n/n8n-compose
     COMPOSE_FILE="$COMPOSE_DIR/compose.yaml"
-    BACKUP_DIR=/home/n8n/backups
+    BACKUP_DIR=/var/backups/n8n
     IMAGE=n8nio/n8n
     SQL()       { sudo -u postgres psql -d "${DB:-n8n}" -tAX "$@"; }
     ADMIN_SQL() { sudo -u postgres psql -d postgres -tAX "$@"; }
@@ -123,11 +123,14 @@ backup() {
   BK="$BACKUP_DIR/n8n_${TS}_from_${FROM}"
   log "backup: n8n tables (schema public) -> $BK.dump"
   PGDUMP -Fc -n public --no-owner --no-acl n8n > "$BK.dump" || return 1
+  if [ "$MODE" = droplet ]; then   # the postgres user must be able to read it back (list now, restore later)
+    chgrp postgres "$BACKUP_DIR" "$BK.dump"; chmod 750 "$BACKUP_DIR"; chmod 640 "$BK.dump"
+  fi
   PGRESTORE -l "$BK.dump" 2>/dev/null | grep -vE " EXTENSION | COMMENT - EXTENSION | SCHEMA - public | COMMENT - SCHEMA public " > "$BK.list"
   [ "$(wc -c < "$BK.dump")" -gt 100000 ] && [ -s "$BK.list" ] || { log "backup is implausibly small"; return 1; }
   if [ "$MODE" = droplet ]; then
     tar czf "$BK.data.tgz" -C /home/n8n --exclude='n8n_data/logs' n8n_data || return 1
-    chgrp postgres "$BK.dump" "$BK.list"; chmod 640 "$BK.dump" "$BK.list"; chgrp postgres "$BACKUP_DIR"; chmod 750 "$BACKUP_DIR"
+    chgrp postgres "$BK.list"; chmod 640 "$BK.list"
   else
     docker run --rm -v n8n_n8n_local_data:/d:ro -v "$BACKUP_DIR":/b --entrypoint tar "${IMAGE}:${FROM}" czf "/b/$(basename "$BK").data.tgz" -C /d . || return 1
   fi
@@ -212,7 +215,9 @@ case "$ACTION" in
     backup    || { log "RESULT: ABORTED - backup or restore check failed, nothing was changed (n8n still running $FROM)"; exit 1; }
     log "upgrade: stopping n8n $FROM (downtime starts; its image stays on disk for rollback)"
     save_prev
-    docker stop n8n >/dev/null || { log "RESULT: ABORTED - could not stop the container"; exit 1; }
+    # remove it too: on a droplet it was made by `docker run`, which compose cannot adopt (same name); compose.yaml is proven
+    # identical to it by the parity check, and the old image stays on disk, so rollback just recreates it from compose
+    docker stop n8n >/dev/null && docker rm n8n >/dev/null || { log "RESULT: ABORTED - could not stop/remove the container"; exit 1; }
     set_version "$TO"
     log "upgrade: compose up on $TO"
     if ! COMPOSE up -d >/tmp/n8n_compose_up.log 2>&1; then
