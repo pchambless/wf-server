@@ -14,14 +14,61 @@ set -euo pipefail
 # hand-edited docker run. Epic 278 -> n8n Version Currency and Advisories.
 #
 # Usage:
-#   WF_ADMIN_PASSWORD=... ./upgrade-n8n.sh 2.37.7
+#   WF_ADMIN_PASSWORD=... ./upgrade-n8n.sh 2.43.5     # explicit version
+#   WF_ADMIN_PASSWORD=... ./upgrade-n8n.sh            # resolve latest from the feed
+#   WF_ADMIN_PASSWORD=... CONFIRM=yes ./upgrade-n8n.sh # non-interactive (skip prompt)
 #
-# The version is the only required argument. WF_ADMIN_PASSWORD must be exported
-# (same value the box was provisioned with) - it is not stored here.
+# With no version arg, the target is read from deployment.latest_version
+# (fed by the version-fetch workflow off the n8n GitHub releases API) and
+# confirmed before anything is pulled - propose-and-confirm, not blind
+# auto-latest. WF_ADMIN_PASSWORD must be exported (same value the box was
+# provisioned with) - it is not stored here.
 ################################################################################
 
-N8N_TAG="${1:?Usage: upgrade-n8n.sh <version>  e.g. upgrade-n8n.sh 2.37.7}"
 : "${WF_ADMIN_PASSWORD:?Export WF_ADMIN_PASSWORD (the n8n DB password) before running}"
+
+# Version resolution: pass an explicit tag to override, OR omit it and the
+# script reads the target from deployment.latest_version (populated by the
+# version-fetch n8n workflow off version_feed -> the n8n GitHub releases API).
+# This closes the loop the version-currency subsystem was built for: the DB
+# already knows the latest safe version; stop hand-typing it.
+#
+# PROPOSE-AND-CONFIRM, not blind auto-latest: we do NOT auto-jump prod to a
+# release that may be hours old (that is how you catch a fresh regression).
+# The resolved version is shown and confirmed before anything is pulled.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -n "${1:-}" ]; then
+    N8N_TAG="$1"
+    echo "==> Target version (explicit): ${N8N_TAG}"
+else
+    echo "==> No version given - resolving from deployment.latest_version ..."
+    source "$SCRIPT_DIR/../deploy-lib/pg-query.sh"
+    RESOLVED=$(pg_query "SELECT latest_version FROM deployment.latest_version WHERE component='n8n' ORDER BY major DESC LIMIT 1" \
+        | jq -r '.[0].latest_version // empty' | sed 's/^v//')
+    INSTALLED=$(docker ps --filter name=n8n --format '{{.Image}}' | sed 's#.*:##')
+    if [ -z "$RESOLVED" ]; then
+        echo "ERROR: could not resolve latest n8n version from deployment.latest_version." >&2
+        echo "       Check the version-fetch workflow / version_feed, or pass a version explicitly." >&2
+        exit 1
+    fi
+    echo "    installed: ${INSTALLED:-unknown}"
+    echo "    latest (per feed): ${RESOLVED}"
+    if [ "$INSTALLED" = "$RESOLVED" ]; then
+        echo "==> Already on ${RESOLVED}. Nothing to do."
+        exit 0
+    fi
+    N8N_TAG="$RESOLVED"
+    # Confirm before touching a running container (prod safety). Skip the
+    # prompt with CONFIRM=yes for non-interactive/automated use.
+    if [ "${CONFIRM:-}" != "yes" ]; then
+        read -r -p "==> Upgrade n8n ${INSTALLED:-?} -> ${N8N_TAG}? [y/N] " ans
+        case "$ans" in
+            y|Y|yes) ;;
+            *) echo "Aborted."; exit 0 ;;
+        esac
+    fi
+fi
 
 echo "==> Pulling n8nio/n8n:${N8N_TAG}"
 docker pull "n8nio/n8n:${N8N_TAG}"
