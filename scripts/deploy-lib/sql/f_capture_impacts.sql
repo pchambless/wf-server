@@ -20,24 +20,25 @@ BEGIN
     -- drift is defined against the baseline. Reconcile first and the changes are
     -- gone with nothing recording them. So: scan, capture, THEN advance.
     CREATE TEMP TABLE _cap ON COMMIT DROP AS
-    SELECT CASE d.kind WHEN 'table'    THEN 'db_table'
-                       WHEN 'view'     THEN 'db_view'
-                       WHEN 'function' THEN 'db_function'
-                       WHEN 'row'      THEN 'row'
-                       WHEN 'workflow' THEN 'n8n_workflow'
-                       WHEN 'node'     THEN 'n8n_node' END::text        AS item_type,
+    SELECT deployment.f_impact_item_type(d.kind)::text        AS item_type,
            d.schema_name::text,
            d.object_name::text,
            COALESCE(d.component_name, '')::text                      AS component_name,
-           CASE d.change_type WHEN 'added'    THEN 'A'
-                              WHEN 'modified' THEN 'M'
-                              WHEN 'deleted'  THEN 'D' END::text      AS status,
+           deployment.f_impact_status(d.change_type)::text            AS status,
            left(d.detail, 256)::text                                  AS description
       FROM deployment.vw_object_drift d
      -- Deployment scope only. object_state never holds anything else, but state the
      -- boundary explicitly so widening f_scan's schemas cannot silently widen this.
      -- 'n8n' added 2026-08-19 alongside kind IN ('workflow','node') - task 270/274.
-     WHERE d.schema_name IN ('studio','whatsfresh','n8n');
+     WHERE d.schema_name IN ('studio','whatsfresh','n8n')
+       -- Task 583: skip drift f_capture_change already logged at this exact fingerprint,
+       -- so a change is not logged a second time at deploy time under another task.
+       AND NOT EXISTS (SELECT 1 FROM deployment.object_state s
+                        WHERE s.kind = d.kind AND s.schema_name = d.schema_name
+                          AND s.object_name = d.object_name
+                          AND s.component_name = COALESCE(d.component_name, '')
+                          AND s.captured_fingerprint IS NOT NULL
+                          AND s.captured_fingerprint = s.fingerprint);
 
     IF NOT p_dry_run THEN
         INSERT INTO agile.agile_impacts
