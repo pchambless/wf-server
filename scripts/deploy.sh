@@ -61,9 +61,12 @@ fi
 # commits the pull brought, so a package.json change any further back was
 # missed. That is how session-file-store (task 245) landed on the droplet
 # uninstalled and left the server crash-looping on ERR_MODULE_NOT_FOUND.
-if [ "$PREV_SHA" != "$NEW_SHA" ] && git diff --name-only "$PREV_SHA" "$NEW_SHA" | grep -q "package.json"; then
-  log "package.json changed ($PREV_SHA -> $NEW_SHA) - running npm install..."
-  npm install --production 2>&1 | tee -a "$LOG_FILE"
+# package-lock.json counts too: a lockfile-only change (npm audit fix, task 579)
+# alters the installed versions but leaves package.json untouched. npm ci installs
+# exactly what the lockfile says.
+if [ "$PREV_SHA" != "$NEW_SHA" ] && git diff --name-only "$PREV_SHA" "$NEW_SHA" | grep -qE '^package(-lock)?\.json$'; then
+  log "package.json or package-lock.json changed ($PREV_SHA -> $NEW_SHA) - running npm ci..."
+  npm ci --omit=dev 2>&1 | tee -a "$LOG_FILE"
 fi
 
 # 3. Restart server
