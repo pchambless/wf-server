@@ -35,10 +35,13 @@ BEGIN
          ORDER BY d.kind, d.object_name, d.component_name
     LOOP
         v_status := deployment.f_impact_status(r.change_type);
+        -- agile_impacts.object_name is varchar(100); a function's name carries its argument list
+        r.obj := left(r.obj, 100);
         v_desc   := left(COALESCE(NULLIF(p_note, ''), r.detail), 256);
         -- left() counts characters; the column check counts bytes
         WHILE octet_length(v_desc) > 256 LOOP v_desc := left(v_desc, length(v_desc) - 1); END LOOP;
 
+        v_id := NULL;
         SELECT i.id, i.status INTO v_id, v_old
           FROM agile.agile_impacts i
          WHERE i.task_id = p_task_id AND i.item_type = deployment.f_impact_item_type(r.kind)
