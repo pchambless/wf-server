@@ -14,6 +14,9 @@ BEGIN
   -- running/success/error through f_log_step. Returns {ok, step, rows|error}
   -- and never raises for a step failure (the caller - bash or the n8n
   -- orchestrator - branches on ok). Bash steps (runs IS NULL) are not run here.
+  -- optional tokens default here, so older callers (bash, early orchestrator versions) keep working
+  p_params := '{"allow_deletes": false}'::jsonb || coalesce(p_params, '{}'::jsonb);
+
   SELECT runs INTO v_sql FROM deployment.deploy_steps WHERE step_key = p_step;
   IF NOT FOUND OR v_sql IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'step', p_step, 'error', 'no runs SQL for step (bash step or unknown key)');

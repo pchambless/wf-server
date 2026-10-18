@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION deployment.f_open_release_task(p_env text, p_summary text DEFAULT NULL::text, p_sprint text DEFAULT NULL::text, p_by text DEFAULT 'deploy'::text)
+CREATE OR REPLACE FUNCTION deployment.f_open_release_task(p_env text, p_summary text DEFAULT NULL::text, p_sprint text DEFAULT NULL::text, p_by text DEFAULT 'deploy'::text, p_scope text DEFAULT NULL::text)
  RETURNS integer
  LANGUAGE plpgsql
 AS $function$
@@ -10,6 +10,8 @@ DECLARE
   v_task    integer;
   v_incl    text;
 BEGIN
+  -- p_scope (task 562): set for single-leg runs ('n8n only', 'code only', '<db> only') so the title says
+  -- the run was not a full deploy; NULL for holistic runs = the plain title.
   -- One release task per live prod deploy, filed under the Releases epic: the
   -- pre_launch sprint before go-live, then one sprint per month (created here
   -- when missing, so nobody has to remember). p_sprint overrides (e.g. the go-live sprint).
@@ -43,7 +45,7 @@ BEGIN
            ORDER BY a.id DESC LIMIT 60) a;
 
   INSERT INTO agile.agile_cache (page_name, page_type, parent_id, status, priority, description, created_by)
-  VALUES ('Deploy ' || to_char(now() AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD') || ' (' || p_env || '): ' || coalesce(nullif(p_summary, ''), 'release'),
+  VALUES ('Deploy ' || to_char(now() AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD') || ' (' || p_env || coalesce(', ' || nullif(p_scope, ''), '') || '): ' || coalesce(nullif(p_summary, ''), 'release'),
           'Task', v_sprint, 'In Progress', 'Medium',
           'Release task for a live ' || p_env || ' deploy, opened with the run. Marked Done when the run succeeds, Blocked if a step fails. Its impacts are the object-level changes captured by the run.'
             || E'\n\nTasks done and not yet shipped by an earlier live prod deploy:\n' || coalesce(v_incl, '(none)'),

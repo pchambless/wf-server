@@ -11,6 +11,7 @@ DECLARE
   v_task      integer;
   v_dep       integer;
   v_run       integer;
+  v_scope     text;
 BEGIN
   -- Run lifecycle lives in the DB so bash (start_run.sh) and the n8n
   -- orchestrator open runs identically. p_pipeline 'all'/NULL/'' = holistic
@@ -43,7 +44,11 @@ BEGIN
   -- release task filed now). Dry runs and dev code runs carry none.
   v_task := p_task_id;
   IF v_task IS NULL AND NOT p_dry_run AND v_is_target THEN
-    v_task := deployment.f_open_release_task(p_env, p_summary, p_sprint, p_by);
+    -- single-leg run: say so in the release task title (task 562); holistic run: plain title
+    -- label comes from the pipeline row (deployment.pipelines.scope_label); a pipeline without one
+    -- falls back to its name; holistic run (no pipeline row) leaves it NULL = plain title
+    SELECT coalesce(scope_label, name || ' only') INTO v_scope FROM deployment.pipelines WHERE id = v_pipeline;
+    v_task := deployment.f_open_release_task(p_env, p_summary, p_sprint, p_by, v_scope);
   END IF;
 
   INSERT INTO deployment.deployments (environment_id, pipeline_id, release_id, git_commit, created_by, task_id)

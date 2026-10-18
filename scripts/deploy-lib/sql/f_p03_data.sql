@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION deployment.f_p03_data(p_run_id integer, p_dry_run boolean DEFAULT true, p_force_refresh boolean DEFAULT false)
+CREATE OR REPLACE FUNCTION deployment.f_p03_data(p_run_id integer, p_dry_run boolean DEFAULT true, p_force_refresh boolean DEFAULT false, p_allow_deletes boolean DEFAULT false)
  RETURNS TABLE(seq integer, schema_path text, action text, status text, rows_affected bigint, error text)
  LANGUAGE plpgsql
 AS $function$
@@ -14,6 +14,7 @@ DECLARE
     v_copied      bigint;
     v_truncate_list text;
     v_pinned      text[];
+    v_sync        record;
 BEGIN
     SELECT d.environment_id INTO v_env_id
       FROM deployment.deployment_runs r
@@ -110,7 +111,7 @@ BEGIN
                format('%I.%I', split_part(o.schema_path, '.', 1), split_part(o.schema_path, '.', 2))::regclass AS rel
           FROM deployment.deployment_objects o
          WHERE o.run_id = p_run_id AND o.platform = 'database'
-           AND (o.action = 'refresh' OR (o.action = 'seed' AND p_force_refresh))
+           AND (o.action = 'seed' AND p_force_refresh)
     ),
     pinned(sp, rel) AS (
         SELECT c.sp, c.rel FROM cand c
@@ -130,7 +131,7 @@ BEGIN
           FROM deployment.deployment_objects o
          WHERE o.run_id = p_run_id
            AND o.platform = 'database'
-           AND (o.action = 'refresh' OR (o.action = 'seed' AND p_force_refresh))
+           AND (o.action = 'seed' AND p_force_refresh)
            AND o.schema_path <> ALL (v_pinned);
 
         IF v_truncate_list IS NOT NULL THEN
@@ -148,6 +149,41 @@ BEGIN
         END IF;
     END IF;
 
+    -- PASS 1b (task 531): refresh_always config tables are applied by DIFFERENCE, atomically, in ONE target
+    -- transaction (f_data_sync_apply): insert what is new, update what changed, delete what dev no longer
+    -- has (only with p_allow_deletes). No truncate, so no empty window, and an unchanged table writes nothing.
+    -- It runs first: seeded whatsfresh tables reference studio rows (fsma_classifications).
+    IF EXISTS (SELECT 1 FROM deployment.deployment_objects o
+                 JOIN deployment.object_policy op ON op.schema_path = o.schema_path AND op.object_type = 'table' AND op.data = 'refresh_always'
+                WHERE o.run_id = p_run_id AND o.platform = 'database') THEN
+        BEGIN
+            FOR v_sync IN SELECT * FROM deployment.f_data_sync_apply(p_run_id, p_dry_run, p_allow_deletes) LOOP
+                UPDATE deployment.deployment_objects AS dobj
+                   SET status = CASE WHEN v_sync.out_status LIKE 'blocked%' THEN 'pending' ELSE 'succeeded' END,
+                       rows_affected = v_sync.rows_added + v_sync.rows_modified + v_sync.rows_deleted,
+                       started_at = now(), finished_at = now(),
+                       notes = jsonb_build_object('sync', true, 'added', v_sync.rows_added, 'modified', v_sync.rows_modified,
+                                                  'deleted', v_sync.rows_deleted, 'dry_run', p_dry_run, 'status', v_sync.out_status)
+                 WHERE dobj.run_id = p_run_id AND dobj.schema_path = v_sync.out_path;
+
+                seq := v_sync.out_seq; schema_path := v_sync.out_path; action := 'refresh';
+                status := CASE WHEN v_sync.out_status LIKE 'blocked%' THEN 'blocked' ELSE 'succeeded' END;
+                rows_affected := v_sync.rows_added + v_sync.rows_modified + v_sync.rows_deleted;
+                error := CASE WHEN v_sync.out_status LIKE 'blocked%' THEN v_sync.out_status ELSE NULL END;
+                RETURN NEXT;
+            END LOOP;
+        EXCEPTION WHEN OTHERS THEN
+            v_fail_reason := SQLERRM;
+            UPDATE deployment.deployment_runs
+               SET status = 'failed', error = left(v_fail_reason, 500), error_stage = 'execute', finished_at = now()
+             WHERE id = p_run_id;
+            IF NOT p_dry_run THEN
+                BEGIN PERFORM dblink_disconnect(v_conn); EXCEPTION WHEN OTHERS THEN NULL; END;
+            END IF;
+            RAISE EXCEPTION 'f_p03_data: %', v_fail_reason;
+        END;
+    END IF;
+
     -- PASS 2: reload, forward seq order (parents before children).
     FOR v_row IN
         SELECT o.id, o.seq, o.schema_path, o.action,
@@ -156,7 +192,7 @@ BEGIN
           FROM deployment.deployment_objects o
          WHERE o.run_id = p_run_id
            AND o.platform = 'database'
-           AND o.action IN ('seed', 'refresh')
+           AND o.action = 'seed'
          ORDER BY o.seq
     LOOP
         EXIT WHEN v_failed;
