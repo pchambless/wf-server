@@ -1,0 +1,96 @@
+{
+  "active": true,
+  "connections": {
+    "Call app_engine.dml": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Respond",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Call app_engine.dml",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "name": "app-engine-actions",
+  "nodes": [
+    {
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Cr5FofBlVGzpKoKv",
+          "name": "wf-webhook-secret"
+        }
+      },
+      "id": "d88b0032-1fde-4ebe-829e-f6e4b611b7e7",
+      "name": "Webhook",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "options": {},
+        "path": "app-engine-actions",
+        "responseMode": "responseNode"
+      },
+      "position": [
+        240,
+        300
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "7f68ced3-a8b9-4cd5-864b-20e0a8a0331a"
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "id": "c1cf1fd6-dac1-43fc-8a9c-23b952ec1235",
+      "name": "Call app_engine.dml",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {
+          "queryReplacement": "={{ [ $json.body.schema, $json.body.page_id, $json.body.mode, JSON.stringify($json.body.data || {}), $json.body.pk_val || null, $json.body.user || \"system\" ] }}"
+        },
+        "query": "SELECT app_engine.dml($1, $2, $3, $4::jsonb, $5, $6) as result"
+      },
+      "position": [
+        540,
+        300
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "e62c1c7c-c051-4e94-8011-0a10cb7fc0f3",
+      "name": "Respond",
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={{ $json.result }}"
+      },
+      "position": [
+        840,
+        300
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "executionOrder": "v1"
+  }
+}
