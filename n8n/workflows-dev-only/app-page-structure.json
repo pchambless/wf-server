@@ -1,0 +1,118 @@
+{
+  "active": true,
+  "connections": {
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L99-respond",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Execute a SQL query",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Execute a SQL query",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "name": "app-page-structure",
+  "nodes": [
+    {
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Cr5FofBlVGzpKoKv",
+          "name": "wf-webhook-secret"
+        }
+      },
+      "id": "a3e0314b-ee43-4318-8690-403867ef51e5",
+      "name": "Webhook",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "options": {},
+        "path": "app-page-structure",
+        "responseMode": "responseNode"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "0eefe435-70e3-4578-aaea-98e7e8a3b06f"
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "id": "64d59d70-4022-4269-8a7c-a95fdc770420",
+      "name": "Execute a SQL query",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "SELECT app_engine.api_page_structure('{{ $json.body.schema }}', {{ $json.body.page_id }}::int) AS structure"
+      },
+      "position": [
+        224,
+        96
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "b7a98499-c7d4-4756-8145-faff9ab5534b",
+      "name": "L99-respond",
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={{ $json.structure }}"
+      },
+      "position": [
+        448,
+        96
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5
+    },
+    {
+      "id": "578f5ad3-e785-4394-bcee-884d27ca3817",
+      "name": "When Called by Another Workflow",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "position": [
+        0,
+        192
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "executionOrder": "v1"
+  }
+}

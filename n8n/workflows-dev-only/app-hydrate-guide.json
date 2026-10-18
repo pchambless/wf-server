@@ -1,0 +1,277 @@
+{
+  "active": true,
+  "connections": {
+    "L00-router": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L01-styled",
+            "type": "main"
+          },
+          {
+            "index": 0,
+            "node": "L01-bind-params",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L01-bind-params": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L01-data",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L01-data": {
+      "main": [
+        [
+          {
+            "index": 1,
+            "node": "Merge",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L01-styled": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Merge",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L02-html-out": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L99-respond",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L02-html-out",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L00-router",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L00-router",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "name": "app-hydrate-guide",
+  "nodes": [
+    {
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Cr5FofBlVGzpKoKv",
+          "name": "wf-webhook-secret"
+        }
+      },
+      "id": "32c3188d-4584-4f02-aae3-93898ec10aeb",
+      "name": "Webhook",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "options": {},
+        "path": "app-hydrate-guide",
+        "responseMode": "responseNode"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "d8404140-b3f6-4700-92b3-ee56c52a4787"
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "id": "1ebccb10-1b78-4d95-8f41-1af8e27dd8d6",
+      "name": "L00-router",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "SELECT id, template_name, page_id, platform, title, group_by, hydrate, html, css FROM app_engine.tf_template_router('{{ $json.body.schema }}', '{{ $json.body.source }}', '{{ $json.body.template_name }}')"
+      },
+      "position": [
+        224,
+        96
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "091028b3-d746-41f0-81e2-c890074c0292",
+      "name": "When Called by Another Workflow",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "position": [
+        0,
+        192
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "id": "72b6f778-4460-4736-ad53-7885a06277f6",
+      "name": "L01-styled",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "SELECT '{{ $json.template_name }}' AS template_name, '{{ $('Webhook').item.json.body.schema }}' AS schema, {{ $json.group_by ? \"'\" + $json.group_by + \"'\" : 'null' }} AS group_by, app_engine.f_html_styled('{{ $('Webhook').item.json.body.schema }}', '{{ $json.template_name }}') AS styled_html"
+      },
+      "position": [
+        672,
+        0
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "6ea22b4c-eb59-43c6-a8a1-3d628c5e5662",
+      "name": "Merge",
+      "parameters": {
+        "fieldsToMatchString": "template_name",
+        "mode": "combine",
+        "options": {}
+      },
+      "position": [
+        896,
+        96
+      ],
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2
+    },
+    {
+      "id": "68b570d4-eef1-43cb-957e-1ed53127765b",
+      "name": "L01-bind-params",
+      "parameters": {
+        "jsCode": "const body = $('Webhook').item.json.body || {};\nlet sql = $json.hydrate;\nconst tn = $json.template_name;\nif (!sql || !sql.trim()) { return { json: { template_name: tn, hydrate_bound: null } }; }\nconst esc = (v) => v === null || v === undefined ? 'NULL' : (typeof v === 'number' ? String(v) : \"'\" + String(v).replace(/'/g, \"''\") + \"'\");\nsql = sql.replace(/(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/g, (m, name) => (name in body ? esc(body[name]) : 'NULL'));\nreturn { json: { template_name: tn, hydrate_bound: sql } };",
+        "mode": "runOnceForEachItem"
+      },
+      "position": [
+        448,
+        192
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "id": "ff944d59-50b1-4ca8-959b-3933de54f992",
+      "name": "L01-data",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "SELECT '{{ $json.template_name }}' AS template_name, COALESCE((SELECT json_agg(row_to_json(t)) FROM ({{ $json.hydrate_bound }}) t), '[]'::json) AS data"
+      },
+      "position": [
+        672,
+        192
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "50141edb-41fc-42dd-838a-6b0f33c21773",
+      "name": "L99-respond",
+      "parameters": {
+        "options": {},
+        "respondWith": "allIncomingItems"
+      },
+      "position": [
+        1248,
+        96
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5
+    },
+    {
+      "id": "848dc325-7183-4ccf-ae89-079ea3dd252f",
+      "name": "L02-html-out",
+      "parameters": {
+        "options": {},
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "app-styled-html",
+          "cachedResultUrl": "/workflow/sniMbB1HKTPs1VZI",
+          "mode": "list",
+          "value": "sniMbB1HKTPs1VZI"
+        },
+        "workflowInputs": {
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true,
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [],
+          "value": {}
+        }
+      },
+      "position": [
+        1072,
+        96
+      ],
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "binaryMode": "separate",
+    "executionOrder": "v1"
+  }
+}

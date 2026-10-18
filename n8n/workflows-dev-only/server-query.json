@@ -1,0 +1,264 @@
+{
+  "active": true,
+  "connections": {
+    "L01": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L02",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L02": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L03-Errored",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L03-Errored": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L04-Notify-Slack",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "index": 0,
+            "node": "L99-Respond",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L04-Notify-Slack": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L98-Respond-Error",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L01",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L01",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "name": "server-query",
+  "nodes": [
+    {
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Cr5FofBlVGzpKoKv",
+          "name": "wf-webhook-secret"
+        }
+      },
+      "id": "610b3c28-c518-4dec-b676-1f05cdd7fd52",
+      "name": "Webhook",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "options": {},
+        "path": "server-query",
+        "responseMode": "responseNode"
+      },
+      "position": [
+        -432,
+        -144
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "fa5672f2-1f7d-47c1-9e0e-e21fc3c3271d"
+    },
+    {
+      "id": "02539709-f5a3-42eb-8e75-5a5215670a91",
+      "name": "L99-Respond",
+      "parameters": {
+        "options": {},
+        "respondWith": "allIncomingItems"
+      },
+      "position": [
+        560,
+        -128
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5
+    },
+    {
+      "id": "db5546eb-25a1-413b-80a4-f6ba5378035c",
+      "name": "When Called by Another Workflow",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "position": [
+        -432,
+        48
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1
+    },
+    {
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "id": "b857f10c-f98c-4409-a418-c853e24e6250",
+      "name": "L02",
+      "notes": "Exec PostreSQL query",
+      "notesInFlow": true,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {},
+        "query": "{{ $json.query }}"
+      },
+      "position": [
+        192,
+        -48
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "2a738da9-32a9-426a-bdeb-7b4208db13ce",
+      "name": "L01",
+      "notes": "Param Substitution",
+      "notesInFlow": true,
+      "parameters": {
+        "jsCode": "const body = $('Webhook').item.json.body;\nlet query = body.query;\nconst params = body.params || {};\n\nObject.entries(params).forEach(([key, value]) => {\n  const formatted = (value === null || value === undefined)\n    ? 'NULL'\n    : typeof value === 'number' || /^\\d+$/.test(String(value))\n      ? value\n      : `'${String(value).replace(/'/g, \"''\")}'`;\n  \n  query = query.replace(new RegExp(`:${key}`, 'g'), formatted);\n});\n\nreturn { json: { query } };\n",
+        "mode": "runOnceForEachItem"
+      },
+      "position": [
+        16,
+        -48
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "eba19604-4a26-468b-afa4-601d268dbac0",
+      "name": "L98-Respond-Error",
+      "notes": "Failed query -> HTTP 500 + Postgres message. Without this the workflow stopped at L02, L99 never fired, and the webhook returned a bare 200 with an empty body - indistinguishable from a valid query returning no rows.",
+      "parameters": {
+        "options": {
+          "responseCode": 500
+        },
+        "respondWith": "json",
+        "responseBody": "={{ { error: ($('L02').item.json.message ?? (typeof $('L02').item.json.error === 'string' ? $('L02').item.json.error : ($('L02').item.json.error?.message ?? $('L02').item.json.error?.description ?? JSON.stringify($('L02').item.json.error)))), query: ($('L01').item.json.query ?? null), hint: 'The SQL failed. This is an error response, not an empty result set - a valid query with no rows returns [{}] with HTTP 200.' } }}"
+      },
+      "position": [
+        784,
+        48
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5
+    },
+    {
+      "id": "b61f24a4-27d3-41d8-b6d1-08edc5605ee3",
+      "name": "L03-Errored",
+      "notes": "Did the query fail? IF matches the live house pattern (login, Auto Export) - the only Switch nodes left in this instance are in archived workflows. L02 emits its error into the MAIN output via continueRegularOutput, so exactly one branch fires. L02's error OUTPUT cannot be used instead: alwaysOutputData puts an empty item on the success branch even when the query failed, so both respond nodes raced and the 200 won.",
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "a1e7c4b2-0f31-4d68-9c5a-7b2e6f0d3a11",
+              "leftValue": "={{ $json.error !== undefined && $json.error !== null }}",
+              "operator": {
+                "operation": "true",
+                "singleValue": true,
+                "type": "boolean"
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          }
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "position": [
+        352,
+        -48
+      ],
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3
+    },
+    {
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tRuM5DU9yKZPXkfk",
+          "name": "Slack account"
+        }
+      },
+      "id": "f8128cee-65ff-4adb-9269-61a06828e0d8",
+      "name": "L04-Notify-Slack",
+      "notes": "Best-effort Slack alert on failure. onError=continueRegularOutput so a Slack/credential problem never blocks the caller's HTTP error response.",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "authentication": "oAuth2",
+        "channelId": {
+          "__rl": true,
+          "cachedResultName": "development",
+          "mode": "list",
+          "value": "C9XQZL07N"
+        },
+        "otherOptions": {},
+        "select": "channel",
+        "text": "={{ $workflow.name }} failed: {{ $json.message ?? (typeof $json.error === 'string' ? $json.error : ($json.error?.message ?? $json.error?.description ?? JSON.stringify($json.error))) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>"
+      },
+      "position": [
+        560,
+        48
+      ],
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.5,
+      "webhookId": "82523929-9c61-49aa-b383-c73d9f7c47f3"
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all"
+  }
+}

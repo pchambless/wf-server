@@ -1,0 +1,135 @@
+{
+  "active": true,
+  "connections": {
+    "L03a - detect tokens": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L03c - resolve dropdown",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L03b - render": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L04 - cleanup",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "L03c - resolve dropdown": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L03b - render",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "When Called by Another Workflow": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "L03a - detect tokens",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "name": "personal-app-styled-html",
+  "nodes": [
+    {
+      "id": "52d65a42-c2fb-451f-9735-35a7077a5463",
+      "name": "When Called by Another Workflow",
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1
+    },
+    {
+      "id": "db6bddba-da66-44a6-b832-74b44dd1fd5f",
+      "name": "L03a - detect tokens",
+      "parameters": {
+        "jsCode": "const html_raw = $json.styled_html || '';\nlet data = Array.isArray($json.data) ? $json.data : [];\nconst groupByField = $json.group_by;\nconst schema = $json.schema || ($('When Called by Another Workflow').first().json.schema);\nconst isInsertMode = data.length === 0 && html_raw.includes('<form');\nif (isInsertMode) { data = [{}]; }\nconst selectTokenRegex = /\\{\\{\\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]+)\\}\\}\\}/g;\nconst selectConfigs = [];\nlet m;\nwhile ((m = selectTokenRegex.exec(html_raw)) !== null) {\n  selectConfigs.push({ templateName: m[1], fieldName: m[2], fullToken: m[0] });\n}\nconst base = { html_raw, data, groupByField, isInsertMode, schema };\nif (selectConfigs.length > 0 && data.length > 0) {\n  const record = data[0];\n  return selectConfigs.map(cfg => {\n    const baseTemplateName = cfg.templateName.startsWith('f_') ? cfg.templateName.slice(2) : cfg.templateName;\n    return { json: { ...base, fullToken: cfg.fullToken, templateName: baseTemplateName, fieldName: cfg.fieldName, currentVal: record[cfg.fieldName] || 0 } };\n  });\n}\nreturn [{ json: { ...base, fullToken: '__NONE__', templateName: '__NONE__', fieldName: '__NONE__', currentVal: 0 } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        224,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "credentials": {
+        "postgres": {
+          "id": "OiUIIselM7ZvRymj",
+          "name": "Postgres Personal"
+        }
+      },
+      "id": "7315f90e-056b-431b-8602-a7500b7b8e16",
+      "name": "L03c - resolve dropdown",
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "operation": "executeQuery",
+        "options": {
+          "queryReplacement": "={{ $json.fullToken }}, {{ $json.templateName }}, {{ $json.currentVal }}, {{ $json.fieldName }}, {{ $json.schema }}"
+        },
+        "query": "SELECT $1::text as full_token, CASE WHEN $2 <> '__NONE__' THEN app_engine.api_select_form($5::text, $2::text, $3::int, $4::text) ELSE NULL END as html"
+      },
+      "position": [
+        448,
+        0
+      ],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6
+    },
+    {
+      "id": "d6ac621e-ce55-4c6a-b3e8-460e4681a215",
+      "name": "L03b - render",
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst first = $('L03a - detect tokens').first().json;\nconst data = Array.isArray(first.data) ? first.data : [];\nconst groupByField = first.groupByField;\nlet html = first.html_raw || '';\nfor (const item of items) {\n  const fullToken = item.json.full_token;\n  if (fullToken && fullToken !== '__NONE__') {\n    const selectHtml = (!item.json.error && item.json.html) ? item.json.html : '';\n    html = html.split(fullToken).join(selectHtml);\n  }\n}\nconst applyRow = (tpl, row) => {\n  let out = tpl;\n  for (const [key, value] of Object.entries(row)) {\n    const safeVal = String(value ?? '');\n    out = out.split('{{{' + key + '}}}').join(safeVal);\n    out = out.split('{{' + key + '}}').join(safeVal);\n  }\n  return out;\n};\nconst eachRegex = /\\{\\{#each data\\}\\}([\\s\\S]*?)\\{\\{\\/each\\}\\}/;\nconst match = html.match(eachRegex);\nif (match) {\n  const rowTemplate = match[1];\n  const rows = data.map((item, index) => {\n    let row = '';\n    if (groupByField && (index === 0 || item[groupByField] !== data[index-1][groupByField])) {\n      row += '<tr class=\"group-hdr\"><td colspan=\"99\"><strong>' + String(item[groupByField] ?? '') + '</strong></td></tr>';\n    }\n    const slotRegex = /\\{\\{slot:[^\\}]+\\}\\}/g;\n    const slots = [];\n    let slotIndex = 0;\n    let chunk = rowTemplate.replace(slotRegex, (mm) => { slots.push(mm); return '___SLOT_PH_' + (slotIndex++) + '___'; });\n    chunk = applyRow(chunk, item);\n    for (let i = 0; i < slots.length; i++) { chunk = chunk.split('___SLOT_PH_' + i + '___').join(slots[i]); }\n    chunk = chunk.replace(/\\{\\{#if\\s+(\\w+)\\}\\}([\\s\\S]*?)\\{\\{\\/if\\}\\}/g, (mm, cond, content) => item[cond] ? content : '');\n    return row + chunk;\n  }).join('');\n  html = html.replace(eachRegex, () => rows);\n} else if (data.length > 0) {\n  html = applyRow(html, data[0]);\n}\nreturn [{ json: { html, isInsertMode: first.isInsertMode } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        672,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "b11d187b-47a7-4a74-b290-70a58f04515e",
+      "name": "L04 - cleanup",
+      "parameters": {
+        "jsCode": "let html = $json.html || '';\nconst isInsertMode = $json.isInsertMode || false;\nif (isInsertMode) {\n  const slotRegex = /\\{\\{slot:[^\\}]+\\}\\}/g;\n  const slots = [];\n  let idx = 0;\n  html = html.replace(slotRegex, (m) => { slots.push(m); return '___SLOT_PH_' + (idx++) + '___'; });\n  html = html.replace(/\\{\\{\\{[a-zA-Z0-9_]+\\}\\}\\}/g, '');\n  html = html.replace(/\\{\\{[a-zA-Z0-9_]+\\}\\}/g, '');\n  for (let i = 0; i < slots.length; i++) { html = html.split('___SLOT_PH_' + i + '___').join(slots[i]); }\n}\nreturn [{ json: { html } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "position": [
+        896,
+        0
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    }
+  ],
+  "settings": {
+    "availableInMCP": true,
+    "executionOrder": "v1"
+  }
+}
