@@ -9,3 +9,4 @@ logs/
 # Tracked exports of DB function source (tasks 468/470) - the blanket *.sql rule above would hide them
 !db/**/*.sql
 !scripts/deploy-lib/sql/*.sql
+!scripts/mirror/*.sql
