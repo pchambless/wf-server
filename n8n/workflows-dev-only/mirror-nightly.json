@@ -1,0 +1,171 @@
+{
+  "name": "mirror-nightly",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 4
+            }
+          ]
+        }
+      },
+      "id": "8c588113-565a-4a7a-8f7f-774232c2eba4",
+      "name": "Nightly 04:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "select count(*) as tables_staged, sum(staged) as rows_staged from mirror.pull()"
+      },
+      "id": "d27b9138-e277-411c-a390-0d990825d66b",
+      "name": "Pull from prod",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        96
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "select * from mirror.run()"
+      },
+      "id": "b40c84d5-fd75-4038-9a8d-ff92fbace1af",
+      "name": "Mirror run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        32
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "C9XQZL07N",
+          "cachedResultName": "development"
+        },
+        "messageType": "text",
+        "text": "=mirror-nightly FAILED: {{ $json.error?.message ?? JSON.stringify($json.error ?? $json) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
+        "otherOptions": {}
+      },
+      "id": "bb889276-cdd3-4dc7-a3c1-ec9479425ec0",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        96
+      ],
+      "webhookId": "fe935de2-fe85-4e2f-a325-8f02bf785175",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tRuM5DU9yKZPXkfk",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "405eac5e-03bd-4105-808a-c7674814a1cc",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Nightly 04:00": {
+      "main": [
+        [
+          {
+            "node": "Pull from prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pull from prod": {
+      "main": [
+        [
+          {
+            "node": "Mirror run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mirror run": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Pull from prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  }
+}
