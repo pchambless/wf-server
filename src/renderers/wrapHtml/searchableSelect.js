@@ -25,7 +25,8 @@ export const searchableSelectCode = `
           // (getComputedStyle is live: copy the values now, Tom Select restyles the original)
           const live = getComputedStyle(sel);
           const cs = {};
-          ['fontSize', 'fontFamily', 'lineHeight', 'padding', 'border', 'borderRadius', 'backgroundColor', 'color']
+          ['fontSize', 'fontFamily', 'lineHeight', 'padding', 'border', 'borderRadius', 'backgroundColor', 'color',
+            'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf']
             .forEach((k) => { cs[k] = live[k]; });
           const rect = sel.getBoundingClientRect();
           const ts = new TomSelect(sel, {
@@ -59,7 +60,14 @@ export const searchableSelectCode = `
           ts.dropdown.style.fontSize = cs.fontSize;
           ts.dropdown.style.fontFamily = cs.fontFamily;
           // size: only measurable when the select was visible; otherwise the stylesheet default applies
-          if (rect.width > 0) ts.wrapper.style.minWidth = Math.ceil(rect.width) + 'px';
+          // layout: behave like the original inside its parent. Selects in a flex row (the form's
+          // 'dropdown-with-add' puts the + button beside them) grow with flex:1, so the new control
+          // gets the same flex and no pixel minimum; otherwise keep the original width as a minimum.
+          ts.wrapper.style.flex = cs.flexGrow + ' ' + cs.flexShrink + ' ' + cs.flexBasis;
+          ts.wrapper.style.alignSelf = cs.alignSelf;
+          ts.wrapper.style.minHeight = '0';   // the control sets the height; the library default is taller than our selects
+          if (parseFloat(cs.flexGrow) > 0) ts.wrapper.style.minWidth = '0';
+          else if (rect.width > 0) ts.wrapper.style.minWidth = Math.ceil(rect.width) + 'px';
         };
 
         const scan = (root) => {
