@@ -15,10 +15,12 @@ BEGIN
   -- One release task per live prod deploy, filed under the Releases epic: the
   -- pre_launch sprint before go-live, then one sprint per month (created here
   -- when missing, so nobody has to remember). p_sprint overrides (e.g. the go-live sprint).
-  SELECT id INTO v_epic FROM agile.agile_cache
-   WHERE page_type = 'Epic' AND page_name = 'Releases' AND deleted_at IS NULL ORDER BY id LIMIT 1;
-  IF v_epic IS NULL THEN
-    RAISE EXCEPTION 'f_open_release_task: no "Releases" epic in agile_cache';
+  -- The epic is found by agile id, not by name: it was matched as page_name = 'Releases' until the epic was
+  -- renamed 'Releases and Upgrades' (2026-10-15), which made every live run fail at start_run (task 610).
+  v_epic := 519;
+  IF NOT EXISTS (SELECT 1 FROM agile.agile_cache
+                  WHERE id = v_epic AND page_type = 'Epic' AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'f_open_release_task: releases epic % is missing or not an Epic in agile_cache', v_epic;
   END IF;
 
   SELECT notes ->> 'cutover_status' INTO v_cutover FROM deployment.environments WHERE name = 'prod';
