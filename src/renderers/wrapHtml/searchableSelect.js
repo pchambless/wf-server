@@ -7,7 +7,7 @@
 // Alphabetical order:   data-sort="label"   (default keeps the server's order)
 export const searchableSelectCode = `
       (() => {
-        const MIN_OPTIONS = 8;
+        const MIN_OPTIONS = 5;
         if (!window.TomSelect) return;
 
         const signature = (sel) =>
