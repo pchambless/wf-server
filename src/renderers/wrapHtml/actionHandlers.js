@@ -62,7 +62,7 @@ export const actionHandlersCode = `
           const headerValue = headerField?.value || headerField?.textContent || '';
           let title = headerValue.trim()
             ? mode + ' ' + headerValue.trim()
-            : mode + ' ' + formTemplate.replace(/_form$/, '').replace(/_/g, ' ');
+            : mode + ' ' + ((container.querySelector('[data-form-noun]') || {}).dataset?.formNoun || formTemplate.replace(/_form$/, '').replace(/_/g, ' '));
           const titleEl = document.getElementById('inline_form_title');
           if (titleEl) titleEl.textContent = title;
 
