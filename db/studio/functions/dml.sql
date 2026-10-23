@@ -99,6 +99,22 @@ BEGIN
             RETURN jsonb_build_object('success', false, 'error', 'DELETE requires p_pk_val');
         END IF;
 
+        -- History that depends on a row without a foreign key (e.g. a recipe row used by batches):
+        -- deactivate, never hard-delete (task 622). whatsfresh.f_row_in_use lists the tables affected.
+        IF v_schema = 'whatsfresh' AND whatsfresh.f_row_in_use(v_table, p_pk_val) THEN
+            v_sql := format(
+                'UPDATE %I.%I SET deleted_at = now(), deleted_by = %L, updated_at = now() WHERE %I = %s RETURNING to_jsonb(%I.*)',
+                v_schema, v_table, p_user, v_pk_col, p_pk_val, v_table
+            );
+            EXECUTE v_sql INTO v_result;
+
+            IF v_result IS NULL THEN
+                RETURN jsonb_build_object('success', false, 'error', format('Row not found: %s=%s', v_pk_col, p_pk_val));
+            END IF;
+
+            RETURN jsonb_build_object('success', true, 'mode', 'soft-delete', 'data', v_result);
+        END IF;
+
         v_sql := format(
             'DELETE FROM %I.%I WHERE %I = %s RETURNING to_jsonb(%I.*)',
             v_schema, v_table, v_pk_col, p_pk_val, v_table
