@@ -54,6 +54,12 @@ export const searchableSelectCode = `
               return (item) => (item.value === '' ? 0 : base(item));
             }
           });
+          // hint that typing filters: the open control shows a placeholder (the closed text keeps naming the
+          // field, and a longer closed text would widen controls sized for the original)
+          const closedPlaceholder = ts.settings.placeholder;
+          // a tick later: Tom Select refreshes (and clears) the placeholder itself while opening
+          ts.on('dropdown_open', () => { setTimeout(() => { if (ts.isOpen) ts.control_input.placeholder = 'Type to filter...'; }, 0); });
+          ts.on('dropdown_close', () => { ts.control_input.placeholder = closedPlaceholder; });
           ts.__sig = signature(sel);
           if (sel.disabled) ts.disable();
           // look: computed style is readable even while the select is hidden
@@ -77,7 +83,7 @@ export const searchableSelectCode = `
           ts.wrapper.style.alignSelf = cs.alignSelf;
           ts.wrapper.style.minHeight = '0';   // the control sets the height; the library default is taller than our selects
           if (parseFloat(cs.flexGrow) > 0) ts.wrapper.style.minWidth = '0';
-          else if (rect.width > 0) ts.wrapper.style.minWidth = Math.ceil(rect.width) + 'px';
+          else if (rect.width > 0) ts.wrapper.style.minWidth = (Math.ceil(rect.width) + 18) + 'px';   // + room for the search icon
         };
 
         const scan = (root) => {

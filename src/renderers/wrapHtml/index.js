@@ -23,6 +23,14 @@ const searchableSelectTags = () => process.env.WF_SEARCHABLE_SELECT === 'off' ? 
     .ts-wrapper.single .ts-control { align-items: center; box-shadow: none; flex-wrap: nowrap; }
     .ts-wrapper.single .ts-control > input { min-width: 0 !important; }
     .ts-wrapper.single.dropdown-active .ts-control > .item { display: none; }
+    /* magnifier beside the arrow: this dropdown can be typed into */
+    .ts-wrapper.single .ts-control {
+      padding-right: 40px !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23808080' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='6.5' cy='6.5' r='4.5'/%3E%3Cpath d='M10 10l4.5 4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 26px center;
+      background-size: 11px;
+    }
     .ts-dropdown { z-index: 2000; }
   </style>`;
 
