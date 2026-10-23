@@ -17,7 +17,7 @@ export const searchableSelectCode = `
           Array.from(sel.options).filter((o) => o.value !== '').length;
 
         const enhance = (sel) => {
-          if (sel.tomselect || sel.multiple || sel.hasAttribute('data-no-search')) return;
+          if (!sel.isConnected || sel.tomselect || sel.multiple || sel.hasAttribute('data-no-search')) return;
           if (countReal(sel) <= MIN_OPTIONS) return;
           const blank = Array.from(sel.options).find((o) => o.value === '');
           // measure the native select first: the enhanced control copies its look so it
@@ -82,11 +82,30 @@ export const searchableSelectCode = `
           list.forEach((sel) => { if (sel.tomselect) sel.tomselect.destroy(); });
         };
 
-        new MutationObserver((records) => {
+        // Circuit breaker: a feedback loop here must never freeze a page. If the observer fires more than
+        // MAX_BURST times inside one second it disconnects itself; dropdowns stay as they are, now plain.
+        const MAX_BURST = 300;
+        let burstStart = Date.now();
+        let burstCount = 0;
+        const observer = new MutationObserver((records) => {
+          const now = Date.now();
+          if (now - burstStart > 1000) { burstStart = now; burstCount = 0; }
+          if (++burstCount > MAX_BURST) {
+            observer.disconnect();
+            console.error('searchableSelect: mutation loop detected, enhancer disabled for this page');
+            return;
+          }
           for (const r of records) {
+            if (r.target instanceof Element && !r.target.isConnected) continue;   // destroy() rewrites detached selects
             if (r.type === 'attributes') {
               const ts = r.target.tomselect;
-              if (ts) { if (r.target.disabled) ts.disable(); else ts.enable(); }
+              // Only act on a real change: Tom Select writes 'disabled' back to the select itself,
+              // so reacting unconditionally re-fires this observer forever (froze the page when a form
+              // toggled a hidden dropdown with data-visible-mode).
+              if (ts) {
+                const want = r.target.disabled;
+                if (want !== !!ts.isDisabled) { if (want) ts.disable(); else ts.enable(); }
+              }
               continue;
             }
             r.removedNodes.forEach(release);
@@ -103,7 +122,8 @@ export const searchableSelectCode = `
               }
             }
           }
-        }).observe(document.documentElement, {
+        });
+        observer.observe(document.documentElement, {
           childList: true, subtree: true, attributes: true, attributeFilter: ['disabled']
         });
 
