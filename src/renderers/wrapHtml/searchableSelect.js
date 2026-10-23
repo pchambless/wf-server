@@ -19,6 +19,16 @@ export const searchableSelectCode = `
         const enhance = (sel) => {
           if (!sel.isConnected || sel.tomselect || sel.multiple || sel.hasAttribute('data-no-search')) return;
           if (countReal(sel) <= MIN_OPTIONS) return;
+          // A form field can ask for a blank start with data-blank-default="-- Select X --" on its wrapper.
+          // Server-rendered form dropdowns carry no blank option, so the browser silently preselects the
+          // first one (Celery, Amazon...); for a field where that is dangerous, prepend a real blank.
+          const blankHost = sel.closest('[data-blank-default]');
+          if (blankHost && !Array.from(sel.options).some((o) => o.value === '') &&
+              !Array.from(sel.options).some((o) => o.defaultSelected)) {
+            const opt = new Option(blankHost.getAttribute('data-blank-default') || '-- Select --', '', true, true);
+            sel.insertBefore(opt, sel.firstChild);
+            sel.value = '';
+          }
           const blank = Array.from(sel.options).find((o) => o.value === '');
           // measure the native select first: the enhanced control copies its look so it
           // fits wherever the original did (filter bars, forms, modals)
