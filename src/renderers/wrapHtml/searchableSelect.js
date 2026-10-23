@@ -86,7 +86,13 @@ export const searchableSelectCode = `
           for (const r of records) {
             if (r.type === 'attributes') {
               const ts = r.target.tomselect;
-              if (ts) { if (r.target.disabled) ts.disable(); else ts.enable(); }
+              // Only act on a real change: Tom Select writes 'disabled' back to the select itself,
+              // so reacting unconditionally re-fires this observer forever (froze the page when a form
+              // toggled a hidden dropdown with data-visible-mode).
+              if (ts) {
+                const want = r.target.disabled;
+                if (want !== !!ts.isDisabled) { if (want) ts.disable(); else ts.enable(); }
+              }
               continue;
             }
             r.removedNodes.forEach(release);
