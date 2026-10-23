@@ -8,6 +8,23 @@ import { popActionsCode } from './popActions.js';
 import { workerPickerCode } from './workerPicker.js';
 import { formHydrationCode } from './formHydration.js';
 import { filterHintCode } from './filterHint.js';
+import { searchableSelectCode } from './searchableSelect.js';
+
+// Type-to-filter dropdowns (task 615). Kill switch: WF_SEARCHABLE_SELECT=off drops the library
+// and the enhancer from every page. The library is vendored under public/vendor (the page CSP
+// only allows self + unpkg), so a CDN cannot change or break the page.
+const TOM_SELECT = '/vendor/tom-select/2.3.1';
+const searchableSelectTags = () => process.env.WF_SEARCHABLE_SELECT === 'off' ? '' : `
+  <link rel="stylesheet" href="${TOM_SELECT}/tom-select.default.min.css">
+  <script src="${TOM_SELECT}/tom-select.complete.min.js"></script>
+  <script>${searchableSelectCode}</script>
+  <style>
+    .ts-wrapper { display: inline-block; vertical-align: middle; min-width: 120px; }
+    .ts-wrapper.single .ts-control { align-items: center; box-shadow: none; flex-wrap: nowrap; }
+    .ts-wrapper.single .ts-control > input { min-width: 0 !important; }
+    .ts-wrapper.single.dropdown-active .ts-control > .item { display: none; }
+    .ts-dropdown { z-index: 2000; }
+  </style>`;
 
 export function wrapHtml(title, body) {
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
@@ -101,7 +118,7 @@ export function wrapHtml(title, body) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title || 'WhatsFresh'}</title>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>${searchableSelectTags()}
   <script>
     // Global loading indicator
     (() => {
