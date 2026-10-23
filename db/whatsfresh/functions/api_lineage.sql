@@ -41,13 +41,22 @@ AS $function$
      ON l.source_batch_id = src.id
   JOIN (SELECT * FROM whatsfresh.api_batches()) trgt
     ON l.target_batch_id = trgt.id
-  LEFT JOIN whatsfresh.product_recipes pr
-   ON pr.product_id = trgt.entity_id
-   AND pr.ingredient_id = src.entity_id
+  -- The recipe only decorates a lineage row with the current quantity; it must never decide whether the row
+  -- exists. A recipe row that was deactivated (ingredient swapped out) used to hide every lineage row for that
+  -- (product, ingredient) pair, so trace reports lost historical ingredient lots (task 620). One active recipe
+  -- row at most per lineage row, which also stops duplicate active recipe rows fanning the lineage out.
+  LEFT JOIN LATERAL (
+    SELECT r.quantity, r.measure_id
+      FROM whatsfresh.product_recipes r
+     WHERE r.product_id = trgt.entity_id
+       AND r.ingredient_id = src.entity_id
+       AND r.deleted_at IS NULL
+     ORDER BY r.id
+     LIMIT 1
+  ) pr ON true
   WHERE l.account_id IN (whatsfresh.c_getval('account_id')::integer, 0)
   and src.entity_kind = 'Shop'
   and trgt.entity_kind = 'Prod'
-  and pr.deleted_at is null
   ORDER BY l.id DESC;
 $function$
 ;
