@@ -10,6 +10,7 @@ import { formHydrationCode } from './formHydration.js';
 import { filterHintCode } from './filterHint.js';
 import { searchableSelectCode } from './searchableSelect.js';
 import { calcFieldsCode } from './calcFields.js';
+import { saveGateCode } from './saveGate.js';
 
 // Type-to-filter dropdowns (task 615). Kill switch: WF_SEARCHABLE_SELECT=off drops the library
 // and the enhancer from every page. The library is vendored under public/vendor (the page CSP
@@ -60,6 +61,7 @@ export function wrapHtml(title, body) {
       ${workerPickerCode}
       ${filterHintCode}
       ${calcFieldsCode}
+      ${saveGateCode}
 
       // Build CRUD buttons dynamically from __pageContext
       document.addEventListener('DOMContentLoaded', () => {
