@@ -1,5 +1,6 @@
 import { callWorkflow } from '../utils/n8nClient.js';
 import logger from '../utils/logger.js';
+import { sendSignupEmails } from '../utils/signupEmails.js';
 
 export async function handleRegister(req, res) {
   const { first_name, last_name, email, password, confirm_password, company_name, zip_code, description, street_address, city, state_code, url } = req.body;
@@ -40,6 +41,9 @@ export async function handleRegister(req, res) {
       });
       return res.status(400).json({ success: false, message: row?.error_message || 'Registration failed' });
     }
+
+    // Welcome + signup alert (task 663). Not awaited: the account exists, a mail problem must not affect the signup.
+    sendSignupEmails({ first_name, last_name, email, company_name, zip_code, account_id: row.account_id, user_id: row.user_id });
 
     // Auto-login: set session
     await callWorkflow('setvals', {
