@@ -11,6 +11,8 @@ Config is only in the SQL: excluded tables (`context_store`) and secret columns 
 Target needs `studio.fsma_classifications` (entity_types FK). Dev-only tables must not FK into mirrored tables (a blocked delete rolls the run back).
 
 ## Scheduling (n8n)
-Workflow `mirror-nightly` (dev n8n, id gh8jnDAZq2C2kVuw; JSON in `n8n/workflows-dev-only/mirror-nightly.json`):
-Nightly 04:00 (and a manual "Run now") -> `mirror.pull()` -> `mirror.run()`; any error goes to Slack #development.
-Left INACTIVE until after cutover (cutover_status flipped, legacy etl-nightly/p01/p02 off before 11-01 03:00).
+Workflow `wf-prod-to-dev-data` (dev n8n, id gh8jnDAZq2C2kVuw; JSON in `n8n/workflows-dev-only/wf-prod-to-dev-data.json`):
+a `Schedule` trigger (04:00 daily by default; change the schedule if it should run more or less often) and a manual `Run now`
+-> `mirror.pull()` -> `mirror.run()`; any error goes to Slack #development. The name says what it does, not how often.
+Cutover is done and the legacy ETL workflows are unpublished, so this is the only thing that writes whatsfresh data into dev.
+First manual run 2026-10-25 17:08 CT succeeded; afterwards prod and dev matched on all 15 tables (count + content hash).

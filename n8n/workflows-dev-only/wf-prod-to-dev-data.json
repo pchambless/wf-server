@@ -1,5 +1,5 @@
 {
-  "name": "mirror-nightly",
+  "name": "wf-prod-to-dev-data",
   "active": false,
   "nodes": [
     {
@@ -14,7 +14,7 @@
         }
       },
       "id": "8c588113-565a-4a7a-8f7f-774232c2eba4",
-      "name": "Nightly 04:00",
+      "name": "Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.4,
       "position": [
@@ -79,7 +79,7 @@
           "cachedResultName": "development"
         },
         "messageType": "text",
-        "text": "=mirror-nightly FAILED: {{ $json.error?.message ?? JSON.stringify($json.error ?? $json) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
+        "text": "=wf-prod-to-dev-data FAILED: {{ $json.error?.message ?? JSON.stringify($json.error ?? $json) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
         "otherOptions": {}
       },
       "id": "bb889276-cdd3-4dc7-a3c1-ec9479425ec0",
@@ -111,17 +111,6 @@
     }
   ],
   "connections": {
-    "Nightly 04:00": {
-      "main": [
-        [
-          {
-            "node": "Pull from prod",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Pull from prod": {
       "main": [
         [
@@ -153,6 +142,17 @@
       ]
     },
     "Run now": {
+      "main": [
+        [
+          {
+            "node": "Pull from prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule": {
       "main": [
         [
           {
