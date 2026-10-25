@@ -82,6 +82,16 @@ SRC_HEADERAUTH_CRED_NAME="wf-webhook-secret"
 TGT_HEADERAUTH_CRED_ID="teZn2ZQi9tFaJlyI"
 TGT_HEADERAUTH_CRED_NAME="wf-webhook-secret"
 
+# Fifth remap, added 2026-10-25 (task 660): the SMTP credential on send-email. Dev's id is not portable, so the
+# target id is looked up by type+name from prod's credential list (GET /api/v1/credentials, metadata only, never
+# the secret) at import time instead of being hardcoded. If a workflow uses an SMTP credential and prod has none by
+# that name, that workflow FAILS with a clear message (below) rather than being pushed with dev's id verbatim,
+# which is how the other remaps broke before. Create it on prod first: n8n editor, Credentials, SMTP, same name.
+SRC_SMTP_CRED_NAME="Gmail SMTP (personal)"
+TGT_SMTP_CRED_NAME="Gmail SMTP (personal)"
+TGT_SMTP_CRED_ID=$(curl -s -H "X-N8N-API-KEY: $TGT_KEY" "$TGT_URL/api/v1/credentials" \
+  | jq -r --arg n "$TGT_SMTP_CRED_NAME" '.data[]? | select(.type == "smtp" and .name == $n) | .id' | head -1)
+
 JOIN_RUN_ID=""
 if [ "$1" = "--run-id" ]; then
   JOIN_RUN_ID="${2:?--run-id needs a value}"
@@ -167,6 +177,11 @@ for WF_NAME in $NEEDED; do
   fi
   SRC_WF=$(cat "$WF_FILE")
 
+  if echo "$SRC_WF" | jq -e '[.nodes[].credentials.smtp // empty] | length > 0' >/dev/null && [ -z "$TGT_SMTP_CRED_ID" ]; then
+    echo "[import] FAIL: $WF_NAME uses the SMTP credential '$SRC_SMTP_CRED_NAME' but prod has no SMTP credential named '$TGT_SMTP_CRED_NAME'. Create it on prod's n8n first."
+    FAILED=$((FAILED+1)); continue
+  fi
+
   # API rejects id/createdAt/etc on create - only name/nodes/connections/settings.
   # settings is also rejected if it carries fields only valid on read (binaryMode,
   # availableInMCP, etc - discovered by a real 400 on first test), so it is
@@ -190,6 +205,7 @@ for WF_NAME in $NEEDED; do
   CREATE_PAYLOAD=$(echo "$SRC_WF" | jq \
     --arg tid "$TGT_CRED_ID" --arg tname "$TGT_CRED_NAME" --arg sname "$SRC_CRED_NAME" \
     --arg htid "$TGT_HEADERAUTH_CRED_ID" --arg htname "$TGT_HEADERAUTH_CRED_NAME" --arg hsname "$SRC_HEADERAUTH_CRED_NAME" \
+    --arg smid "$TGT_SMTP_CRED_ID" --arg smname "$TGT_SMTP_CRED_NAME" --arg smsname "$SRC_SMTP_CRED_NAME" \
     --arg src_base "https://n8n.whatsfresh.app" --arg tgt_base "$TGT_URL" '
     {name, nodes: [.nodes[] |
         (if .credentials.postgres.name == $sname
@@ -197,6 +213,9 @@ for WF_NAME in $NEEDED; do
            else . end) |
         (if .credentials.httpHeaderAuth.name == $hsname
            then .credentials.httpHeaderAuth = {id: $htid, name: $htname}
+           else . end) |
+        (if .credentials.smtp.name == $smsname
+           then .credentials.smtp = {id: $smid, name: $smname}
            else . end) |
         (if .parameters.url != null and (.parameters.url | startswith($src_base))
            then .parameters.url = ($tgt_base + (.parameters.url | ltrimstr($src_base)))

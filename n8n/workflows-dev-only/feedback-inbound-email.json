@@ -1,0 +1,91 @@
+{
+  "name": "feedback-inbound-email",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "WF-Feedback",
+        "postProcessAction": "read",
+        "format": "resolved",
+        "options": {}
+      },
+      "id": "7c2e1d10-3b4a-4f6e-8a11-1b2c3d4e5001",
+      "name": "IMAP: WF-Feedback label",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "credentials": {
+        "imap": {
+          "id": "e4HA97nrfGD0HvzL",
+          "name": "Gmail IMAP (personal)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// L01-Parse: a message is feedback inbound only if it was addressed to the plus-address pc7900+wf<N>@... (our Reply-To).\n// Our own outbound mail goes to the user, so it never matches. Quoted history is cut so the thread shows only the new text.\nconst m = $input.first().json;\nconst addrs = [m.to && m.to.text, m.cc && m.cc.text, m.headers && m.headers['delivered-to'], m.headers && m.headers.to].filter(Boolean).join(' , ');\nconst hit = /\\+wf(\\d+)@/i.exec(addrs);\nconst fromAddr = ((m.from && m.from.value && m.from.value[0] && m.from.value[0].address) || '').toLowerCase();\nlet text = String(m.text || '').replace(/\\r\\n/g, '\\n');\nif (!text && m.html) text = String(m.html).replace(/<br\\s*\\/?>/gi, '\\n').replace(/<[^>]+>/g, '');\nconst cuts = [\n  text.search(/^On .{0,200}?wrote:\\s*$/ms),\n  text.search(/^>/m),\n  text.search(/^-{2,}\\s*(Original Message|Forwarded message)/mi),\n  text.search(/^--\\s*\\nIn reply to your feedback:/m)\n].filter((i) => i >= 0);\nconst body = (cuts.length ? text.slice(0, Math.min(...cuts)) : text).trim();\nreturn [{ json: {\n  matched: !!hit && body.length > 0,\n  feedback_id: hit ? parseInt(hit[1], 10) : null,\n  from_email: fromAddr,\n  to_text: String(m.to && m.to.text || ''),\n  subject: String(m.subject || ''),\n  body: body || text.trim(),\n  message_id: String(m.messageId || ''),\n  received_at: m.date ? new Date(m.date).toISOString() : new Date().toISOString()\n} }];"
+      },
+      "id": "7c2e1d10-3b4a-4f6e-8a11-1b2c3d4e5002",
+      "name": "L01-Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "d1e2f3a4-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.matched }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7c2e1d10-3b4a-4f6e-8a11-1b2c3d4e5003",
+      "name": "Feedback reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ins AS (\n  INSERT INTO support.feedback_replies (feedback_id, direction, from_email, to_email, subject, body, sent_by, sent_at, message_id)\n  SELECT f.id, 'in', $2, $3, $4, $5, $2, ($6::timestamptz AT TIME ZONE 'UTC'), NULLIF($7, '')\n  FROM support.feedback f\n  WHERE f.id = $1::int AND f.deleted_at IS NULL\n  ON CONFLICT (message_id) WHERE message_id IS NOT NULL DO NOTHING\n  RETURNING feedback_id\n)\nUPDATE support.feedback f\nSET status = 'reviewing', updated_at = now(), updated_by = 'inbound-mail'\nFROM ins\nWHERE f.id = ins.feedback_id AND f.status = 'replied'\nRETURNING f.id",
+        "options": {
+          "queryReplacement": "={{ [ $json.feedback_id, $json.from_email, $json.to_text, $json.subject, $json.body, $json.received_at, $json.message_id ] }}"
+        }
+      },
+      "id": "7c2e1d10-3b4a-4f6e-8a11-1b2c3d4e5004",
+      "name": "L02-Store-Inbound-Reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [720, -60],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "IMAP: WF-Feedback label": { "main": [[{ "node": "L01-Parse", "type": "main", "index": 0 }]] },
+    "L01-Parse": { "main": [[{ "node": "Feedback reply?", "type": "main", "index": 0 }]] },
+    "Feedback reply?": { "main": [[{ "node": "L02-Store-Inbound-Reply", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
