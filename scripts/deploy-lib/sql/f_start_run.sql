@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION deployment.f_start_run(p_pipeline text, p_env text, p_git_commit text DEFAULT NULL::text, p_by text DEFAULT 'deploy'::text, p_dry_run boolean DEFAULT false, p_task_id integer DEFAULT NULL::integer, p_summary text DEFAULT NULL::text, p_sprint text DEFAULT NULL::text)
+CREATE OR REPLACE FUNCTION deployment.f_start_run(p_pipeline text, p_env text, p_git_commit text DEFAULT NULL::text, p_by text DEFAULT 'deploy'::text, p_dry_run boolean DEFAULT false, p_task_id integer DEFAULT NULL::integer, p_summary text DEFAULT NULL::text, p_sprint text DEFAULT NULL::text, p_release_id integer DEFAULT NULL::integer)
  RETURNS integer
  LANGUAGE plpgsql
 AS $function$
@@ -16,9 +16,13 @@ BEGIN
   -- Run lifecycle lives in the DB so bash (start_run.sh) and the n8n
   -- orchestrator open runs identically. p_pipeline 'all'/NULL/'' = holistic
   -- run (deployments.pipeline_id NULL = every leg); a pipeline name pins one leg.
-  SELECT id INTO v_release FROM deployment.releases WHERE status = 'pending' ORDER BY id DESC LIMIT 1;
+  -- The release a run belongs to (task 689): the one passed in (a hotfix), else the earliest unshipped dated release.
+  v_release := coalesce(p_release_id, deployment.f_open_release_id());
   IF v_release IS NULL THEN
-    RAISE EXCEPTION 'f_start_run: no pending release - create one in deployment.releases first';
+    RAISE EXCEPTION 'f_start_run: no open release - create one on the Releases page first';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM agile.releases r WHERE r.id = v_release AND r.deleted_at IS NULL AND r.kind <> 'backlog') THEN
+    RAISE EXCEPTION 'f_start_run: release % does not exist or is the Backlog', v_release;
   END IF;
 
   SELECT id, is_target INTO v_env, v_is_target FROM deployment.environments WHERE name = p_env;
