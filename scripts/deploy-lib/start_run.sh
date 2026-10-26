@@ -27,9 +27,12 @@ BY_ESC=$(esc_sql "$CREATED_BY")
 
 # The run lifecycle lives in deployment.f_start_run (shared with the n8n
 # orchestrator). Pipeline 'all'/empty = holistic run (pipeline_id NULL, every
-# leg); a name pins one leg. RELEASE_ID is accepted for caller compatibility but
-# f_start_run always attaches the pending release.
-RESULT=$(pg_query "SELECT deployment.f_start_run('$PIPELINE_ESC', '$ENV_ESC', '$SHA_ESC', '$BY_ESC') AS run_id")
+# leg); a name pins one leg. RELEASE_ID (agile.releases.id) pins the release the run belongs to, e.g.
+# a hotfix release; without a numeric id f_start_run attaches the earliest unshipped dated release
+# (deployment.f_open_release_id, task 689).
+RELEASE_ARG=""
+case "$RELEASE_ID" in ''|*[!0-9]*) ;; *) RELEASE_ARG=", p_release_id => $RELEASE_ID" ;; esac
+RESULT=$(pg_query "SELECT deployment.f_start_run('$PIPELINE_ESC', '$ENV_ESC', '$SHA_ESC', '$BY_ESC'$RELEASE_ARG) AS run_id")
 RUN_ID=$(printf '%s' "$RESULT" | jq -r '.[0].run_id // empty')
 
 if [ -z "$RUN_ID" ]; then
