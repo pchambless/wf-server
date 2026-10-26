@@ -115,14 +115,8 @@ export async function renderPage(req, res, next) {
       page_title: pageInfo.pageTitle,
       actions: {
         click: [
-          {
-            action: 'clearvals',
-            clear_all: true
-          },
-          {
-            action: 'redirect',
-            payload: { url: '/login' }
-          }
+          { action: 'logout' },
+          { action: 'redirect', payload: { url: '/login' } }
         ]
       }
     });

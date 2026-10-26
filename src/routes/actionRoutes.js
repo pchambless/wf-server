@@ -21,6 +21,11 @@ router.post('/actions', async (req, res) => {
     }
   });
 
+  // Log Out works with or without a live session: with none there is nothing to end, just go to the login page.
+  if (!email && String(action?.action || '').toLowerCase() === 'logout') {
+    return res.json({ success: true, redirectUrl: '/login' });
+  }
+
   if (!email) {
     return res.status(401).json({ success: false, message: 'Authentication required' });
   }
@@ -33,6 +38,21 @@ router.post('/actions', async (req, res) => {
     const actionName = String(action.action || '').toLowerCase();
     let targets = normalizeTargets(action.targets);
     let redirectUrl = null;
+
+    // Log Out (task 697): clear every context value (as task 181 intended), then END the server session
+    // and drop the cookie. Before this, Log Out only cleared a few keys and the 24-hour session stayed valid.
+    if (actionName === 'logout') {
+      await callWorkflow('clearvals', { email, params: [], clear_all: true });
+      return req.session.destroy((err) => {
+        if (err) {
+          logger.error('[api] Response', { path: '/api/actions', success: false, status: 500, error: err.message });
+          return res.status(500).json({ success: false, message: 'Log out failed' });
+        }
+        res.clearCookie('connect.sid');
+        logger.info('[api] Response', { path: '/api/actions', success: true, status: 200, redirectUrl: '/login' });
+        return res.json({ success: true, redirectUrl: '/login' });
+      });
+    }
 
     if (actionName === 'setvals') {
       const vals = getSetVals(action, selectedValue);
