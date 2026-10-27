@@ -9,9 +9,11 @@
 #
 # Prints the new run_id on stdout on success, nothing else.
 #
-# Usage: start_run.sh <pipeline> <environment> <release_id> [git_commit] [created_by] [dry]
+# Usage: start_run.sh <pipeline> <environment> <release_id> [git_commit] [created_by] [dry] [task_id]
 #   dry - pass the word 'dry' to open a DRY RUN (deployment_runs.dry_run = true): it never counts as shipped,
 #         and steps given dry_run=true only preview. Anything else (or omitted) opens a live run.
+#   task_id - numeric agile task the run belongs to (e.g. the hotfix's Task 208). A live prod run closes it Done when it
+#         succeeds. Without one, f_start_run files a new release task under Epic 519 for every live run.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/pg-query.sh"
@@ -23,6 +25,8 @@ GIT_COMMIT="${4:-}"
 CREATED_BY="${5:-deploy-lib}"
 DRY_ARG=""
 [ "${6:-}" = "dry" ] && DRY_ARG=", p_dry_run => true"
+TASK_ARG=""
+case "${7:-}" in ''|*[!0-9]*) ;; *) TASK_ARG=", p_task_id => $7" ;; esac
 
 PIPELINE_ESC=$(esc_sql "$PIPELINE")
 ENV_ESC=$(esc_sql "$ENVIRONMENT")
@@ -36,7 +40,7 @@ BY_ESC=$(esc_sql "$CREATED_BY")
 # (deployment.f_open_release_id, task 689).
 RELEASE_ARG=""
 case "$RELEASE_ID" in ''|*[!0-9]*) ;; *) RELEASE_ARG=", p_release_id => $RELEASE_ID" ;; esac
-RESULT=$(pg_query "SELECT deployment.f_start_run('$PIPELINE_ESC', '$ENV_ESC', '$SHA_ESC', '$BY_ESC'$RELEASE_ARG$DRY_ARG) AS run_id")
+RESULT=$(pg_query "SELECT deployment.f_start_run('$PIPELINE_ESC', '$ENV_ESC', '$SHA_ESC', '$BY_ESC'$RELEASE_ARG$DRY_ARG$TASK_ARG) AS run_id")
 RUN_ID=$(printf '%s' "$RESULT" | jq -r '.[0].run_id // empty')
 
 if [ -z "$RUN_ID" ]; then
