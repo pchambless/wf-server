@@ -173,6 +173,55 @@ BEGIN
         END;
     END LOOP;
 
+    -- Triggers go last: tables run before functions in the manifest, and a trigger needs its function
+    -- on the target. Same dry-run / verify shape as the object loop above.
+    IF NOT v_failed THEN
+        FOR v_row IN
+            SELECT o.id, o.seq, o.schema_path,
+                   split_part(o.schema_path, '.', 1) AS sch,
+                   split_part(o.schema_path, '.', 2) AS obj
+              FROM deployment.deployment_objects o
+              LEFT JOIN deployment.object_policy op
+                     ON op.pipeline_id = o.pipeline_id AND op.schema_path = o.schema_path
+             WHERE o.run_id = p_run_id
+               AND o.platform = 'database'
+               AND o.object_type = 'table'
+               AND coalesce(op.structure, '') <> 'skip'
+             ORDER BY o.seq
+        LOOP
+            v_ddl := deployment.f_trigger_ddl(v_row.sch, v_row.obj);
+            CONTINUE WHEN v_ddl IS NULL;
+
+            BEGIN
+                IF NOT p_dry_run THEN
+                    PERFORM dblink_exec(v_conn, v_ddl);
+
+                    SELECT cnt INTO v_verify_count
+                      FROM dblink(v_conn, format(
+                             'SELECT count(*) FROM pg_trigger WHERE tgrelid = %L::regclass AND NOT tgisinternal',
+                             v_row.sch || '.' || v_row.obj)) AS t(cnt bigint);
+
+                    IF coalesce(v_verify_count, 0) = 0 THEN
+                        RAISE EXCEPTION 'verification failed: no trigger found on % after apply', v_row.schema_path;
+                    END IF;
+                END IF;
+
+                seq := v_row.seq; schema_path := v_row.schema_path || ' (triggers)'; object_type := 'trigger';
+                status := 'succeeded'; error := NULL;
+                RETURN NEXT;
+            EXCEPTION WHEN OTHERS THEN
+                v_fail_reason := SQLERRM;
+                v_failed := true;
+
+                seq := v_row.seq; schema_path := v_row.schema_path || ' (triggers)'; object_type := 'trigger';
+                status := 'failed'; error := v_fail_reason;
+                RETURN NEXT;
+            END;
+
+            EXIT WHEN v_failed;
+        END LOOP;
+    END IF;
+
     IF NOT p_dry_run THEN
         PERFORM dblink_disconnect(v_conn);
     END IF;

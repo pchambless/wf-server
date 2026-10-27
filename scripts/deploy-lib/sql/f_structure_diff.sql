@@ -128,6 +128,59 @@ BEGIN
       AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
                        WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.status = 'obsolete');
 
+    -- INDEXES (by table + name; constraint-backed indexes are covered by CONSTRAINTS above, and
+    -- the definition text is not compared for the same PG-version reason). f_table_ddl replays
+    -- these on the structure leg, so a row here ships.
+    RETURN QUERY
+    WITH dev_idx AS (
+        SELECT ic.relname::text AS name, tc.relname::text AS tbl
+        FROM pg_index i
+        JOIN pg_class ic ON ic.oid = i.indexrelid
+        JOIN pg_class tc ON tc.oid = i.indrelid
+        JOIN pg_namespace n ON n.oid = tc.relnamespace
+        WHERE n.nspname = p_schema AND tc.relkind = 'r'
+          AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conindid = i.indexrelid)
+    ),
+    target_idx AS (
+        SELECT * FROM dblink(v_conn, format(
+          'SELECT ic.relname::text, tc.relname::text FROM pg_index i JOIN pg_class ic ON ic.oid=i.indexrelid JOIN pg_class tc ON tc.oid=i.indrelid JOIN pg_namespace n ON n.oid=tc.relnamespace WHERE n.nspname=%L AND tc.relkind=''r'' AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conindid=i.indexrelid)', p_schema
+        )) AS t(name text, tbl text)
+    )
+    SELECT 'index'::text, COALESCE(d.tbl,t.tbl) || '.' || COALESCE(d.name, t.name),
+           CASE WHEN d.name IS NULL THEN 'missing on dev' WHEN t.name IS NULL THEN 'missing on target' END,
+           CASE WHEN d.name IS NOT NULL THEN 'exists' END,
+           CASE WHEN t.name IS NOT NULL THEN 'exists' END
+    FROM dev_idx d FULL OUTER JOIN target_idx t ON t.name = d.name AND t.tbl = d.tbl
+    WHERE (d.name IS NULL OR t.name IS NULL)
+      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
+                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.status = 'obsolete');
+
+    -- TRIGGERS (by table + name). Triggers whose function lives in the deployment schema are dev-only
+    -- tooling (that schema is not on prod) and are ignored here and by f_trigger_ddl.
+    RETURN QUERY
+    WITH dev_trg AS (
+        SELECT tg.tgname::text AS name, tc.relname::text AS tbl
+        FROM pg_trigger tg
+        JOIN pg_class tc ON tc.oid = tg.tgrelid
+        JOIN pg_namespace n ON n.oid = tc.relnamespace
+        JOIN pg_proc fp ON fp.oid = tg.tgfoid
+        JOIN pg_namespace fn ON fn.oid = fp.pronamespace
+        WHERE n.nspname = p_schema AND NOT tg.tgisinternal AND fn.nspname <> 'deployment'
+    ),
+    target_trg AS (
+        SELECT * FROM dblink(v_conn, format(
+          'SELECT tg.tgname::text, tc.relname::text FROM pg_trigger tg JOIN pg_class tc ON tc.oid=tg.tgrelid JOIN pg_namespace n ON n.oid=tc.relnamespace JOIN pg_proc fp ON fp.oid=tg.tgfoid JOIN pg_namespace fn ON fn.oid=fp.pronamespace WHERE n.nspname=%L AND NOT tg.tgisinternal AND fn.nspname <> ''deployment''', p_schema
+        )) AS t(name text, tbl text)
+    )
+    SELECT 'trigger'::text, COALESCE(d.tbl,t.tbl) || '.' || COALESCE(d.name, t.name),
+           CASE WHEN d.name IS NULL THEN 'missing on dev' WHEN t.name IS NULL THEN 'missing on target' END,
+           CASE WHEN d.name IS NOT NULL THEN 'exists' END,
+           CASE WHEN t.name IS NOT NULL THEN 'exists' END
+    FROM dev_trg d FULL OUTER JOIN target_trg t ON t.name = d.name AND t.tbl = d.tbl
+    WHERE (d.name IS NULL OR t.name IS NULL)
+      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
+                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.status = 'obsolete');
+
     PERFORM dblink_disconnect(v_conn);
 END;
 $function$
