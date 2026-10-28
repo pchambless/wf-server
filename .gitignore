@@ -10,3 +10,4 @@ logs/
 !db/**/*.sql
 !scripts/deploy-lib/sql/*.sql
 !scripts/mirror/*.sql
+wf-V2.code-workspace
