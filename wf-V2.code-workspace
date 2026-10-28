@@ -7,6 +7,9 @@
 			"path": "../app-engine"
 		},
 		{
+			"path": "../consulting-app"
+		},
+		{
 			"path": "../wf-agents"
 		},
 		{

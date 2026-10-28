@@ -18,5 +18,7 @@ export function notifyActivity(event, email) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
     signal: AbortSignal.timeout(3000)
+  }).then(res => {
+    if (!res.ok) logger.warn('[activity] Slack rejected the post', { status: res.status });
   }).catch(err => logger.warn('[activity] Slack post failed', { error: err.message }));
 }
