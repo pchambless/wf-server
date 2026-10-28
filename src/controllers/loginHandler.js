@@ -1,5 +1,6 @@
 import { callWorkflow } from '../utils/n8nClient.js';
 import logger from '../utils/logger.js';
+import { notifyActivity } from '../utils/activityNotify.js';
 
 function getDefaultAccountId(result) {
   const accountVal = Array.isArray(result?.vals)
@@ -77,6 +78,7 @@ export async function handleLogin(req, res) {
           return res.status(500).json({ success: false, message: 'Session error' });
         }
 
+        notifyActivity('login', email);
         logger.info('[api] Response', {
           path: '/api/auth/login',
           success: true,
@@ -87,6 +89,7 @@ export async function handleLogin(req, res) {
       });
     }
 
+    notifyActivity('login_failed', email);
     logger.warn('[api] Response', {
       path: '/api/auth/login',
       success: false,
