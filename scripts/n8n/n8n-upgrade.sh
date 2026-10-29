@@ -59,7 +59,13 @@ fi
 RUN_ARGS=("$ACTION")
 if [ -z "$ACTION" ]; then
   if [ "$APPLY" = 1 ]; then RUN_ARGS=(upgrade); else RUN_ARGS=(preflight); fi
-  RUN_ARGS+=(--to "$TO" --min-safe "$MIN_SAFE")
+  RUN_ARGS+=(--to "$TO")
+  # Only pass --min-safe when the feed actually has one. An empty value here used to
+  # survive as a dangling `--min-safe` (the droplet path word-splits ${RUN_ARGS[*]}, so
+  # the empty element vanished), and host-upgrade.sh then read the NEXT flag (e.g.
+  # --allow-major) as the min-safe value - failing preflight. Omitting the flag makes the
+  # host script skip the floor check, which is the correct behavior when there is no floor.
+  [ -n "$MIN_SAFE" ] && RUN_ARGS+=(--min-safe "$MIN_SAFE")
   [ "$SIM" = 1 ] && RUN_ARGS+=(--simulate-failure)
   [ "$MAJOR" = 1 ] && RUN_ARGS+=(--allow-major)
 else

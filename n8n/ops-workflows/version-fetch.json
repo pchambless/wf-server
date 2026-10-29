@@ -1,0 +1,387 @@
+{
+  "name": "version-fetch",
+  "nodes": [
+    {
+      "id": "fe6764d9-3a50-4a9d-be45-af8208057a46",
+      "name": "Nightly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        288
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 4,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e95f6944-138c-42fc-9fc9-a28fc69e4afd",
+      "name": "Read version_feed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        288
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "SELECT component, feed_url, feed_kind, expected, enabled FROM deployment.version_feed WHERE enabled = true ORDER BY component"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    },
+    {
+      "id": "48d4ffb1-36b8-42eb-b1ca-3b9a92cdd5d6",
+      "name": "Fetch Node",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "executeOnce": true,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://nodejs.org/dist/index.json",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "cb2ba4ae-2f16-44f9-b166-b229e8a929e7",
+      "name": "Combine Feeds",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        256
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 5
+      }
+    },
+    {
+      "id": "942637ad-8147-45bd-8950-43c84a29d523",
+      "name": "Fetch Postgres",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "executeOnce": true,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.postgresql.org/versions.json",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "25d6e2bc-985f-4d33-a8f1-550fced17472",
+      "name": "Fetch Caddy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "executeOnce": true,
+      "position": [
+        448,
+        384
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/caddyserver/caddy/releases/latest",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "3636767e-dc23-4f26-b038-c8570c05a4f9",
+      "name": "Fetch n8n",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "executeOnce": true,
+      "position": [
+        448,
+        576
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/n8n-io/n8n/releases?per_page=100",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "5bf22703-b458-4ef4-9626-2a540d36ebea",
+      "name": "Build Upsert SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        288
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst qn = (s) => (s === null || s === undefined || s === '') ? 'NULL' : q(s);\nconst qd = (s) => (s === null || s === undefined || s === '') ? 'NULL' : q(s) + '::date';\nconst qb = (b) => (b === null || b === undefined) ? 'NULL' : (b ? 'true' : 'false');\n\nconst feedRows = $('Read version_feed').all().map(i => i.json);\nconst feeds = {};\nfor (const r of feedRows) feeds[r.component] = r;\n\nfunction resp(nodeName) {\n  const item = $(nodeName).first();\n  if (!item) return null;\n  return item.json; // fullResponse => { body, statusCode, headers }\n}\n\nfunction assert(cond, msg) { if (!cond) throw new Error('version-fetch: ' + msg); }\n\nfunction validated(component, nodeName) {\n  const feed = feeds[component];\n  if (!feed) return null; // feed disabled/absent -> skip, not an error\n  const r = resp(nodeName);\n  assert(r, component + ': no response item from ' + nodeName);\n  const status = r.statusCode || r.status;\n  assert(status && status >= 200 && status < 300, component + ': HTTP ' + status + ' from ' + feed.feed_url);\n  const body = r.body;\n  const exp = feed.expected || {};\n  if (exp.root === 'array') {\n    assert(Array.isArray(body), component + ': expected array root, got ' + typeof body);\n    assert(body.length > 0, component + ': feed array is empty');\n    const first = body[0];\n    for (const k of (exp.keys || [])) assert(k in first, component + \": missing expected key '\" + k + \"' - feed shape changed\");\n  } else if (exp.root === 'object') {\n    assert(body && typeof body === 'object' && !Array.isArray(body), component + ': expected object root');\n    for (const k of (exp.keys || [])) assert(k in body, component + \": missing expected key '\" + k + \"' - feed shape changed\");\n  }\n  return body;\n}\n\nconst rows = []; // { component, major, latest_version, is_latest_major, eol_date, supported }\n\n{\n  const body = validated('postgres', 'Fetch Postgres');\n  if (body) {\n    let maxMajor = -1;\n    for (const m of body) { const n = parseInt(m.major, 10); if (!isNaN(n) && String(n) === String(m.major) && n > maxMajor) maxMajor = n; }\n    for (const m of body) {\n      if (!/^[0-9]+$/.test(String(m.major))) continue;\n      rows.push({\n        component: 'postgres', major: String(m.major),\n        latest_version: String(m.major) + '.' + String(m.latestMinor),\n        is_latest_major: parseInt(m.major,10) === maxMajor,\n        eol_date: m.eolDate || null,\n        supported: (typeof m.supported === 'boolean') ? m.supported : null,\n      });\n    }\n  }\n}\n\n{\n  const body = validated('node', 'Fetch Node');\n  if (body) {\n    const bestByMajor = {}; // major -> {version, cmp}\n    const toParts = (v) => String(v).replace(/^v/, '').split('.').map(x => parseInt(x,10));\n    let maxMajor = -1;\n    for (const rel of body) {\n      const parts = toParts(rel.version);\n      const major = parts[0];\n      if (isNaN(major)) continue;\n      if (major > maxMajor) maxMajor = major;\n      const prev = bestByMajor[major];\n      const cmp = parts[0]*1e6 + parts[1]*1e3 + parts[2];\n      if (!prev || cmp > prev.cmp) bestByMajor[major] = { version: parts.join('.'), cmp };\n    }\n    const keep = new Set([20, maxMajor]);\n    for (const major of Object.keys(bestByMajor)) {\n      const mi = parseInt(major, 10);\n      if (!keep.has(mi)) continue;\n      rows.push({\n        component: 'node', major: String(mi),\n        latest_version: bestByMajor[major].version,\n        is_latest_major: mi === maxMajor,\n        eol_date: null, supported: true,\n      });\n    }\n  }\n}\n\n{\n  const body = validated('caddy', 'Fetch Caddy');\n  if (body) {\n    const bare = String(body.tag_name || '').replace(/^v/, ''); // store bare, uniform with pg/n8n\n    const major = bare.split('.')[0];\n    rows.push({ component: 'caddy', major, latest_version: bare, is_latest_major: true, eol_date: null, supported: null });\n  }\n}\n\n{\n  const body = validated('n8n', 'Fetch n8n');\n  if (body) {\n    // Full releases list (includes prereleases). Track ONE major line (configured via\n    // feed.expected.track_major, default '2') so majors we do not run never enter the advisory\n    // floor computation below. Tags look like 'n8n@X.Y.Z'; ignore aliases ('stable'/'beta').\n    const trackMajor = String((feeds['n8n'] && feeds['n8n'].expected && feeds['n8n'].expected.track_major) || '2');\n    const toParts = (t) => { const m = /^n8n@(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(String(t || '')); return m ? [+m[1], +m[2], +m[3]] : null; };\n    const cmp = (a, b) => (a[0]-b[0]) || (a[1]-b[1]) || (a[2]-b[2]);\n    let maxMajor = -1, best = null;\n    for (const rel of body) {\n      const p = toParts(rel.tag_name);\n      if (!p) continue;\n      if (p[0] > maxMajor) maxMajor = p[0];\n      if (String(p[0]) === trackMajor && (!best || cmp(p, best) > 0)) best = p;\n    }\n    assert(best, 'n8n: no n8n@' + trackMajor + '.x release in releases list - feed shape or track_major wrong');\n    rows.push({ component: 'n8n', major: trackMajor, latest_version: best.join('.'), is_latest_major: (parseInt(trackMajor,10) === maxMajor), eol_date: null, supported: null });\n  }\n}\n\nlet n8nFloor = null; // { major, min_safe, ref }\n{\n  const r = resp('Fetch n8n Advisories');\n  assert(r, 'n8n advisories: no response item');\n  const status = r.statusCode || r.status;\n  assert(status && status >= 200 && status < 300, 'n8n advisories: HTTP ' + status + ' (rate limit or API change?)');\n  const adv = r.body;\n  assert(Array.isArray(adv) && adv.length > 0, 'n8n advisories: expected a non-empty array');\n  for (const k of ['ghsa_id', 'severity', 'published_at', 'vulnerabilities']) assert(k in adv[0], \"n8n advisories: missing key '\" + k + \"' - feed shape changed\");\n\n  const vparts = (v) => { const m = /(\\d+)\\.(\\d+)\\.(\\d+)/.exec(String(v || '')); return m ? [+m[1], +m[2], +m[3]] : null; };\n  const vcmp = (a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]);\n  const inRange = (v, range) => {\n    for (const part of String(range).split(',')) {\n      const m = /^\\s*(<=|>=|<|>|=)?\\s*(\\d+\\.\\d+\\.\\d+)\\s*$/.exec(part);\n      if (!m) throw new Error('version-fetch: unparseable advisory range ' + JSON.stringify(range) + ' - extend the parser, do not guess');\n      const c = vcmp(v, vparts(m[2])), op = m[1] || '=';\n      if (!({ '<': c < 0, '<=': c <= 0, '>': c > 0, '>=': c >= 0, '=': c === 0 })[op]) return false;\n    }\n    return true;\n  };\n\n  const live = adv.filter(a => !a.withdrawn_at && a.state === 'published');\n  const n8nRow = rows.find(x => x.component === 'n8n');\n  if (n8nRow) {\n    const major = parseInt(n8nRow.major, 10);\n    const ranges = []; const cands = new Map();\n    for (const a of live) for (const x of (a.vulnerabilities || [])) {\n      if (!x.package || x.package.name !== 'n8n') continue;\n      if (x.vulnerable_version_range) ranges.push(x.vulnerable_version_range);\n      for (const src of [x.patched_versions, x.vulnerable_version_range]) for (const m of String(src || '').matchAll(/\\d+\\.\\d+\\.\\d+/g)) {\n        const p = vparts(m[0]); if (p && p[0] === major) cands.set(p.join('.'), p);\n      }\n    }\n    assert(ranges.length > 0, 'n8n advisories: no vulnerable ranges found in ' + live.length + ' advisories');\n    const latest = vparts(n8nRow.latest_version);\n    // Clean versions ON the tracked major, and the newest release on that major.\n    const cleanOnMajor = [...cands.values()].filter(p => p[0] === major && !ranges.some(rg => inRange(p, rg))).sort(vcmp);\n    // A clean version only counts if it actually exists at or below the latest release on this major\n    // (a 'clean' candidate above latest is not yet installable).\n    const safeOnMajor = cleanOnMajor.filter(p => latest && vcmp(p, latest) <= 0);\n    const sev = {}; for (const a of live) sev[a.severity] = (sev[a.severity] || 0) + 1;\n    const newest = live.slice().sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)))[0];\n    const stamp = 'GitHub security advisories (computed ' + new Date().toISOString().slice(0, 10) + '): ' + live.length + ' published, ' + (sev.high || 0) + ' high / ' + (sev.medium || 0) + ' medium; newest ' + newest.ghsa_id + ' ' + String(newest.published_at).slice(0, 10);\n    if (safeOnMajor.length > 0) {\n      // Normal case: there IS a safe version on the installed major.\n      n8nFloor = { major: n8nRow.major, min_safe: safeOnMajor[0].join('.'),\n        ref: stamp + '; first ' + major + '.x matching none: ' + safeOnMajor[0].join('.') };\n    } else {\n      // Escalation case: no safe version on this major. Find the lowest clean version across ALL majors\n      // (the cross-major remediation target, e.g. a 3.x fix) so below_min_safe stays meaningful and the\n      // notifier can say 'a major upgrade is required'. This is a RESULT, not an error - do not throw.\n      const cleanAny = [...cands.values()].filter(p => !ranges.some(rg => inRange(p, rg))).sort(vcmp);\n      const target = cleanAny.length ? cleanAny[0].join('.') : null;\n      n8nFloor = { major: n8nRow.major, min_safe: target,\n        ref: stamp + '; NO safe ' + major + '.x version exists - remediation requires upgrading to ' + (target || 'a newer major (none found)') + ' (MAJOR UPGRADE)' };\n    }\n  }\n}\n\nif (rows.length === 0) throw new Error('version-fetch: zero rows built from all feeds - refusing to write (fail loud).');\n\nconst stmts = rows.map(r => {\n  const floor = (n8nFloor && r.component === 'n8n' && r.major === n8nFloor.major) ? n8nFloor : null;\n  return \"INSERT INTO deployment.latest_version (component, major, latest_version, is_latest_major, eol_date, supported, source_feed, fetched_at, created_by\" + (floor ? \", min_safe_version, advisory_ref\" : \"\") + \") VALUES (\" +\n  q(r.component) + \", \" + q(r.major) + \", \" + q(r.latest_version) + \", \" + qb(r.is_latest_major) + \", \" +\n  qd(r.eol_date) + \", \" + qb(r.supported) + \", \" + q(feeds[r.component].feed_url) + \", now(), 'version-fetch'\" + (floor ? \", \" + qn(floor.min_safe) + \", \" + q(floor.ref) : \"\") + \") \" +\n  \"ON CONFLICT (component, major) DO UPDATE SET \" +\n  \"latest_version=EXCLUDED.latest_version, is_latest_major=EXCLUDED.is_latest_major, eol_date=EXCLUDED.eol_date, \" +\n  \"supported=EXCLUDED.supported, source_feed=EXCLUDED.source_feed, fetched_at=now(), updated_at=now(), updated_by='version-fetch'\" +\n  (floor ? \", min_safe_version=EXCLUDED.min_safe_version, advisory_ref=EXCLUDED.advisory_ref\" : \"\") + \";\";\n});\n\nreturn [{ json: { sql: stmts.join('\\n'), row_count: rows.length } }];"
+      }
+    },
+    {
+      "id": "9d15c0a1-30dc-496d-b20f-8d68913d0def",
+      "name": "Write latest_version",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        288
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {
+          "queryBatching": "transaction"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    },
+    {
+      "id": "49fae8eb-202a-4e7b-8377-4f2071b64d83",
+      "name": "Fetch n8n Advisories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "executeOnce": true,
+      "position": [
+        448,
+        768
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/n8n-io/n8n/security-advisories?state=published&per_page=100",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "runnow-0001-4a2b-9c3d-versionfetch",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        480
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Nightly": {
+      "main": [
+        [
+          {
+            "node": "Read version_feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read version_feed": {
+      "main": [
+        [
+          {
+            "node": "Fetch Node",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Postgres",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Caddy",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch n8n",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch n8n Advisories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Node": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Feeds": {
+      "main": [
+        [
+          {
+            "node": "Build Upsert SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Postgres": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch Caddy": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Fetch n8n": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Build Upsert SQL": {
+      "main": [
+        [
+          {
+            "node": "Write latest_version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch n8n Advisories": {
+      "main": [
+        [
+          {
+            "node": "Combine Feeds",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Read version_feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

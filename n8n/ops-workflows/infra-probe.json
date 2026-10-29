@@ -1,0 +1,183 @@
+{
+  "name": "infra-probe",
+  "nodes": [
+    {
+      "id": "851cf71a-ee1e-4b94-b15b-9455178b8f9e",
+      "name": "Nightly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 4,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8fcc5886-1093-4094-a5e0-5391396122b3",
+      "name": "Probe Dev",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "resource": "command",
+        "operation": "execute",
+        "command": "echo \"OS|$(lsb_release -ds 2>/dev/null)\"; echo \"PG|$(sudo -u postgres psql -d n8n -tAc 'show server_version' 2>/dev/null | awk '{print $1}')\"; sudo -u postgres psql -d n8n -tAc \"select 'DB|'||datname from pg_database where not datistemplate and datname<>'postgres'\" 2>/dev/null; echo \"N8N|$(docker exec n8n n8n --version 2>/dev/null)\"; echo \"NODE|$(node -v 2>/dev/null)\"; echo \"CADDY|$(caddy version 2>/dev/null | awk '{print $1}')\"; awk '/^[a-zA-Z].*\\{/{h=$1} /reverse_proxy/{print \"ROUTE|\"h\"|\"$2}' /etc/caddy/Caddyfile 2>/dev/null",
+        "authentication": "privateKey"
+      },
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "HogUhKTYPyIC6yXA",
+          "name": "SSH infra-probe (self)"
+        }
+      }
+    },
+    {
+      "id": "7b070e89-4457-42ef-bed9-c92b118c5107",
+      "name": "Probe Prod",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "resource": "command",
+        "operation": "execute",
+        "command": "echo \"OS|$(lsb_release -ds 2>/dev/null)\"; echo \"PG|$(sudo -u postgres psql -d n8n -tAc 'show server_version' 2>/dev/null | awk '{print $1}')\"; sudo -u postgres psql -d n8n -tAc \"select 'DB|'||datname from pg_database where not datistemplate and datname<>'postgres'\" 2>/dev/null; echo \"N8N|$(docker exec n8n n8n --version 2>/dev/null)\"; echo \"NODE|$(node -v 2>/dev/null)\"; echo \"CADDY|$(caddy version 2>/dev/null | awk '{print $1}')\"; awk '/^[a-zA-Z].*\\{/{h=$1} /reverse_proxy/{print \"ROUTE|\"h\"|\"$2}' /etc/caddy/Caddyfile 2>/dev/null",
+        "authentication": "privateKey"
+      },
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "uCTup0GWeIokOPi9",
+          "name": "SSH infra-probe (wf-v2-prod)"
+        }
+      }
+    },
+    {
+      "id": "1fe031a7-ba30-4da0-9714-20451fa2969b",
+      "name": "Build Upsert SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nfunction rootExpr(name){return \"SELECT id FROM deployment.infra_node WHERE parent_id=id AND node_type='droplet' AND name=\"+q(name);}\nfunction childExpr(parentExpr,ntype,cname){return \"SELECT id FROM deployment.infra_node WHERE parent_id=(\"+parentExpr+\") AND node_type=\"+q(ntype)+\" AND name=\"+q(cname);}\nfunction upsert(parentExpr,ntype,name,version,attrs){\n  const v=(version===null||version===undefined||version==='')?'NULL':q(version);\n  const a=q(JSON.stringify(attrs||{}))+'::jsonb';\n  return \"INSERT INTO deployment.infra_node (parent_id, node_type, name, version, attrs, source, status, last_scanned, last_changed) VALUES ((\"+parentExpr+\"), \"+q(ntype)+\", \"+q(name)+\", \"+v+\", \"+a+\", 'probed', 'live', now(), now()) ON CONFLICT (parent_id, node_type, name) DO UPDATE SET last_scanned=now(), last_changed=CASE WHEN deployment.infra_node.version IS DISTINCT FROM EXCLUDED.version THEN now() ELSE deployment.infra_node.last_changed END, version=EXCLUDED.version, attrs=deployment.infra_node.attrs||EXCLUDED.attrs, updated_at=now(), updated_by='infra-probe' WHERE deployment.infra_node.source <> 'manual';\";\n}\nfunction updateRootOs(name,os){return \"UPDATE deployment.infra_node SET version=CASE WHEN version IS DISTINCT FROM \"+q(os)+\" THEN \"+q(os)+\" ELSE version END, last_changed=CASE WHEN version IS DISTINCT FROM \"+q(os)+\" THEN now() ELSE last_changed END, last_scanned=now(), updated_at=now(), updated_by='infra-probe' WHERE id=(\"+rootExpr(name)+\") AND source<>'manual';\";}\nfunction parseAndBuild(machine,blob){\n  const sql=[]; const rootE=rootExpr(machine);\n  const pgParent=childExpr(rootE,'postgres','postgres');\n  const caddyParent=childExpr(rootE,'caddy','caddy');\n  const lines=String(blob||'').split('\\n').map(l=>l.trim()).filter(Boolean);\n  for(const line of lines){\n    const parts=line.split('|'); const tag=parts[0];\n    if(tag==='OS'&&parts[1])sql.push(updateRootOs(machine,parts[1]));\n    else if(tag==='PG'&&parts[1])sql.push(upsert(rootE,'postgres','postgres',parts[1],{}));\n    else if(tag==='DB'&&parts[1])sql.push(upsert(pgParent,'database',parts[1],null,{}));\n    else if(tag==='N8N'&&parts[1])sql.push(upsert(rootE,'n8n','n8n',parts[1],{}));\n    else if(tag==='NODE'&&parts[1])sql.push(upsert(rootE,'node','node',parts[1],{}));\n    else if(tag==='CADDY'&&parts[1])sql.push(upsert(rootE,'caddy','caddy',parts[1],{}));\n    else if(tag==='ROUTE'&&parts[1]){const up=parts[2]||'';const port=up.includes(':')?up.split(':').pop():'';sql.push(upsert(caddyParent,'route',parts[1],null,{upstream:up,upstream_port:port}));}\n  }\n  return sql;\n}\nconst devBlob=$('Probe Dev').first().json.stdout||'';\nconst prodBlob=$('Probe Prod').first().json.stdout||'';\nlet statements=[];\nstatements=statements.concat(parseAndBuild('dev',devBlob));\nstatements=statements.concat(parseAndBuild('prod',prodBlob));\nif(statements.length===0){throw new Error('infra-probe: both probe blobs parsed to zero statements - refusing to write (fail loud).');}\nreturn [{json:{sql:statements.join('\\n')}}];\n"
+      }
+    },
+    {
+      "id": "d9805ece-9eeb-4a90-8a31-7908854f45e8",
+      "name": "Write infra_node",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "={{ $json.sql }}",
+        "options": {
+          "queryBatching": "transaction"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    },
+    {
+      "id": "runnow-0002-infra-probe-manual",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Nightly": {
+      "main": [
+        [
+          {
+            "node": "Probe Dev",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probe Dev": {
+      "main": [
+        [
+          {
+            "node": "Probe Prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Probe Prod": {
+      "main": [
+        [
+          {
+            "node": "Build Upsert SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Upsert SQL": {
+      "main": [
+        [
+          {
+            "node": "Write infra_node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Probe Dev",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

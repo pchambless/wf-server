@@ -121,7 +121,8 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "availableInMCP": true
+    "availableInMCP": true,
+    "saveDataSuccessExecution": "all"
   },
   "active": true
 }
