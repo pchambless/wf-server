@@ -5,10 +5,11 @@ AS $function$
 DECLARE
   v_violations text;
   v_actual     text;
+  v_marked     jsonb := '{}'::jsonb;
 BEGIN
   -- 'succeeded' is gated by f_check_run (the single rule set). Violations leave
   -- the run 'running' and are returned; any other status (e.g. 'aborted') skips
-  -- the check. Never overwrites a failed run. A succeeded run closes its release task.
+  -- the check. Never overwrites a failed run. A succeeded run marks its tasks (f_mark_run_tasks: Deployed on prod).
   IF p_status = 'succeeded' THEN
     SELECT string_agg(rule || ': ' || detail, E'\n') INTO v_violations FROM deployment.f_check_run(p_run_id);
     IF v_violations IS NOT NULL THEN
@@ -22,12 +23,10 @@ BEGIN
   SELECT status INTO v_actual FROM deployment.deployment_runs WHERE id = p_run_id;
 
   IF v_actual = 'succeeded' THEN
-    UPDATE agile.agile_cache a SET status = 'Done', updated_at = now(), updated_by = 'deploy'
-      FROM deployment.deployment_runs r JOIN deployment.deployments d ON d.id = r.deployment_id
-     WHERE r.id = p_run_id AND d.task_id = a.id AND NOT r.dry_run AND a.status NOT IN ('Done', 'Deployed');
+    v_marked := deployment.f_mark_run_tasks(p_run_id);
   END IF;
 
-  RETURN jsonb_build_object('ok', v_actual = p_status, 'run_id', p_run_id, 'status', v_actual);
+  RETURN jsonb_build_object('ok', v_actual = p_status, 'run_id', p_run_id, 'status', v_actual, 'tasks', v_marked);
 END
 $function$
 ;
