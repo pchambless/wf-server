@@ -2,15 +2,17 @@
 
 Start every session in two steps.
 
-1. Unless your first message already names an app or a task, run the menu
-   prequel (about 1 KB) and ask the user which app to work on. It lists the apps
-   with open-work counts and says how to choose:
+1. Unless your first message already names an app, an area or a task, run the menu
+   prequel. It lists open tasks (In Progress first, then High priority) with their
+   app ids, and says how to choose. Ask the user what they want to work on:
 
 ```bash
 bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup --menu claude whatsfresh
 ```
 
-2. Run the full startup for the chosen app (58 if the user names none):
+2. Run the full startup for the app of the chosen task or area. There is no default
+   app: App 58 is the pre-go-live record, and new work files under 709 (deploys to
+   prod) or 710 (does not). If the app is unclear, ask:
 
 ```bash
 bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup <app id> claude whatsfresh
