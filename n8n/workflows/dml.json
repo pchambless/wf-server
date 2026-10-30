@@ -36,7 +36,7 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const body = $json.body || $json;\nconst { page_id, mode, user } = body;\n\n// Collect f_ prefixed fields and strip prefix\nconst p_data = {};\nlet pk_val = null;\n\nfor (const [key, value] of Object.entries(body)) {\n  if (key === 'f_id' || key === 'id') {\n    pk_val = value ? parseInt(value, 10) : null;\n    continue;\n  }\n  if (key.startsWith('f_')) {\n    const colName = key.slice(2);\n    p_data[colName] = value === '' ? null : value;\n  }\n}\n\n// For DELETE mode, pk_val may come from body.pk_val\nif (mode === 'DELETE' && !pk_val && body.pk_val) {\n  pk_val = parseInt(body.pk_val, 10);\n}\n\n// Build the SQL query - set session email first so c_getval() works\nconst dataJson = JSON.stringify(p_data).replace(/'/g, \"''\");\nconst pkExpr = pk_val === null ? 'NULL::integer' : pk_val;\nconst safeUser = (user || 'system').replace(/'/g, \"''\");\nconst sql = `WITH _ctx AS (SELECT set_config('app.current_email', '${safeUser}', false)) SELECT studio.dml(${parseInt(page_id, 10)}, '${mode || 'INSERT'}', '${dataJson}'::jsonb, ${pkExpr}, '${safeUser}') as result FROM _ctx`;\n\nreturn { json: { sql } };"
+        "jsCode": "const body = $json.body || $json;\nconst { page_id, mode, user } = body;\n\n// Only these three modes exist (task 780). Anything else is rejected before any SQL runs.\nconst MODES = ['INSERT', 'UPDATE', 'DELETE'];\nconst useMode = mode || 'INSERT';\nif (!MODES.includes(useMode)) throw new Error('Invalid mode');\nif (!/^\\d+$/.test(String(page_id))) throw new Error('Invalid page_id');\nconst pageId = parseInt(page_id, 10);\n\n// Collect f_ prefixed fields and strip prefix\nconst p_data = {};\nlet pk_val = null;\n\nfor (const [key, value] of Object.entries(body)) {\n  if (key === 'f_id' || key === 'id') {\n    pk_val = value ? parseInt(value, 10) : null;\n    continue;\n  }\n  if (key.startsWith('f_')) {\n    const colName = key.slice(2);\n    p_data[colName] = value === '' ? null : value;\n  }\n}\n\n// For DELETE mode, pk_val may come from body.pk_val\nif (useMode === 'DELETE' && !pk_val && body.pk_val) {\n  pk_val = parseInt(body.pk_val, 10);\n}\nif (pk_val !== null && !Number.isInteger(pk_val)) pk_val = null;\n\n// Every value is passed as a bound parameter by the next node.\nreturn { json: { page_id: pageId, mode: useMode, p_data_json: JSON.stringify(p_data), pk_val, user: user || 'system' } };\n"
       }
     },
     {
@@ -52,8 +52,10 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "{{ $json.sql }}",
-        "options": {}
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', $5::text, false))\nSELECT studio.dml($1::integer, $2::text, $3::jsonb, $4::integer, $5::text) AS result FROM _ctx",
+        "options": {
+          "queryReplacement": "={{ [$json.page_id, $json.mode, $json.p_data_json, $json.pk_val, $json.user] }}"
+        }
       },
       "credentials": {
         "postgres": {

@@ -10,6 +10,7 @@ const router = Router();
 // everywhere: dev and local call their own n8n; prod sets FEEDBACK_INTAKE_URL to dev's webhook
 // (prod n8n has no Slack credential and must not hold a login to dev's database).
 const FEEDBACK_PAGE_ID = 102;
+const DML_MODES = ['INSERT', 'UPDATE', 'DELETE'];
 const SOURCE_ENV = process.env.APP_ENV || 'dev';
 const FEEDBACK_INTAKE_URL = process.env.FEEDBACK_INTAKE_URL || '';
 
@@ -51,6 +52,10 @@ router.post('/dml', async (req, res) => {
 
   if (!page_id || !mode) {
     return res.status(400).json({ success: false, error: 'page_id and mode are required' });
+  }
+
+  if (!DML_MODES.includes(mode) || !Number.isInteger(Number(page_id))) {
+    return res.status(400).json({ success: false, error: 'Invalid page_id or mode' });
   }
 
   // Strip empty f_id to prevent NaN in DML pk_val
@@ -97,7 +102,12 @@ router.post('/dml', async (req, res) => {
     if (parsed?.success) {
       res.json({ success: true, mode: parsed.mode, data: parsed.data });
     } else {
-      res.status(422).json({ success: false, error: parsed?.error || 'DML failed' });
+      // Only plain messages from studio.dml reach the browser. An n8n or database error
+      // object (it carries the failed query text) is logged here and replaced.
+      if (typeof parsed?.error !== 'string') {
+        logger.error('[api] DML failed', { path: '/api/dml', page_id, mode, detail: JSON.stringify(parsed?.error ?? parsed).slice(0, 500) });
+      }
+      res.status(422).json({ success: false, error: typeof parsed?.error === 'string' ? parsed.error : 'DML failed' });
     }
   } catch (err) {
     logger.error('[api] Response', { path: '/api/dml', success: false, error: err.message });

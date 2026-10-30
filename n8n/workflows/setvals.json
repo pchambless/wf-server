@@ -50,7 +50,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const { email, vals } = $input.first().json.body;\nconst rows = vals.map(v => \n  `('${email}', '${v.param_name}', '${v.param_val}', 1, now(), '${email}')`\n).join(',\\n');\n\nconst sql = `\n  INSERT INTO whatsfresh.context_store (email, param_name, param_val, updates, created_at, created_by)\n  VALUES ${rows}\n  ON CONFLICT (email, param_name)\n  DO UPDATE SET \n    param_val = EXCLUDED.param_val,\n    updates = context_store.updates + 1,\n    updated_at = now(),\n    updated_by = EXCLUDED.created_by\n`;\nreturn [{ json: { sql } }];"
+        "jsCode": "const { email, vals } = $input.first().json.body;\n// Bound parameters only (task 779): values are never spliced into SQL text.\nconst list = (Array.isArray(vals) ? vals : [])\n  .filter(v => v && typeof v.param_name === 'string' && v.param_name !== '')\n  .map(v => ({\n    param_name: v.param_name,\n    param_val: (v.param_val === null || v.param_val === undefined) ? null : String(v.param_val)\n  }));\nreturn [{ json: { email, vals_json: JSON.stringify(list) } }];\n"
       }
     },
     {
@@ -66,8 +66,10 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "{{ $json.sql }}",
-        "options": {}
+        "query": "INSERT INTO whatsfresh.context_store (email, param_name, param_val, updates, created_at, created_by)\nSELECT $1::text, v.param_name, v.param_val, 1, now(), $1::text\n  FROM jsonb_to_recordset($2::jsonb) AS v(param_name text, param_val text)\nON CONFLICT (email, param_name)\nDO UPDATE SET\n  param_val = EXCLUDED.param_val,\n  updates = context_store.updates + 1,\n  updated_at = now(),\n  updated_by = EXCLUDED.created_by",
+        "options": {
+          "queryReplacement": "={{ [$json.email, $json.vals_json] }}"
+        }
       },
       "credentials": {
         "postgres": {
