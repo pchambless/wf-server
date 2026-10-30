@@ -1,9 +1,19 @@
 # CLAUDE.md - wf-server
 
-Start every session by running:
+Start every session in two steps.
+
+1. Unless your first message already names an app or a task, run the menu
+   prequel (about 1 KB) and ask the user which app to work on. It lists the apps
+   with open-work counts and says how to choose:
 
 ```bash
-bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup 58 claude whatsfresh
+bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup --menu claude whatsfresh
+```
+
+2. Run the full startup for the chosen app (58 if the user names none):
+
+```bash
+bash /home/paul/Projects/wf-agents/agents/tools/plan/session-startup <app id> claude whatsfresh
 ```
 
 That is the whole startup routine. Arg 1 is the app id, arg 2 is your agent
@@ -14,7 +24,7 @@ out of a whatsfresh session. In one pass it prints:
 - **Your Contract** — shared operating contract plus your role contract
 - **Available Scripts** — every runnable tool and workflow, with invocation and example
 - **Connections** — database endpoints and which tool reaches each
-- **Active Guidance** — architecture and workflow rules in force
+- **Active Guidance** — core rules in full plus an index of on-demand rules for your app; load a row when its trigger applies
 - **Handoffs** — open notes left for whoever picks up next; mark them consumed once acted on
 - **In Progress / Done Lately / Recent Impacts** — current work context
 
