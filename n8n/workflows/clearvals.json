@@ -40,7 +40,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { email, params, clear_all } = $input.first().json.body;\n\nlet sql;\nif (clear_all) {\n  sql = `\n    UPDATE whatsfresh.context_store \n    SET param_val = NULL, updates = updates + 1, updated_at = now()\n    WHERE email = '${email}'\n  `;\n} else {\n  const list = params.map(p => `'${p}'`).join(', ');\n  sql = `\n    UPDATE whatsfresh.context_store \n    SET param_val = NULL, updates = updates + 1, updated_at = now()\n    WHERE email = '${email}' AND param_name = ANY(ARRAY[${list}])\n  `;\n}\nreturn [{ json: { sql } }];"
+        "jsCode": "const { email, params, clear_all } = $input.first().json.body;\n// Bound parameters only (task 779): names are never spliced into SQL text.\nreturn [{ json: {\n  email,\n  params_json: JSON.stringify(Array.isArray(params) ? params.map(String) : []),\n  clear_all: !!clear_all\n} }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -56,8 +56,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "{{ $json.sql }}",
-        "options": {}
+        "query": "UPDATE whatsfresh.context_store\n   SET param_val = NULL, updates = updates + 1, updated_at = now()\n WHERE email = $1::text\n   AND ($3::boolean OR param_name IN (SELECT jsonb_array_elements_text($2::jsonb)))",
+        "options": {
+          "queryReplacement": "={{ [$json.email, $json.params_json, $json.clear_all] }}"
+        }
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,

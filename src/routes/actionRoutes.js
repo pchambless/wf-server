@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { callWorkflow } from '../utils/n8nClient.js';
 import logger from '../utils/logger.js';
 import { notifyActivity } from '../utils/activityNotify.js';
-import { parseAction, normalizeTargets, getSetVals } from './actionUtils.js';
+import { parseAction, normalizeTargets, getSetVals, isContextKey } from './actionUtils.js';
 import { hydrateTargets } from './hydrationUtils.js';
 
 const router = Router();
@@ -69,7 +69,8 @@ router.post('/actions', async (req, res) => {
     }
 
     if (actionName === 'clearvals') {
-      const params = action.values || action.context_keys || [];
+      const rawParams = action.values || action.context_keys || [];
+      const params = Array.isArray(rawParams) ? rawParams.filter(isContextKey) : [];
       const clearAll = action.clear_all || false;
       if (clearAll || params.length > 0) {
         await callWorkflow('clearvals', { email, params, clear_all: clearAll });

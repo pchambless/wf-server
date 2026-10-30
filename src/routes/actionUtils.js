@@ -44,11 +44,20 @@ function resolveActionValue(value, selectedValue) {
   return value;
 }
 
+// Context keys are plain identifiers (account_id, product_type_id, mode, ...). The browser
+// supplies the action definition, so anything else is dropped before it reaches n8n.
+const CONTEXT_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+export function isContextKey(name) {
+  return typeof name === 'string' && CONTEXT_KEY.test(name);
+}
+
 export function getSetVals(step, selectedValue) {
   const vals = step?.payload?.vals || step?.vals || step?.values;
   if (!vals || typeof vals !== 'object' || Array.isArray(vals)) return [];
 
   return Object.entries(vals)
+    .filter(([param_name]) => isContextKey(param_name))
     .map(([param_name, param_val]) => ({
       param_name,
       param_val: String(resolveActionValue(param_val, selectedValue) ?? '')
