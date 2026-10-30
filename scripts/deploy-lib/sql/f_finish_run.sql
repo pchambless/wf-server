@@ -24,7 +24,7 @@ BEGIN
   IF v_actual = 'succeeded' THEN
     UPDATE agile.agile_cache a SET status = 'Done', updated_at = now(), updated_by = 'deploy'
       FROM deployment.deployment_runs r JOIN deployment.deployments d ON d.id = r.deployment_id
-     WHERE r.id = p_run_id AND d.task_id = a.id AND NOT r.dry_run AND a.status <> 'Done';
+     WHERE r.id = p_run_id AND d.task_id = a.id AND NOT r.dry_run AND a.status NOT IN ('Done', 'Deployed');
   END IF;
 
   RETURN jsonb_build_object('ok', v_actual = p_status, 'run_id', p_run_id, 'status', v_actual);
