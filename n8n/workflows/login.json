@@ -39,8 +39,10 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * \n  FROM whatsfresh.api_login_verify('{{ $json.body.email }}', \n  '{{ $json.body.password }}')",
-        "options": {}
+        "query": "SELECT * FROM whatsfresh.api_login_verify($1, $2)",
+        "options": {
+          "queryReplacement": "={{ [$json.body.email, $json.body.password] }}"
+        }
       },
       "credentials": {
         "postgres": {
