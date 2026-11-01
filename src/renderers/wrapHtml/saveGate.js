@@ -21,7 +21,7 @@ export const saveGateCode = `
           const hosts = form.querySelectorAll('[data-required]');
           for (let i = 0; i < hosts.length; i++) {
             const sel = hosts[i].querySelector('select');
-            if (sel && !sel.value) return false;
+            if (sel && !sel.disabled && !sel.value) return false;
           }
           return true;
         };
