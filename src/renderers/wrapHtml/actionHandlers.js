@@ -60,11 +60,10 @@ export const actionHandlersCode = `
           // Set title
           const headerField = container.querySelector('[data-header-field="true"]');
           const headerValue = headerField?.value || headerField?.textContent || '';
-          let title = headerValue.trim()
-            ? mode + ' ' + headerValue.trim()
-            : mode + ' ' + ((container.querySelector('[data-form-noun]') || {}).dataset?.formNoun || formTemplate.replace(/_form$/, '').replace(/_/g, ' '));
-          const titleEl = document.getElementById('inline_form_title');
-          if (titleEl) titleEl.textContent = title;
+          const titleName = headerValue.trim()
+            || (container.querySelector('[data-form-noun]') || {}).dataset?.formNoun
+            || formTemplate.replace(/_form$/, '').replace(/_/g, ' ');
+          setFormTitle(document.getElementById('inline_form_title'), mode, titleName);
 
           panel.classList.remove('hidden');
 
