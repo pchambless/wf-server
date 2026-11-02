@@ -10,4 +10,15 @@ export const formHydrationCode = `
           });
         });
       };
+
+      // The mode word (INSERT / UPDATE) stays plain; what follows it is wrapped so the name stands out. Colour: .form-title-name in the
+      // grid-form-layout css.
+      const setFormTitle = (titleEl, mode, name) => {
+        if (!titleEl) return;
+        titleEl.textContent = mode + ' ';
+        const nameEl = document.createElement('span');
+        nameEl.className = 'form-title-name';
+        nameEl.textContent = name;
+        titleEl.appendChild(nameEl);
+      };
 `;

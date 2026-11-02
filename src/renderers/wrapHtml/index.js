@@ -94,7 +94,7 @@ export function wrapHtml(title, body) {
               const titleEl = document.getElementById('inline_form_title');
               // a form can name itself for the title: data-form-noun="ingredient" -> "INSERT ingredient"
               const noun = (formContainer.querySelector('[data-form-noun]') || {}).dataset?.formNoun;
-              if (titleEl) titleEl.textContent = 'INSERT ' + (noun || ctx.form.replace(/_form$/, '').replace(/_/g, ' '));
+              setFormTitle(titleEl, 'INSERT', noun || ctx.form.replace(/_form$/, '').replace(/_/g, ' '));
               panel.classList.remove('hidden');
             });
           });
