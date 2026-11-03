@@ -22,6 +22,7 @@ BEGIN
         SELECT split_part(o.schema_path, '.', 2) AS wf_name
           FROM knowledge_base.objects o
          WHERE o.platform = 'n8n' AND o.status <> 'obsolete'
+           AND coalesce(o.notes ->> 'dev_only', '') <> 'true' -- dev-only workflows (support app engine) never go to prod
     ),
     dev_wf AS (
         -- active=true only: dev has dead workflows sharing a name with a live one.
