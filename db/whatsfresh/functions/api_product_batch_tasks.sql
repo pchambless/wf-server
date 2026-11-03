@@ -23,6 +23,7 @@ LEFT JOIN whatsfresh.product_batch_tasks pbt
   AND pbt.deleted_at IS NULL
 WHERE b.id = whatsfresh.c_getval('product_batch_id')::integer
   AND b.entity_kind = 'Prod'
+  AND (t.deleted_at IS NULL OR pbt.id IS NOT NULL)
 ORDER BY t.ordr;
 $function$
 ;
