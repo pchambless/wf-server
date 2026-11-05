@@ -4,6 +4,7 @@ import logger from '../utils/logger.js';
 import { normalizeHtml, applySelectedAccount, compileHandlebars } from './hydrationUtils.js';
 import { buildHtmxDiv } from '../renderers/buildHtmxDiv.js';
 import { buildSelectWidget } from '../renderers/buildSelectWidget.js';
+import { accountValuesAllowed } from '../utils/accountGuard.js';
 
 const router = Router();
 
@@ -71,6 +72,11 @@ router.post('/hydrate', async (req, res) => {
     const contextValues = Object.fromEntries(
       Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title'].includes(key))
     );
+
+    if (email && !(await accountValuesAllowed(email, contextValues))) {
+      logger.warn('[api] Response', { path: '/api/hydrate', success: false, status: 403, reason: 'account_not_allowed', email });
+      return res.status(403).json({ success: false, message: 'Account not allowed' });
+    }
 
     // Clear any null context values in DB before hydrating (e.g., Add New resets contextKey)
     const nullParams = Object.entries(contextValues)
@@ -191,6 +197,11 @@ router.post('/report', async (req, res) => {
   logger.info('[api] Request', { path: '/api/report', templates, contextParams });
 
   try {
+    if (!(await accountValuesAllowed(email, contextParams))) {
+      logger.warn('[api] Response', { path: '/api/report', success: false, status: 403, reason: 'account_not_allowed', email });
+      return res.status(403).type('text').send('Account not allowed');
+    }
+
     const parts = await Promise.all(
       templates.map(async (template_name) => {
         const result = await callWorkflow('hydrate-guide', {
