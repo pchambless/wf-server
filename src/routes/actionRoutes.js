@@ -4,6 +4,7 @@ import logger from '../utils/logger.js';
 import { notifyActivity } from '../utils/activityNotify.js';
 import { parseAction, normalizeTargets, getSetVals, isContextKey } from './actionUtils.js';
 import { hydrateTargets } from './hydrationUtils.js';
+import { accountValuesAllowed } from '../utils/accountGuard.js';
 
 const router = Router();
 
@@ -59,6 +60,11 @@ router.post('/actions', async (req, res) => {
     if (actionName === 'setvals') {
       const vals = getSetVals(action, selectedValue);
       if (vals.length > 0) {
+        const valMap = Object.fromEntries(vals.map(({ param_name, param_val }) => [param_name, param_val]));
+        if (!(await accountValuesAllowed(email, valMap))) {
+          logger.warn('[api] Response', { path: '/api/actions', success: false, status: 403, reason: 'account_not_allowed', email });
+          return res.status(403).json({ success: false, message: 'Account not allowed' });
+        }
         await callWorkflow('setvals', { email, vals });
 
         const accountValue = vals.find(({ param_name }) => param_name === 'account_id')?.param_val;
