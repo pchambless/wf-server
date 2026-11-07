@@ -86,10 +86,12 @@ BEGIN
             RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
         END IF;
 
-        -- A request never supplies the key or the audit columns.
+        -- A request never supplies the key or the creation stamp. deleted_at/deleted_by stay: the
+        -- grids' Active checkbox deactivates a row by sending them, and the role checks below
+        -- already decide who may change these rows.
         SELECT coalesce(jsonb_object_agg(key, value), '{}'::jsonb) INTO p_data
           FROM jsonb_each(p_data)
-         WHERE key !~ '^(id|created_.*|deleted_.*)$';
+         WHERE key !~ '^(id|created_.*)$';
 
         IF v_table IN ('users', 'accounts') THEN
             IF v_caller_role IS DISTINCT FROM 1 THEN
