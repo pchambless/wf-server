@@ -21,6 +21,11 @@ DECLARE
     v_cu_user_id    integer;
     v_cu_error      text;
     v_constraint    text;
+    v_email         text;
+    v_caller_id     integer;
+    v_caller_role   integer;
+    v_row_account   integer;
+    v_new_account   integer;
 BEGIN
     SELECT
         split_part(vp.table_name, '.', 1),
@@ -61,6 +66,71 @@ BEGIN
     END IF;
 
     -- ===================
+    -- Task 839: users, accounts and accounts_users carry permission data, so writes to them are
+    -- gated by the caller's role, keyed on the target TABLE (pages 12, 14 and 38 all point at
+    -- whatsfresh.users). The caller is the email the dml webhook set for this call, never p_user
+    -- (which is replaced by the first name above). No resolvable caller: refuse, fail closed.
+    --   users, accounts : role 1 only. Passwords never come through UPDATE (change-password only).
+    --   accounts_users  : role 1, or an owner of the row's account AND of the account being written.
+    -- Other tables are not touched by this block.
+    -- ===================
+    IF v_schema = 'whatsfresh' AND v_table IN ('users', 'accounts', 'accounts_users') THEN
+        v_email := nullif(current_setting('app.current_email', true), '');
+
+        SELECT u.id, u.role INTO v_caller_id, v_caller_role
+          FROM whatsfresh.users u
+         WHERE lower(u.email) = lower(v_email) AND u.deleted_at IS NULL
+         LIMIT 1;
+
+        IF v_caller_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+        END IF;
+
+        -- A request never supplies the key or the audit columns.
+        SELECT coalesce(jsonb_object_agg(key, value), '{}'::jsonb) INTO p_data
+          FROM jsonb_each(p_data)
+         WHERE key !~ '^(id|created_.*|deleted_.*)$';
+
+        IF v_table IN ('users', 'accounts') THEN
+            IF v_caller_role IS DISTINCT FROM 1 THEN
+                RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+            END IF;
+
+            IF v_table = 'users' AND p_mode = 'UPDATE'
+               AND (p_data ? 'password' OR p_data ? 'confirm_password') THEN
+                RETURN jsonb_build_object('success', false, 'error', 'Passwords change only through change-password');
+            END IF;
+        ELSIF v_caller_role IS DISTINCT FROM 1 THEN
+            IF p_mode IN ('UPDATE', 'DELETE') THEN
+                SELECT au.account_id INTO v_row_account
+                  FROM whatsfresh.accounts_users au
+                 WHERE au.id = p_pk_val;
+
+                IF v_row_account IS NULL OR NOT EXISTS (
+                    SELECT 1 FROM whatsfresh.accounts_users o
+                     WHERE o.user_id = v_caller_id AND o.account_id = v_row_account
+                       AND o.is_owner = 1 AND o.deleted_at IS NULL) THEN
+                    RETURN jsonb_build_object('success', false, 'error', format('Row not found: %s=%s', v_pk_col, p_pk_val));
+                END IF;
+            END IF;
+
+            IF p_mode = 'INSERT' OR (p_mode = 'UPDATE' AND p_data ? 'account_id') THEN
+                IF coalesce(p_data ->> 'account_id', '') !~ '^[0-9]+$' THEN
+                    RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+                END IF;
+                v_new_account := (p_data ->> 'account_id')::integer;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM whatsfresh.accounts_users o
+                     WHERE o.user_id = v_caller_id AND o.account_id = v_new_account
+                       AND o.is_owner = 1 AND o.deleted_at IS NULL) THEN
+                    RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+
+    -- ===================
     -- SPECIAL CASE: whatsfresh.users INSERT cannot go through generic
     -- column-write DML - password needs crypt() hashing and creation may
     -- need to link an accounts_users row atomically. Delegate to
@@ -80,7 +150,7 @@ BEGIN
             p_data ->> 'password',
             p_data ->> 'first_name',
             p_data ->> 'last_name',
-            (p_data ->> 'role')::integer,
+            2,  -- Add User always creates a role-2 user; an admin promotes later on the Users page (task 839)
             p_user,
             true,
             NULLIF(p_data ->> 'default_account_id', '')::integer
