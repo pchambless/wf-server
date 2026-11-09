@@ -1,0 +1,119 @@
+{
+  "name": "whats-new",
+  "nodes": [
+    {
+      "id": "194ae024-eda7-48b5-b7a5-d515c2105e4d",
+      "name": "Webhook",
+      "webhookId": "8a6ea23c-14b1-42df-9ac0-9be8181df13d",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whats-new",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Cr5FofBlVGzpKoKv",
+          "name": "wf-webhook-secret"
+        }
+      }
+    },
+    {
+      "id": "1f2bfbae-041a-4e7d-97e9-88beade0b373",
+      "name": "L01-Release-Notes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "alwaysOutputData": true,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with notes as (\n  select v.release_id, v.task_id, v.ordr, btrim(v.release_note) as note,\n         coalesce(ra.name, 'Other') as area,\n         coalesce(ra.ordr, 2147483647) as area_ordr\n    from agile.vw_release_plan_rows v\n    join agile.agile_cache a on a.id = v.task_id\n    left join agile.release_areas ra on ra.id = a.release_area_id\n   where v.customer_visible and nullif(btrim(v.release_note), '') is not null\n), rel as (\n  select s.id, s.label, nullif(btrim(s.goal), '') as goal,\n         coalesce(s.deployed_on, s.shipped_on) as shipped\n    from agile.vw_release_summary s\n   where s.state = 'Shipped' and exists (select 1 from notes n where n.release_id = s.id)\n   order by coalesce(s.deployed_on, s.shipped_on) desc nulls last, s.id desc\n   limit 3\n), areas as (\n  select n.release_id, n.area, min(n.area_ordr) as area_ordr,\n         jsonb_agg(n.note order by n.ordr, n.task_id) as notes\n    from notes n join rel r on r.id = n.release_id\n   group by n.release_id, n.area\n)\nselect r.id as release_id, r.label, r.goal, to_char(r.shipped, 'Mon FMDD, YYYY') as shipped,\n       (select jsonb_agg(jsonb_build_object('area', a.area, 'notes', a.notes) order by a.area_ordr, a.area)\n          from areas a where a.release_id = r.id) as areas\n  from rel r\n order by r.shipped desc nulls last, r.id desc",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      }
+    },
+    {
+      "id": "ff2b50ae-5daa-4d7d-9758-e579500bc11d",
+      "name": "L02-Build-HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// What's New (task 846): turn the release rows into HTML for the appbar pop-up. Every text value is escaped.\nconst esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');\nconst releases = $input.all().map((i) => i.json).filter((r) => r && r.release_id);\nlet html = '<div class=\"whats-new\">';\nif (releases.length === 0) {\n  html += '<p>No release notes yet.</p>';\n}\nfor (const r of releases) {\n  // Release date is the main header; the release goal sits under it as a smaller subheader (Paul, 2026-11-09).\n  const first = releases.indexOf(r) === 0;\n  html += `<section class=\"whats-new-release\" style=\"margin-bottom:18px;${first ? '' : 'border-top:1px solid #d1d5db;padding-top:14px;'}\">`\n    + `<h2 style=\"margin:0 0 4px 0;font-size:20px;font-weight:700;\">${r.shipped ? 'Released ' + esc(r.shipped) : esc(r.label)}</h2>`\n    + `<div class=\"whats-new-goal\" style=\"margin:0 0 8px 0;font-size:14px;font-weight:600;color:#4b5563;white-space:pre-line;\">${esc(r.goal || r.label)}</div>`;\n  for (const a of (r.areas || [])) {\n    html += `<h4 style=\"margin:10px 0 4px 0;font-size:15px;\">${esc(a.area)}</h4><ul style=\"margin:0 0 0 18px;padding:0;\">`;\n    for (const n of (a.notes || [])) html += `<li style=\"margin-bottom:4px;\">${esc(n)}</li>`;\n    html += '</ul>';\n  }\n  html += '</section>';\n}\nhtml += '</div>';\nreturn [{ json: { html } }];\n"
+      }
+    },
+    {
+      "id": "b79451ae-1cbe-49a9-b84a-04d2271c0550",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { html: $json.html } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "L01-Release-Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L01-Release-Notes": {
+      "main": [
+        [
+          {
+            "node": "L02-Build-HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L02-Build-HTML": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "active": true
+}

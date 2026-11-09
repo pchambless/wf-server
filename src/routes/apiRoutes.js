@@ -7,6 +7,7 @@ import hydrateRoutes from './hydrateRoutes.js';
 import actionRoutes from './actionRoutes.js';
 import dmlRoutes from './dmlRoutes.js';
 import batchMapRoutes from './batchMapRoutes.js';
+import whatsNewRoutes from './whatsNewRoutes.js';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use(hydrateRoutes);
 router.use(actionRoutes);
 router.use(dmlRoutes);
 router.use(batchMapRoutes);
+router.use(whatsNewRoutes);
 
 export default router;
