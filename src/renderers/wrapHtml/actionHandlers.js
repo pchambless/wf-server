@@ -102,6 +102,22 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- show_whats_new ---
+        // Appbar "What's New" button (task 846): release notes of recent releases,
+        // built by the whats-new workflow and served by GET /api/whats-new.
+        if (resolvedAction.action === 'show_whats_new') {
+          if (!window.popModal) return 'handled';
+          let html;
+          try {
+            const response = await fetch('/api/whats-new');
+            html = response.ok ? await response.text() : '';
+          } catch (err) {
+            html = '';
+          }
+          await window.popModal.openContent("What's New", html || "<p>What's New is not available right now. Please try again later.</p>");
+          return 'handled';
+        }
+
         // --- show_element ---
         if (resolvedAction.action === 'show_element') {
           const el = document.getElementById(resolvedAction.target);
