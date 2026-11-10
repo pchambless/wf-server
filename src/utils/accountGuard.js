@@ -9,17 +9,15 @@ export async function userMayUseAccount(email, accountId) {
   const id = Number(accountId);
   if (!Number.isInteger(id) || id <= 0) return false;
 
+  // The rule lives in one place, whatsfresh.f_can_access_account (role 1, or a live membership);
+  // studio.dml and studio.f_batch_map use the same function (task 837).
   const result = await callWorkflow('server-query', {
-    query: `SELECT 1 AS ok FROM whatsfresh.users u
-            WHERE lower(u.email) = lower(${escSqlString(email)}) AND u.deleted_at IS NULL
-              AND (u.role = 1 OR EXISTS (
-                SELECT 1 FROM whatsfresh.accounts_users au
-                WHERE au.user_id = u.id AND au.account_id = ${id} AND au.deleted_at IS NULL))`,
+    query: `SELECT whatsfresh.f_can_access_account(${escSqlString(email)}, ${id}) AS ok`,
     params: {},
     source: 'account-guard'
   });
   const row = Array.isArray(result) ? result[0] : result;
-  return row?.ok === 1;
+  return row?.ok === true;
 }
 
 const isSet = (v) => v !== null && v !== undefined && v !== '' && v !== 'null';

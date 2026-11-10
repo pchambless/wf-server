@@ -52,7 +52,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', $5::text, false))\nSELECT studio.dml($1::integer, $2::text, $3::jsonb, $4::integer, $5::text) AS result FROM _ctx",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', $5::text, true))\nSELECT studio.dml($1::integer, $2::text, $3::jsonb, $4::integer, $5::text) AS result FROM _ctx",
         "options": {
           "queryReplacement": "={{ [$json.page_id, $json.mode, $json.p_data_json, $json.pk_val, $json.user] }}"
         }

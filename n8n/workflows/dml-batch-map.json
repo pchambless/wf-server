@@ -36,7 +36,7 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const body = $json.body || $json;\nconst { mode, event_type, map_id, user } = body;\n\nconst safeUser = (user || 'system').replace(/'/g, \"''\");\nconst safeEventType = (event_type || 'Shop->Prod').replace(/'/g, \"''\");\n\nlet sql;\nif (mode === 'INSERT') {\n  sql = `WITH _ctx AS (SELECT set_config('app.current_email', '${safeUser}', false))\nINSERT INTO whatsfresh.lineage (account_id, event_type, source_batch_id, target_batch_id, created_at, created_by)\nSELECT\n  whatsfresh.c_getval('account_id')::integer,\n  '${safeEventType}',\n  whatsfresh.c_getval('source_batch_id')::integer,\n  whatsfresh.c_getval('target_batch_id')::integer,\n  now(),\n  whatsfresh.c_getval('firstName')\nFROM _ctx\nRETURNING jsonb_build_object('success', true, 'mode', 'insert', 'data', to_jsonb(lineage.*)) as result`;\n} else if (mode === 'DELETE') {\n  if (!map_id) {\n    return { json: { result: JSON.stringify({ success: false, error: 'DELETE requires map_id' }) } };\n  }\n  sql = `WITH _ctx AS (SELECT set_config('app.current_email', '${safeUser}', false))\nDELETE FROM whatsfresh.lineage\nWHERE id = ${parseInt(map_id)}\nRETURNING jsonb_build_object('success', true, 'mode', 'hard-delete', 'data', to_jsonb(lineage.*)) as result`;\n} else {\n  return { json: { result: JSON.stringify({ success: false, error: 'Invalid mode: ' + mode }) } };\n}\n\nreturn { json: { sql } };"
+        "jsCode": "// Task 837: values only; studio.f_batch_map does the account checks. Every value is a bound parameter in the next node.\nconst body = $json.body || $json;\nconst mode = String(body.mode || '');\nconst mapId = /^\\d+$/.test(String(body.map_id ?? '')) ? parseInt(body.map_id, 10) : null;\nreturn { json: { mode, event_type: body.event_type || 'Shop->Prod', map_id: mapId, user: body.user || '' } };\n"
       }
     },
     {
@@ -52,8 +52,10 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "{{ $json.sql }}",
-        "options": {}
+        "query": "SELECT studio.f_batch_map($1::text, $2::text, $3::integer, $4::text) AS result",
+        "options": {
+          "queryReplacement": "={{ [$json.mode, $json.event_type, $json.map_id, $json.user] }}"
+        }
       },
       "credentials": {
         "postgres": {
