@@ -6,6 +6,7 @@ import { buildHtmxDiv } from '../renderers/buildHtmxDiv.js';
 import { buildSelectWidget } from '../renderers/buildSelectWidget.js';
 import { accountValuesAllowed } from '../utils/accountGuard.js';
 import { templateAllowed } from '../utils/pageAccess.js';
+import { isServerOwnedKey } from '../utils/contextGuard.js';
 
 const router = Router();
 
@@ -81,7 +82,8 @@ router.post('/hydrate', async (req, res) => {
     const workflowName = template_name === 'wf_appbar' ? 'page-chrome' : 'hydrate-guide';
     const contextValues = Object.fromEntries(
       // email/user are the caller's identity: server-owned (session), never taken from the request (hotfix 2026-11-10).
-      Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title', 'email', 'user'].includes(key))
+      // So are the identity context keys (userEmail, firstName, role_id, ...): never stored, cleared or passed on (task 845).
+      Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title', 'email', 'user'].includes(key) && !isServerOwnedKey(key))
     );
 
     if (email && !(await accountValuesAllowed(email, contextValues))) {
@@ -201,7 +203,9 @@ router.post('/report', async (req, res) => {
   if (!email) return res.status(401).type('text').send('Unauthorized');
 
   // email/user are server-owned (session): dropped from the request so they cannot replace the caller (hotfix 2026-11-10).
-  const { templates, email: _clientEmail, user: _clientUser, ...contextParams } = req.body;
+  const { templates, email: _clientEmail, user: _clientUser, ...requestParams } = req.body;
+  // Identity context keys are server-owned too (task 845).
+  const contextParams = Object.fromEntries(Object.entries(requestParams).filter(([key]) => !isServerOwnedKey(key)));
   if (!Array.isArray(templates) || templates.length === 0) {
     return res.status(400).type('text').send('templates array required');
   }
