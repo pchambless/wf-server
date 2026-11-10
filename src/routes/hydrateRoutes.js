@@ -5,6 +5,7 @@ import { normalizeHtml, applySelectedAccount, compileHandlebars } from './hydrat
 import { buildHtmxDiv } from '../renderers/buildHtmxDiv.js';
 import { buildSelectWidget } from '../renderers/buildSelectWidget.js';
 import { accountValuesAllowed } from '../utils/accountGuard.js';
+import { templateAllowed } from '../utils/pageAccess.js';
 
 const router = Router();
 
@@ -67,7 +68,16 @@ router.post('/hydrate', async (req, res) => {
     body: req.body
   });
 
+  // Signed-in users only: public pages (login, register) render on the server and never call this route (task 859).
+  if (!email) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
   try {
+    // Admin and account-owner templates (users, accounts, account users) only for those allowed to see them (task 859).
+    if (!(await templateAllowed(email, template_name))) {
+      logger.warn('[api] Response', { path: '/api/hydrate', success: false, status: 403, reason: 'template_not_allowed', template_name, email });
+      return res.status(403).json({ success: false, message: 'Not allowed' });
+    }
+
     const workflowName = template_name === 'wf_appbar' ? 'page-chrome' : 'hydrate-guide';
     const contextValues = Object.fromEntries(
       // email/user are the caller's identity: server-owned (session), never taken from the request (hotfix 2026-11-10).
@@ -202,6 +212,13 @@ router.post('/report', async (req, res) => {
     if (!(await accountValuesAllowed(email, contextParams))) {
       logger.warn('[api] Response', { path: '/api/report', success: false, status: 403, reason: 'account_not_allowed', email });
       return res.status(403).type('text').send('Account not allowed');
+    }
+
+    for (const name of templates) {
+      if (!(await templateAllowed(email, name))) {
+        logger.warn('[api] Response', { path: '/api/report', success: false, status: 403, reason: 'template_not_allowed', template_name: name, email });
+        return res.status(403).type('text').send('Not allowed');
+      }
     }
 
     const parts = await Promise.all(

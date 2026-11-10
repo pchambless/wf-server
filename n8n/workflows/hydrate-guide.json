@@ -36,7 +36,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{$json.body.email}}', false))\nselect a.id,\n    a.page_id,\n    a.platform,\n    a.workflow,\n    studio.f_workflow_id(a.workflow) as workflow_id,\n    a.template_name, \n\ta.title, \n\ta.description, \n\ta.hydrate, \n\ta.html,\n    a.group_by, \n\ta.css\nfrom _ctx, studio.tf_template_router('{{$json.body.source }}',\n      '{{$json.body.template_name }}') a",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{$json.body.email}}', true))\nselect a.id,\n    a.page_id,\n    a.platform,\n    a.workflow,\n    studio.f_workflow_id(a.workflow) as workflow_id,\n    a.template_name, \n\ta.title, \n\ta.description, \n\ta.hydrate, \n\ta.html,\n    a.group_by, \n\ta.css\nfrom _ctx, studio.tf_template_router('{{$json.body.source }}',\n      '{{$json.body.template_name }}') a",
         "options": {}
       },
       "credentials": {
@@ -57,7 +57,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', false))\nselect \n'{{ $json.template_name }}' as template_name,\n'{{ $json.page_id }}' as page_id, \n{{ $json.group_by ? \"'\" + $json.group_by + \"'\" : \"null\" }} as group_by,\nstudio.f_workflow_id('{{ $json.workflow }}') workflow_id,\nstudio.tf_html_styled('{{ $json.template_name }}') styled_html\nFROM _ctx",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', true))\nselect \n'{{ $json.template_name }}' as template_name,\n'{{ $json.page_id }}' as page_id, \n{{ $json.group_by ? \"'\" + $json.group_by + \"'\" : \"null\" }} as group_by,\nstudio.f_workflow_id('{{ $json.workflow }}') workflow_id,\nstudio.tf_html_styled('{{ $json.template_name }}') styled_html\nFROM _ctx",
         "options": {}
       },
       "credentials": {
@@ -93,7 +93,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', false))\nSELECT '{{ $json.template_name }}' as template_name,\n  json_agg(row_to_json(t)) as data \nFROM _ctx, ({{ $json.hydrate }}) t\n",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', true))\nSELECT '{{ $json.template_name }}' as template_name,\n  json_agg(row_to_json(t)) as data \nFROM _ctx, ({{ $json.hydrate }}) t\n",
         "options": {
           "queryReplacement": "=p_id"
         }
