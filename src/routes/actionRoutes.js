@@ -5,6 +5,7 @@ import { notifyActivity } from '../utils/activityNotify.js';
 import { parseAction, normalizeTargets, getSetVals, isContextKey } from './actionUtils.js';
 import { hydrateTargets } from './hydrationUtils.js';
 import { accountValuesAllowed } from '../utils/accountGuard.js';
+import { withoutServerOwned, identityContextVals } from '../utils/contextGuard.js';
 
 const router = Router();
 
@@ -58,7 +59,8 @@ router.post('/actions', async (req, res) => {
     }
 
     if (actionName === 'setvals') {
-      const vals = getSetVals(action, selectedValue);
+      // Identity keys (userEmail, firstName, role_id, ...) are server-owned: dropped, never stored (task 845).
+      const vals = withoutServerOwned(getSetVals(action, selectedValue));
       if (vals.length > 0) {
         const valMap = Object.fromEntries(vals.map(({ param_name, param_val }) => [param_name, param_val]));
         if (!(await accountValuesAllowed(email, valMap))) {
@@ -76,10 +78,15 @@ router.post('/actions', async (req, res) => {
 
     if (actionName === 'clearvals') {
       const rawParams = action.values || action.context_keys || [];
-      const params = Array.isArray(rawParams) ? rawParams.filter(isContextKey) : [];
+      const params = Array.isArray(rawParams) ? withoutServerOwned(rawParams.filter(isContextKey)) : [];
       const clearAll = action.clear_all || false;
       if (clearAll || params.length > 0) {
         await callWorkflow('clearvals', { email, params, clear_all: clearAll });
+      }
+      // clear_all wipes the identity keys too: put them back from the session, as login set them (task 845).
+      if (clearAll) {
+        const identity = identityContextVals(email, req.session?.user, req.session?.account_id);
+        if (identity.length > 0) await callWorkflow('setvals', { email, vals: identity });
       }
     }
 
