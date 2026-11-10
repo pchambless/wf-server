@@ -70,7 +70,8 @@ router.post('/hydrate', async (req, res) => {
   try {
     const workflowName = template_name === 'wf_appbar' ? 'page-chrome' : 'hydrate-guide';
     const contextValues = Object.fromEntries(
-      Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title'].includes(key))
+      // email/user are the caller's identity: server-owned (session), never taken from the request (hotfix 2026-11-10).
+      Object.entries(req.body).filter(([key]) => !['template_name', 'source', 'format', 'page_id', 'page_title', 'email', 'user'].includes(key))
     );
 
     if (email && !(await accountValuesAllowed(email, contextValues))) {
@@ -189,7 +190,8 @@ router.post('/report', async (req, res) => {
   const email = req.session?.current_user_email;
   if (!email) return res.status(401).type('text').send('Unauthorized');
 
-  const { templates, ...contextParams } = req.body;
+  // email/user are server-owned (session): dropped from the request so they cannot replace the caller (hotfix 2026-11-10).
+  const { templates, email: _clientEmail, user: _clientUser, ...contextParams } = req.body;
   if (!Array.isArray(templates) || templates.length === 0) {
     return res.status(400).type('text').send('templates array required');
   }
@@ -205,11 +207,11 @@ router.post('/report', async (req, res) => {
     const parts = await Promise.all(
       templates.map(async (template_name) => {
         const result = await callWorkflow('hydrate-guide', {
+          ...contextParams,
           template_name,
           source: 'wf-server',
           format: 'html',
-          email,
-          ...contextParams
+          email
         });
         if (result?.styled_html && result?.data) {
           const dataArr = Array.isArray(result.data) ? result.data : [result.data];

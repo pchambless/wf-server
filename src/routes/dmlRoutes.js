@@ -48,7 +48,9 @@ router.post('/dml', async (req, res) => {
   const email = req.session?.current_user_email;
   if (!email) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
-  const { page_id, mode, ...formFields } = req.body;
+  // user/email are the caller's identity: server-owned (session). Dropped from the request so a body field cannot
+  // replace the signed-in user that studio.dml checks (hotfix 2026-11-10).
+  const { page_id, mode, user: _clientUser, email: _clientEmail, ...formFields } = req.body;
 
   if (!page_id || !mode) {
     return res.status(400).json({ success: false, error: 'page_id and mode are required' });
@@ -81,10 +83,10 @@ router.post('/dml', async (req, res) => {
 
   try {
     const result = await callWorkflow('dml', {
+      ...formFields,
       page_id,
       mode,
-      user: email,
-      ...formFields
+      user: email
     });
 
     // n8n webhook returns array; extract first item's result
