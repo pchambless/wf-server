@@ -3,6 +3,7 @@ import { wrapHtml } from './wrapHtml/index.js';
 import { normalizeHtml } from './normalizeHtml.js';
 import { resolveLayout } from './resolveLayout.js';
 import { hydrateSlots } from './hydrateSlots.js';
+import { pageAllowed } from '../utils/pageAccess.js';
 
 let cachedRoutes = [];
 
@@ -88,6 +89,14 @@ export async function renderPage(req, res, next) {
     return res.send(wrapHtml(routeInfo.page_name, combined));
   }
 
+  // Admin and account-owner pages are checked on the server, not only hidden in the menu (task 859). A page the
+  // user may not see answers like an unknown route, before it is stored in the user's context.
+  try {
+    if (!(await pageAllowed(email, routeInfo.page_id))) return next();
+  } catch (e) {
+    return res.status(500).send('Failed to check page access');
+  }
+
   try {
     await callWorkflow('setvals', {
       email,
@@ -131,7 +140,7 @@ export async function renderPage(req, res, next) {
 
   pageHtml = await hydrateSlots(pageHtml, components, slotActions, email);
 
-  let layoutHtml = await resolveLayout(components);
+  let layoutHtml = await resolveLayout(components, email);
   layoutHtml = layoutHtml.replace('{{slot:page}}', pageHtml);
 
   res.set('Cache-Control', 'no-store');

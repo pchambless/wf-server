@@ -36,7 +36,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', false))\nSELECT whatsfresh.f_account(whatsfresh.c_getval('account_id')::int) as account_name,\n       whatsfresh.c_getval('firstName') as first_name,\n       vp.page_title,\n       vp.help_text\nFROM _ctx, studio.vw_pages vp\nWHERE page_id = whatsfresh.c_getval('page_id')::int",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', true))\nSELECT whatsfresh.f_account(whatsfresh.c_getval('account_id')::int) as account_name,\n       whatsfresh.c_getval('firstName') as first_name,\n       vp.page_title,\n       vp.help_text\nFROM _ctx, studio.vw_pages vp\nWHERE page_id = whatsfresh.c_getval('page_id')::int",
         "options": {}
       },
       "credentials": {

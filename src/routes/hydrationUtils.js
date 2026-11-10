@@ -1,5 +1,6 @@
 import { callWorkflow } from '../utils/n8nClient.js';
 import Handlebars from 'handlebars';
+import { templateAllowed } from '../utils/pageAccess.js';
 
 export function normalizeHtml(result) {
   if (!result) return '';
@@ -85,6 +86,8 @@ export async function hydrateTargets(email, targets, swapMode) {
         }
       : componentByName.get(target);
     if (!component?.template_name) continue;
+    // Same template rule as /api/hydrate: admin and account-owner templates only for those allowed (task 859).
+    if (!(await templateAllowed(email, component.template_name))) continue;
 
     const workflowName = component.template_name === 'wf_appbar' ? 'page-chrome' : 'hydrate-guide';
     const result = await callWorkflow(workflowName, {

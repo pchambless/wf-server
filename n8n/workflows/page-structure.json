@@ -28,7 +28,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', false))\nselect api_page_structure::JSONB as structure\nfrom _ctx, studio.api_page_structure()",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $json.body.email }}', true))\nselect api_page_structure::JSONB as structure\nfrom _ctx, studio.api_page_structure()",
         "options": {}
       },
       "id": "0d9d18f2-85d2-4982-8c2a-4e7a0f510f53",
