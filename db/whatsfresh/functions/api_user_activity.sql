@@ -16,3 +16,4 @@ AS $function$
    ORDER BY max(t.last_activity) DESC
 $function$
 ;
+

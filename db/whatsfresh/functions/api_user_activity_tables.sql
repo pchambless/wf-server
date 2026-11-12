@@ -55,3 +55,4 @@ AS $function$
    ORDER BY max(m.ts) DESC, m.tbl
 $function$
 ;
+

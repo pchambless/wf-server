@@ -26,6 +26,13 @@ DECLARE
     v_caller_role   integer;
     v_row_account   integer;
     v_new_account   integer;
+    v_caller_email  text;
+    v_target_account integer;
+    v_has_acct      boolean;
+    v_ref           text;
+    v_ref_acct      integer;
+    v_cur           text;
+    v_kv            record;
 BEGIN
     SELECT
         split_part(vp.table_name, '.', 1),
@@ -48,6 +55,10 @@ BEGIN
     IF p_data IS NULL THEN
         p_data := '{}'::jsonb;
     END IF;
+
+    -- The caller is the email wf-server sends as p_user (session identity, Task 837 / hotfix 867); the
+    -- app.current_email setting is only a fallback for callers that pass no email.
+    v_caller_email := CASE WHEN p_user LIKE '%@%' THEN p_user ELSE nullif(current_setting('app.current_email', true), '') END;
 
     p_user := coalesce(whatsfresh.c_getval('firstName'), p_user);
 
@@ -75,7 +86,7 @@ BEGIN
     -- Other tables are not touched by this block.
     -- ===================
     IF v_schema = 'whatsfresh' AND v_table IN ('users', 'accounts', 'accounts_users') THEN
-        v_email := nullif(current_setting('app.current_email', true), '');
+        v_email := v_caller_email;
 
         SELECT u.id, u.role INTO v_caller_id, v_caller_role
           FROM whatsfresh.users u
@@ -91,7 +102,7 @@ BEGIN
         -- already decide who may change these rows.
         SELECT coalesce(jsonb_object_agg(key, value), '{}'::jsonb) INTO p_data
           FROM jsonb_each(p_data)
-         WHERE key !~ '^(id|created_.*)$';
+         WHERE key !~ '^(id|created_.*)\Z';
 
         IF v_table IN ('users', 'accounts') THEN
             IF v_caller_role IS DISTINCT FROM 1 THEN
@@ -117,7 +128,7 @@ BEGIN
             END IF;
 
             IF p_mode = 'INSERT' OR (p_mode = 'UPDATE' AND p_data ? 'account_id') THEN
-                IF coalesce(p_data ->> 'account_id', '') !~ '^[0-9]+$' THEN
+                IF coalesce(p_data ->> 'account_id', '') !~ '^[0-9]+\Z' THEN
                     RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
                 END IF;
                 v_new_account := (p_data ->> 'account_id')::integer;
@@ -129,6 +140,94 @@ BEGIN
                     RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
                 END IF;
             END IF;
+        END IF;
+    END IF;
+
+
+    -- ===================
+    -- Task 837: account ownership for every other whatsfresh table. The caller is the email wf-server sent
+    -- (v_caller_email); the account is checked with whatsfresh.f_can_access_account (role 1, or a live member).
+    --   UPDATE/DELETE: the row's own account (studio.f_dml_row_account) must be accessible, else "Row not found"
+    --                  (does not reveal that the row exists). account_id is never changed by an UPDATE.
+    --   INSERT:        account_id is forced from the caller's context (never taken from the request); the two
+    --                  tables without one take the account of their product or batch. It must be accessible.
+    --   References:    every id the request sets (studio.f_dml_ref_table) must point at a row of the same account
+    --                  or a shared one (account 0). On UPDATE an unchanged value is left alone (legacy rows).
+    -- The soft-delete, fallback and reactivate paths below act only on rows that passed these checks.
+    -- ===================
+    IF v_schema = 'whatsfresh' AND v_table NOT IN ('users', 'accounts', 'accounts_users') THEN
+        SELECT u.id, u.role INTO v_caller_id, v_caller_role
+          FROM whatsfresh.users u
+         WHERE lower(u.email) = lower(v_caller_email) AND u.deleted_at IS NULL
+         LIMIT 1;
+
+        IF v_caller_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+        END IF;
+
+        -- A request never supplies the key or the creation stamp.
+        SELECT coalesce(jsonb_object_agg(key, value), '{}'::jsonb) INTO p_data
+          FROM jsonb_each(p_data)
+         WHERE key !~ '^(id|created_.*)\Z';
+
+        v_has_acct := EXISTS (SELECT 1 FROM information_schema.columns c
+                               WHERE c.table_schema = v_schema AND c.table_name = v_table AND c.column_name = 'account_id');
+
+        IF p_mode IN ('UPDATE', 'DELETE') THEN
+            v_target_account := studio.f_dml_row_account(v_table, p_pk_val);
+
+            IF v_target_account IS NULL OR NOT whatsfresh.f_can_access_account(v_caller_email, v_target_account) THEN
+                RETURN jsonb_build_object('success', false, 'error', format('Row not found: %s=%s', v_pk_col, p_pk_val));
+            END IF;
+
+            IF v_has_acct THEN
+                p_data := p_data - 'account_id';
+            END IF;
+        ELSE
+            IF v_has_acct THEN
+                -- Same source as c_getval('account_id'), read for the caller explicitly.
+                SELECT coalesce(nullif(cs.context ->> 'account_id', ''), (SELECT u.default_account_id::text FROM whatsfresh.users u WHERE u.id = v_caller_id))
+                  INTO v_ref
+                  FROM whatsfresh.api_context_store(v_caller_email) cs;
+                v_ref := coalesce(v_ref, (SELECT u.default_account_id::text FROM whatsfresh.users u WHERE u.id = v_caller_id));
+                v_target_account := CASE WHEN v_ref ~ '^[0-9]+\Z' THEN v_ref::integer END;
+
+                IF v_target_account IS NOT NULL THEN
+                    p_data := p_data || jsonb_build_object('account_id', v_target_account);
+                END IF;
+            ELSIF v_table = 'product_recipes' THEN
+                v_target_account := CASE WHEN p_data ->> 'product_id' ~ '^[0-9]+\Z'
+                                         THEN studio.f_dml_row_account('entities', (p_data ->> 'product_id')::integer) END;
+            ELSIF v_table = 'product_batch_tasks' THEN
+                v_target_account := CASE WHEN p_data ->> 'batch_id' ~ '^[0-9]+\Z'
+                                         THEN studio.f_dml_row_account('batches', (p_data ->> 'batch_id')::integer) END;
+            END IF;
+
+            IF v_target_account IS NULL OR NOT whatsfresh.f_can_access_account(v_caller_email, v_target_account) THEN
+                RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+            END IF;
+        END IF;
+
+        IF p_mode IN ('INSERT', 'UPDATE') THEN
+            FOR v_kv IN SELECT key, value #>> '{}' AS val FROM jsonb_each(p_data) LOOP
+                v_ref := studio.f_dml_ref_table(v_table, v_kv.key);
+                CONTINUE WHEN v_ref IS NULL OR nullif(v_kv.val, '') IS NULL;
+
+                IF v_kv.val !~ '^[0-9]+\Z' THEN
+                    RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+                END IF;
+
+                IF p_mode = 'UPDATE' THEN
+                    EXECUTE format('SELECT %I::text FROM %I.%I WHERE %I = $1', v_kv.key, v_schema, v_table, v_pk_col)
+                       INTO v_cur USING p_pk_val;
+                    CONTINUE WHEN v_cur IS NOT DISTINCT FROM v_kv.val;
+                END IF;
+
+                v_ref_acct := studio.f_dml_row_account(v_ref, v_kv.val::integer);
+                IF v_ref_acct IS NULL OR v_ref_acct NOT IN (v_target_account, 0) THEN
+                    RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+                END IF;
+            END LOOP;
         END IF;
     END IF;
 
@@ -333,7 +432,9 @@ BEGIN
                     v_sql := v_sql || ' LIMIT 1';
                     EXECUTE v_sql INTO v_existing;
 
-                    IF v_existing IS NOT NULL THEN
+                    -- Task 837: only revive a row of the account this INSERT is for.
+                    IF v_existing IS NOT NULL
+                       AND (v_target_account IS NULL OR studio.f_dml_row_account(v_table, v_existing) IS NOT DISTINCT FROM v_target_account) THEN
                         SELECT string_agg(format('%I = %L', key, NULLIF(value #>> '{}', '')), ', ')
                         INTO v_sets
                         FROM jsonb_each(p_data);
