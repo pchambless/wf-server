@@ -6,13 +6,16 @@ import logger from './logger.js';
 const ICONS = { login: ':large_green_circle:', logout: ':white_circle:', login_failed: ':warning:' };
 const WORDS = { login: 'logged in', logout: 'logged out', login_failed: 'failed login' };
 
+// Slack hides the time on messages posted close together, so the time goes in the text (Central, like the reports).
+const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+
 export function notifyActivity(event, email) {
   const url = process.env.SLACK_ACTIVITY_WEBHOOK;
   if (!url || !email) return;
   const IGNORE = (process.env.SLACK_ACTIVITY_IGNORE || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   if (IGNORE.includes(String(email).toLowerCase())) return;
 
-  const text = `${ICONS[event] || ':grey_question:'} ${email} ${WORDS[event] || event} [${process.env.APP_ENV || 'dev'}]`;
+  const text = `${ICONS[event] || ':grey_question:'} ${email} ${WORDS[event] || event} [${process.env.APP_ENV || 'dev'}] ${CLOCK.format(new Date())} CT`;
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
