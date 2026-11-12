@@ -17,7 +17,7 @@ AS $function$
   on au.account_id = c.id
   WHERE c.deleted_at is null
     and au.deleted_at IS NULL
-    AND u.email = whatsfresh.c_getval('userEmail')
+    AND lower(u.email) = lower(current_setting('app.current_email', true))  -- session email, not the context copy (task 845)
   ORDER BY whatsfresh.f_account(au.account_id)
 $function$
 ;
