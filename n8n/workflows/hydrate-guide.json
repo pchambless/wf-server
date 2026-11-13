@@ -57,7 +57,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', true))\nselect \n'{{ $json.template_name }}' as template_name,\n'{{ $json.page_id }}' as page_id, \n{{ $json.group_by ? \"'\" + $json.group_by + \"'\" : \"null\" }} as group_by,\nstudio.f_workflow_id('{{ $json.workflow }}') workflow_id,\nstudio.tf_html_styled('{{ $json.template_name }}') styled_html\nFROM _ctx",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', '{{ $('Webhook').item.json.body.email }}', true))\nselect \n'{{ $json.template_name }}' as template_name,\n'{{ $json.page_id }}' as page_id, \n{{ $json.group_by ? \"'\" + $json.group_by + \"'\" : \"null\" }} as group_by,\nstudio.f_workflow_id('{{ $json.workflow }}') workflow_id,\nstudio.tf_html_styled('{{ $json.template_name }}') styled_html,\ncurrent_setting('app.current_email', true) AS dd_email\nFROM _ctx",
         "options": {}
       },
       "credentials": {
