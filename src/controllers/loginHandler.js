@@ -71,7 +71,7 @@ export async function handleLogin(req, res) {
           return res.status(500).json({ success: false, message: 'Session error' });
         }
 
-        notifyActivity('login', email);
+        notifyActivity('login', email, req.get('user-agent'));
         logger.info('[api] Response', {
           path: '/api/auth/login',
           success: true,
@@ -82,7 +82,7 @@ export async function handleLogin(req, res) {
       });
     }
 
-    notifyActivity('login_failed', email);
+    notifyActivity('login_failed', email, req.get('user-agent'));
     logger.warn('[api] Response', {
       path: '/api/auth/login',
       success: false,
