@@ -52,7 +52,7 @@ router.post('/actions', async (req, res) => {
           return res.status(500).json({ success: false, message: 'Log out failed' });
         }
         res.clearCookie('connect.sid');
-        notifyActivity('logout', email);
+        notifyActivity('logout', email, req.get('user-agent'));
         logger.info('[api] Response', { path: '/api/actions', success: true, status: 200, redirectUrl: '/login' });
         return res.json({ success: true, redirectUrl: '/login' });
       });
