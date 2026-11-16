@@ -129,6 +129,16 @@ export const workbookActionsCode = `
           x.getCell(4).numFmt = DATE;
           x.getCell(8).numFmt = DATE;
         });
+        // Date Shipped accepts dates only (Paul 2026-11-16 asked for a calendar): Google Sheets turns this into a
+        // date picker on double-click; Excel and LibreOffice have no cell calendar, so they show the hint and reject
+        // non-dates. Applied well below the data so rows the maker copies for more customers keep it.
+        const lastRow = Math.max(500, trace.length * 20 + 2);
+        d.dataValidations.add('H3:H' + lastRow, {
+          type: 'date', operator: 'greaterThan', allowBlank: true, formulae: [new Date(Date.UTC(2000, 0, 1))],
+          showInputMessage: true, promptTitle: 'Date Shipped', prompt: 'Enter a date, e.g. 2026-11-16',
+          showErrorMessage: true, errorStyle: 'stop', errorTitle: 'Date Shipped', error: 'Please enter a date, e.g. 2026-11-16'
+        });
+        for (let n = 3; n <= lastRow; n++) d.getCell('H' + n).numFmt = DATE;
         styleTable(d, 2, [32, 16, 26, 12, 28, 14, 12, 14]);
         if (trace.length) d.autoFilter = { from: 'A2', to: 'H2' };
         [5, 6, 7, 8].forEach((c) => { d.getRow(2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
