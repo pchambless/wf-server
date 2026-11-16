@@ -136,6 +136,15 @@ export const actionHandlersCode = `
           return 'handled';
         }
 
+        // --- export_workbook ---
+        // Builds an .xlsx in the browser from /api/report-data rows (task 879, workbookActions.js).
+        if (resolvedAction.action === 'export_workbook') {
+          const contextData = { ...rowData, ...(window.contextStore || {}), ...elementContext };
+          const button = event?.target instanceof Element ? event.target.closest('button') : null;
+          if (window.workbookExport) await window.workbookExport.run(resolvedAction, contextData, button);
+          return 'handled';
+        }
+
         // --- open_report ---
         if (resolvedAction.action === 'open_report') {
           const templates = resolvedAction.templates || [];

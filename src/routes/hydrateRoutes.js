@@ -248,4 +248,55 @@ router.post('/report', async (req, res) => {
   }
 });
 
+// Report rows as JSON, for files the browser builds itself (task 879: recall workbook). Same guards as /api/report;
+// each template must route to raw-json (no html), so the rows come back as data, never as markup.
+router.post('/report-data', async (req, res) => {
+  const email = req.session?.current_user_email;
+  if (!email) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+  const { templates, email: _clientEmail, user: _clientUser, ...requestParams } = req.body;
+  const contextParams = Object.fromEntries(Object.entries(requestParams).filter(([key]) => !isServerOwnedKey(key)));
+  if (!Array.isArray(templates) || templates.length === 0 || templates.some((t) => typeof t !== 'string')) {
+    return res.status(400).json({ success: false, message: 'templates array required' });
+  }
+
+  logger.info('[api] Request', { path: '/api/report-data', templates, contextParams });
+
+  try {
+    if (!(await accountValuesAllowed(email, contextParams))) {
+      logger.warn('[api] Response', { path: '/api/report-data', success: false, status: 403, reason: 'account_not_allowed', email });
+      return res.status(403).json({ success: false, message: 'Account not allowed' });
+    }
+    for (const name of templates) {
+      if (!(await templateAllowed(email, name))) {
+        logger.warn('[api] Response', { path: '/api/report-data', success: false, status: 403, reason: 'template_not_allowed', template_name: name, email });
+        return res.status(403).json({ success: false, message: 'Not allowed' });
+      }
+    }
+
+    const data = {};
+    await Promise.all(templates.map(async (template_name) => {
+      const result = await callWorkflow('hydrate-guide', {
+        ...contextParams,
+        template_name,
+        source: 'wf-server',
+        format: 'json',
+        email
+      });
+      // A template that renders html (styled/report) is not a data template: refuse rather than pass markup on as data.
+      if (!Array.isArray(result) || result.some((row) => row === null || typeof row !== 'object' || 'styled_html' in row || 'html' in row)) {
+        throw new Error(`template ${template_name} did not return rows`);
+      }
+      data[template_name] = result;
+    }));
+
+    const user = req.session?.user || {};
+    const name = [user.first_name || user.firstName, user.last_name || user.lastName].filter(Boolean).join(' ');
+    res.json({ success: true, run_at: new Date().toISOString(), run_by: name ? `${name} (${email})` : email, data });
+  } catch (err) {
+    logger.error('[api] Response', { path: '/api/report-data', success: false, error: err.message });
+    res.status(500).json({ success: false, message: 'Report data failed' });
+  }
+});
+
 export default router;
