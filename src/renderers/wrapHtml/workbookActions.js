@@ -66,6 +66,11 @@ export const workbookActionsCode = `
         about.getCell(1).alignment = { wrapText: true, vertical: 'top' };
         about.getCell(1).font = { italic: true, color: { argb: 'FF4B5563' } };
         about.height = 60;
+        // Paul 2026-11-16: the maker may have no spreadsheet app; name the free ways to open it.
+        const opens = r.addRow(['Open this file with Excel, Google Sheets or LibreOffice (both free), or Numbers on a Mac.']);
+        r.mergeCells(opens.number, 1, opens.number, 2);
+        opens.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+        opens.getCell(1).font = { italic: true, color: { argb: 'FF4B5563' } };
         const HEADING = { bold: true, size: 12, color: { argb: 'FFBF0041' } };
         const section = (label) => { r.addRow([]); const x = r.addRow([label]); x.font = HEADING; };
         const pair = (label, value, fmt) => {
