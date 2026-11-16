@@ -132,8 +132,9 @@ export const workbookActionsCode = `
         if (trace.length) d.autoFilter = { from: 'A2', to: 'H2' };
         [5, 6, 7, 8].forEach((c) => { d.getRow(2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
 
-        const stamp = ranLocal.toISOString().slice(0, 10);
-        return { wb, filename: 'Recall-' + fileSafe(src.fsma_lot_code || src.batch_number) + '-' + stamp + '.xlsx' };
+        // Recall-<ingredient>-<supplier>-<purchase date>.xlsx (Paul 2026-11-16): names the lot the way a person looks for it.
+        const parts = [src.ingredient, src.supplier, src.purchase_date || ranLocal.toISOString().slice(0, 10)];
+        return { wb, filename: 'Recall-' + parts.filter(Boolean).map((p) => fileSafe(p)).join('-') + '.xlsx' };
       };
 
       const WORKBOOKS = { recall: buildRecallWorkbook };
