@@ -59,10 +59,16 @@ export const workbookActionsCode = `
         r.getColumn(2).width = 48;
         const title = r.addRow(['Ingredient Recall / Mock Recall Record']);
         title.font = { bold: true, size: 14 };
-        const section = (label) => { r.addRow([]); const x = r.addRow([label]); x.font = { bold: true, size: 12 }; };
+        // Paul 2026-11-16 (review of the first sample): say how the file was made; headings in colour, labels regular.
+        const about = r.addRow(['Created by the WhatsFresh app. WhatsFresh records every ingredient purchase as its own batch, with an FSMA lot code, supplier and vendor lot. Each time a product batch is made, the ingredient batches that went into it are recorded against it, so any purchase can be traced forward to every product batch that used it.']);
+        r.mergeCells(about.number, 1, about.number, 2);
+        about.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+        about.getCell(1).font = { italic: true, color: { argb: 'FF4B5563' } };
+        about.height = 60;
+        const HEADING = { bold: true, size: 12, color: { argb: 'FFBF0041' } };
+        const section = (label) => { r.addRow([]); const x = r.addRow([label]); x.font = HEADING; };
         const pair = (label, value, fmt) => {
           const x = r.addRow([label, value === null || value === undefined ? '' : value]);
-          x.getCell(1).font = { bold: true };
           x.getCell(2).alignment = { horizontal: 'left' };
           if (fmt) x.getCell(2).numFmt = fmt;
         };
@@ -87,21 +93,10 @@ export const workbookActionsCode = `
         pair('Measure', safeText(src.measure));
         if (src.best_by_date) pair('Best By', isoDate(src.best_by_date), DATE);
 
-        const products = [];
-        const totals = {};
-        trace.forEach((t) => {
-          if (t.product && !products.includes(t.product)) products.push(t.product);
-          const q = num(t.expected_qty);
-          if (q !== null) totals[t.expected_measure || ''] = (totals[t.expected_measure || ''] || 0) + q;
-        });
-        const totalText = Object.keys(totals).map((m) => (Math.round(totals[m] * 10000) / 10000) + (m ? ' ' + m : '')).join('; ');
-
         section('Summary');
         pair('Affected product batches', trace.length);
-        pair('Products', safeText(products.join(', ') || 'None'));
-        pair('Total expected quantity used', safeText(totalText || 'None'));
         r.addRow([]);
-        const note = r.addRow(['Expected quantity used = recipe quantity x batch ratio (from the recipe, not a measured amount). Who received each product batch is completed on the Distribution tab from your sales records.']);
+        const note = r.addRow(['Expected quantity used (Forward Trace tab) = recipe quantity x batch ratio, from the recipe, not a measured amount. Who received each product batch is completed on the Distribution tab from your sales records.']);
         r.mergeCells(note.number, 1, note.number, 2);
         note.getCell(1).alignment = { wrapText: true, vertical: 'top' };
         note.height = 45;
@@ -120,16 +115,22 @@ export const workbookActionsCode = `
         if (trace.length) f.autoFilter = { from: 'A1', to: 'I1' };
 
         // Tab 3: Distribution (pre-filled per product batch; the maker completes who received it)
+        // Row 1 says how to fill it in (Paul 2026-11-16: one row per shipment); the table starts at row 2.
         const d = wb.addWorksheet('Distribution');
+        const how = d.addRow(['Fill in one row per shipment, from your sales records. If a product batch went to more than one customer, copy its row once for each customer (or invoice) and fill in each copy.']);
+        d.mergeCells(1, 1, 1, 8);
+        how.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+        how.getCell(1).font = { italic: true, color: { argb: 'FF4B5563' } };
+        how.height = 32;
         d.addRow(['Product', 'Product Batch', 'FSMA Lot Code', 'Batch Date', 'Customer', 'Invoice #', 'Qty Shipped', 'Date Shipped']);
         trace.forEach((t) => {
           const x = d.addRow([safeText(t.product), safeText(t.batch), safeText(t.fsma_lot_code), isoDate(t.batch_date), null, null, null, null]);
           x.getCell(4).numFmt = DATE;
           x.getCell(8).numFmt = DATE;
         });
-        styleTable(d, 1, [32, 16, 26, 12, 28, 14, 12, 14]);
-        if (trace.length) d.autoFilter = { from: 'A1', to: 'H1' };
-        [5, 6, 7, 8].forEach((c) => { d.getRow(1).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
+        styleTable(d, 2, [32, 16, 26, 12, 28, 14, 12, 14]);
+        if (trace.length) d.autoFilter = { from: 'A2', to: 'H2' };
+        [5, 6, 7, 8].forEach((c) => { d.getRow(2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
 
         const stamp = ranLocal.toISOString().slice(0, 10);
         return { wb, filename: 'Recall-' + fileSafe(src.fsma_lot_code || src.batch_number) + '-' + stamp + '.xlsx' };
