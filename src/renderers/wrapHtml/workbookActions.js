@@ -28,7 +28,8 @@ export const workbookActionsCode = `
         const m = /^(\\d{4})-(\\d{2})-(\\d{2})/.exec(String(v || ''));
         return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
       };
-      const fileSafe = (s) => String(s || 'lot').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'lot';
+      // Readable file-name part: keeps spaces, drops what Windows/macOS refuse in a name (\\ / : * ? " < > | and control chars).
+      const fileSafe = (s) => String(s || '').replace(/[\\\\/:*?"<>|\\u0000-\\u001f]+/g, ' ').replace(/\\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 60);
 
       const styleTable = (ws, headerRow, widths) => {
         const hdr = ws.getRow(headerRow);
@@ -132,9 +133,12 @@ export const workbookActionsCode = `
         if (trace.length) d.autoFilter = { from: 'A2', to: 'H2' };
         [5, 6, 7, 8].forEach((c) => { d.getRow(2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
 
-        // Recall-<ingredient>-<supplier>-<purchase date>.xlsx (Paul 2026-11-16): names the lot the way a person looks for it.
-        const parts = [src.ingredient, src.supplier, src.purchase_date || ranLocal.toISOString().slice(0, 10)];
-        return { wb, filename: 'Recall-' + parts.filter(Boolean).map((p) => fileSafe(p)).join('-') + '.xlsx' };
+        // "Recall Kosher Salt (Main Street Grocer) 2026-10-05.xlsx" (Paul 2026-11-16): names the lot the way a person
+        // looks for it. A colon is not allowed in Windows file names, so the supplier goes in parentheses.
+        const ingredient = fileSafe(src.ingredient) || fileSafe(src.batch_number) || 'Lot';
+        const supplier = fileSafe(src.supplier);
+        const when = fileSafe(src.purchase_date) || ranLocal.toISOString().slice(0, 10);
+        return { wb, filename: 'Recall ' + ingredient + (supplier ? ' (' + supplier + ')' : '') + ' ' + when + '.xlsx' };
       };
 
       const WORKBOOKS = { recall: buildRecallWorkbook };
