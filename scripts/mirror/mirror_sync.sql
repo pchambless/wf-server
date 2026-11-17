@@ -6,7 +6,7 @@
 --   mirror.stage_plan()  -> what to pull: one row per mirrored table + its column list
 --   mirror.prepare_staging()  -> (re)creates empty staging tables mirror_stg.<t>
 --   (caller COPYs prod rows into mirror_stg.<t>)
---   mirror.run()         -> guards, upsert (parents first), delete-missing (children first),
+--   mirror.run()         -> guards, clear secondary-unique-key conflicts, upsert (parents first), delete-missing (children first),
 --                           sequence reset; returns per-table counts. One transaction:
 --                           any error rolls the whole run back.
 
@@ -96,11 +96,57 @@ begin
     return n;
 end $$;
 
-create or replace function mirror.run(
-    p_schema    text    default 'whatsfresh',
-    p_min_ratio numeric default 0.5     -- refuse if staged rows < ratio * target rows
-) returns table (tbl text, source_rows bigint, inserted bigint, updated bigint, deleted bigint)
-language plpgsql as $$
+-- Rows created on the target (dev) can hold a secondary unique key (e.g. usi_lineage) that prod later
+-- gave to a row with a different primary key. Inserting prod's row would then fail and roll the whole
+-- run back. This deletes such target rows (prod's copy replaces them in the upsert). Catalog-driven:
+-- every non-primary unique index, partial predicates and expression keys included. NULL keys never
+-- match (same as the index). Returns rows deleted.
+create or replace function mirror.clear_key_conflicts(p_schema text, p_tbl text)
+returns bigint language plpgsql as $$
+declare
+    rel regclass := format('%I.%I', p_schema, p_tbl)::regclass;
+    pk text[]; ix record;
+    s_cols text; match text; pk_ne text; pred text;
+    n bigint; total bigint := 0;
+begin
+    select array_agg(a.attname order by a.attnum) into pk
+    from pg_index i join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any (i.indkey)
+    where i.indrelid = rel and i.indisprimary;
+    if pk is null then return 0; end if;
+
+    for ix in
+        select i.indexrelid, i.indnkeyatts, i.indkey, pg_get_expr(i.indpred, i.indrelid) as pred
+        from pg_index i
+        where i.indrelid = rel and i.indisunique and not i.indisprimary and i.indisvalid
+          -- an index that contains the whole PK cannot collide under a different PK
+          and not (select bool_and(a.attnum = any (i.indkey)) from pg_attribute a
+                   where a.attrelid = rel and a.attname = any (pk))
+    loop
+        -- key k is a column name or an expression (unqualified); evaluated on staged and target rows
+        select string_agg(format('%s as _k%s', pg_get_indexdef(ix.indexrelid, g, true), g), ', '),
+               string_agg(format('s._k%s = (%s)', g, pg_get_indexdef(ix.indexrelid, g, true)), ' and ')
+          into s_cols, match
+          from generate_series(1, ix.indnkeyatts) g;
+        select s_cols || ', ' || string_agg(format('%I as _p%s', c, o), ', '),
+               '(' || string_agg(format('s._p%s', o), ',') || ') is distinct from ('
+                   || string_agg(format('x.%I', c), ',') || ')'
+          into s_cols, pk_ne
+          from unnest(pk) with ordinality u(c, o);
+        pred := coalesce(ix.pred, 'true');
+        execute format(
+            'with d as (delete from %1$I.%2$I x where (%3$s) and exists ('
+            ' select 1 from (select %4$s from mirror_stg.%2$I where (%3$s)) s'
+            ' where %5$s and (%6$s)) returning 1) select count(*) from d',
+            p_schema, p_tbl, pred, s_cols, match, pk_ne) into n;
+        total := total + n;
+    end loop;
+    return total;
+end $$;
+
+CREATE OR REPLACE FUNCTION mirror.run(p_schema text DEFAULT 'whatsfresh'::text, p_min_ratio numeric DEFAULT 0.5)
+ RETURNS TABLE(tbl text, source_rows bigint, inserted bigint, updated bigint, deleted bigint)
+ LANGUAGE plpgsql
+AS $function$
 declare
     r record;
     s_cnt bigint; d_cnt bigint;
@@ -109,6 +155,8 @@ declare
     v_ins bigint; v_upd bigint; v_del bigint;
     seq text;
 begin
+    -- Task 877: whatsfresh triggers that judge new data (e.g. duplicate batch numbers) skip copies of rows prod already accepted.
+    perform set_config('whatsfresh.copying_prod', 'on', true);
     create temp table _mirror_report (tbl text primary key, source_rows bigint, inserted bigint, updated bigint, deleted bigint) on commit drop;
 
     -- 1. Guards, before anything is changed
@@ -125,6 +173,13 @@ begin
             raise exception 'mirror guard: % staged % rows vs % in target (< % ratio) - refusing',
                 r.tbl, s_cnt, d_cnt, p_min_ratio;
         end if;
+    end loop;
+
+    -- 1b. Secondary unique keys: delete target rows whose unique key (e.g. usi_lineage) belongs to a
+    --     staged row with a different PK, children first, so the upsert cannot collide. Counted as deleted.
+    create temp table _mirror_cleared (tbl text primary key, n bigint) on commit drop;
+    for r in select o.tbl from mirror.table_order(p_schema) o order by o.lvl desc, o.tbl loop
+        insert into _mirror_cleared values (r.tbl, mirror.clear_key_conflicts(p_schema, r.tbl));
     end loop;
 
     -- 2. Upsert, parents first
@@ -178,7 +233,8 @@ begin
         execute format('with d as (delete from %I.%I x where not exists (select 1 from mirror_stg.%I s where %s) returning 1) select count(*) from d',
                        p_schema, r.tbl, r.tbl, join_list) into v_del;
         -- patch the row already emitted for this table
-        update _mirror_report m set deleted = v_del where m.tbl = r.tbl;
+        update _mirror_report m set deleted = v_del + coalesce((select c.n from _mirror_cleared c where c.tbl = r.tbl), 0)
+         where m.tbl = r.tbl;
     end loop;
 
     -- 4. Sequences: move past the highest mirrored id so a stray dev insert cannot collide
@@ -194,17 +250,16 @@ begin
     end loop;
 
     return query select m.tbl, m.source_rows, m.inserted, m.updated, m.deleted from _mirror_report m order by m.tbl;
-end $$;
+end $function$;
 
 -- Stage prod rows over dblink (replaces mirror-pull.sh). Read-only on the source.
 -- p_server is a dblink/FDW server name with a user mapping (dev: pg_prod_server).
-create or replace function mirror.pull(
-    p_schema text default 'whatsfresh',
-    p_server text default 'pg_prod_server'
-) returns table (tbl text, staged bigint)
-language plpgsql as $$
+CREATE OR REPLACE FUNCTION mirror.pull(p_schema text DEFAULT 'whatsfresh'::text, p_server text DEFAULT 'pg_prod_server'::text)
+ RETURNS TABLE(tbl text, staged bigint)
+ LANGUAGE plpgsql
+AS $function$
 declare
-    r record; coldefs text; n bigint;
+    r record; coldefs text; cols text; n bigint;
 begin
     -- target tables the source does not have are skipped (and reported), not fatal
     truncate mirror.skipped;
@@ -217,17 +272,31 @@ begin
     for r in select k.tbl from mirror.skipped k order by 1 loop
         tbl := 'SKIPPED (not in source): ' || r.tbl; staged := null; return next;
     end loop;
+
+    -- Columns the source has, per table. A column added on dev before it ships (Task 883: locations.address) is
+    -- not on prod yet: it is left out of the pull and stays NULL in staging instead of failing the whole run.
+    create temp table _src_cols on commit drop as
+    select s.table_name, s.column_name
+      from dblink(p_server,
+             format('select table_name::text, column_name::text from information_schema.columns where table_schema = %L', p_schema))
+           as s(table_name text, column_name text);
+
     perform mirror.prepare_staging(p_schema);
     for r in select * from mirror.stage_plan(p_schema) loop
-        select string_agg(format('%I %s', a.attname, format_type(a.atttypid, a.atttypmod)), ', ' order by a.attnum)
-          into coldefs
+        select string_agg(quote_ident(a.attname), ',' order by a.attnum),
+               string_agg(format('%I %s', a.attname, format_type(a.atttypid, a.atttypmod)), ', ' order by a.attnum)
+          into cols, coldefs
         from pg_attribute a
         where a.attrelid = format('%I.%I', p_schema, r.tbl)::regclass
-          and a.attnum > 0 and not a.attisdropped and a.attname <> all (mirror.secret_cols(r.tbl));
+          and a.attnum > 0 and not a.attisdropped and a.attname <> all (mirror.secret_cols(r.tbl))
+          and exists (select 1 from _src_cols sc where sc.table_name = r.tbl and sc.column_name = a.attname);
+        if cols is distinct from r.cols then
+            tbl := 'DEV-ONLY COLUMNS left NULL: ' || r.tbl; staged := null; return next;
+        end if;
         execute format('insert into mirror_stg.%I (%s) select %s from dblink(%L, %L) as d(%s)',
-                       r.tbl, r.cols, r.cols, p_server,
-                       format('select %s from %I.%I', r.cols, p_schema, r.tbl), coldefs);
+                       r.tbl, cols, cols, p_server,
+                       format('select %s from %I.%I', cols, p_schema, r.tbl), coldefs);
         get diagnostics n = row_count;
         tbl := r.tbl; staged := n; return next;
     end loop;
-end $$;
+end $function$;
