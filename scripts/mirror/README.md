@@ -4,7 +4,7 @@ Prototype, proven on a laptop scratch DB (`wf_mirror_test`), not yet pointed at 
 
 1. `mirror_sync.sql` - installs `mirror.*` functions into the target DB (catalog-driven: FK order, PKs, sequences).
 2. `mirror-pull.sh <db>` - stages prod rows (read-only SSH COPY) into `mirror_stg.*`.
-3. `select * from mirror.run()` - guards, upsert (parents first), delete-missing (children first), sequence reset. One transaction.
+3. `select * from mirror.run()` - guards, clear unique-key conflicts (children first: `mirror.clear_key_conflicts` deletes target rows holding a non-PK unique key, e.g. `usi_lineage`, that prod has under a different id; counted in `deleted`), upsert (parents first), delete-missing (children first), sequence reset. One transaction.
 4. `mirror-verify.sh <db>` - per-table content hash, prod vs target.
 
 Config is only in the SQL: excluded tables (`context_store`) and secret columns (`users`: password, appsmith_pwd, remember_token - never pulled; dev's values kept on update; placeholder `*` on insert).
