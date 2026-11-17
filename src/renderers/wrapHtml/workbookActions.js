@@ -120,33 +120,40 @@ export const workbookActionsCode = `
         styleTable(f, 1, [32, 16, 26, 10, 14, 17, 12, 12, 28]);
         if (trace.length) f.autoFilter = { from: 'A1', to: 'I1' };
 
-        // Tab 3: Distribution (pre-filled per product batch; the maker completes who received it)
-        // Row 1 says how to fill it in (Paul 2026-11-16: one row per shipment); the table starts at row 2.
+        // Tab 3: Distribution IS the distribution template (Paul 2026-11-17, after Joel's WF v1 sales template).
+        // Its columns are the spec: one row per sale/shipment, keyed by the product batch number, and the same shape a
+        // future Sale batch + lineage import would read. WhatsFresh pre-fills a checklist row per product batch (A-C,
+        // plus the batch's measure as a starting Unit); the maker fills D-I from their sales records or pastes an
+        // accounting export that carries the batch number. No FSMA lot code here: the maker cannot produce it, and it
+        // is on Forward Trace for the auditor.
         const d = wb.addWorksheet('Distribution');
-        const how = d.addRow(['Fill in one row per shipment, from your sales records. If a product batch went to more than one customer, copy its row once for each customer (or invoice) and fill in each copy.']);
-        d.mergeCells(1, 1, 1, 8);
+        const how = d.addRow(['Distribution template: one row per sale or shipment, with the product batch number on every row. If your accounting system can export sales with the product batch number, paste those rows here in these columns; otherwise copy a batch row once for each customer (or invoice) and fill in each copy.']);
+        d.mergeCells(1, 1, 1, 9);
         how.getCell(1).alignment = { wrapText: true, vertical: 'top' };
         how.getCell(1).font = { italic: true, color: { argb: 'FF4B5563' } };
-        how.height = 32;
-        d.addRow(['Product', 'Product Batch', 'FSMA Lot Code', 'Batch Date', 'Customer', 'Invoice #', 'Qty Shipped', 'Date Shipped']);
+        how.height = 45;
+        d.addRow(['Product Batch', 'Product', 'Batch Date', 'Customer', 'Customer Location', 'Invoice / Ref #', 'Sale Date', 'Qty', 'Unit']);
         trace.forEach((t) => {
-          const x = d.addRow([safeText(t.product), safeText(t.batch), safeText(t.fsma_lot_code), isoDate(t.batch_date), null, null, null, null]);
-          x.getCell(4).numFmt = DATE;
-          x.getCell(8).numFmt = DATE;
+          const x = d.addRow([safeText(t.batch), safeText(t.product), isoDate(t.batch_date), null, null, null, null, null, safeText(t.batch_measure)]);
+          x.getCell(3).numFmt = DATE;
         });
-        // Date Shipped accepts dates only (Paul 2026-11-16 asked for a calendar): Google Sheets turns this into a
-        // date picker on double-click; Excel and LibreOffice have no cell calendar, so they show the hint and reject
-        // non-dates. Applied well below the data so rows the maker copies for more customers keep it.
+        // Sale Date accepts dates only (Paul 2026-11-16 asked for a calendar): Google Sheets turns this into a date
+        // picker on double-click; Excel and LibreOffice have no cell calendar, so they show the hint and reject
+        // non-dates. Qty takes numbers only. Applied well below the data so copied or pasted rows keep it.
         const lastRow = Math.max(500, trace.length * 20 + 2);
-        d.dataValidations.add('H3:H' + lastRow, {
+        d.dataValidations.add('G3:G' + lastRow, {
           type: 'date', operator: 'greaterThan', allowBlank: true, formulae: [new Date(Date.UTC(2000, 0, 1))],
-          showInputMessage: true, promptTitle: 'Date Shipped', prompt: 'Enter a date, e.g. 2026-11-16',
-          showErrorMessage: true, errorStyle: 'stop', errorTitle: 'Date Shipped', error: 'Please enter a date, e.g. 2026-11-16'
+          showInputMessage: true, promptTitle: 'Sale Date', prompt: 'Enter a date, e.g. 2026-11-16',
+          showErrorMessage: true, errorStyle: 'stop', errorTitle: 'Sale Date', error: 'Please enter a date, e.g. 2026-11-16'
         });
-        for (let n = 3; n <= lastRow; n++) d.getCell('H' + n).numFmt = DATE;
-        styleTable(d, 2, [32, 16, 26, 12, 28, 14, 12, 14]);
-        if (trace.length) d.autoFilter = { from: 'A2', to: 'H2' };
-        [5, 6, 7, 8].forEach((c) => { d.getRow(2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
+        d.dataValidations.add('H3:H' + lastRow, {
+          type: 'decimal', operator: 'greaterThanOrEqual', allowBlank: true, formulae: [0],
+          showErrorMessage: true, errorStyle: 'stop', errorTitle: 'Qty', error: 'Please enter a number, e.g. 12'
+        });
+        for (let n = 3; n <= lastRow; n++) d.getCell('G' + n).numFmt = DATE;
+        styleTable(d, 2, [16, 32, 12, 28, 24, 16, 12, 9, 10]);
+        if (trace.length) d.autoFilter = { from: 'A2', to: 'I2' };
+        [4, 5, 6, 7, 8, 9].forEach((c) => { d.getRow(2).getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; });
 
         // "Recall Kosher Salt (Main Street Grocer) 2026-10-05.xlsx" (Paul 2026-11-16): names the lot the way a person
         // looks for it. A colon is not allowed in Windows file names, so the supplier goes in parentheses.
