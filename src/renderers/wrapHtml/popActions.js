@@ -241,24 +241,7 @@ export const popActionsCode = `
             // data-stay-open forms (task 889) stay up for the next entry: fields marked data-clear-after-save
             // are emptied, the rest (date, unit, batch) kept, and a note confirms the save.
             if (form.hasAttribute("data-stay-open")) {
-              const picked = form.querySelector("[data-clear-after-save] select, select[data-clear-after-save]");
-              const pickedLabel = picked && picked.selectedIndex >= 0 ? picked.options[picked.selectedIndex].text : "";
-              form.querySelectorAll("[data-clear-after-save]").forEach((el) => {
-                const fields = el.matches("input, select, textarea") ? [el] : [...el.querySelectorAll("input, select, textarea")];
-                for (const field of fields) {
-                  if (field.tomselect) field.tomselect.clear();
-                  else field.value = "";
-                  field.dispatchEvent(new Event("input", { bubbles: true }));
-                  field.dispatchEvent(new Event("change", { bubbles: true }));
-                }
-              });
-              const note = form.querySelector(".pop-saved-note");
-              if (note) {
-                note.textContent = "Saved" + (pickedLabel ? ": " + pickedLabel : "") + ". Enter the next one, or close with the X.";
-                note.hidden = false;
-              }
-              const first = form.querySelector("[data-clear-after-save] select, [data-clear-after-save] input");
-              if (first) first.focus();
+              window.__stayOpenAfterSave(form);
             } else {
               popModal.close();
             }
