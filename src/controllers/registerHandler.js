@@ -1,9 +1,11 @@
 import { callWorkflow } from '../utils/n8nClient.js';
 import logger from '../utils/logger.js';
 import { sendSignupEmails } from '../utils/signupEmails.js';
+import { normalizeEmail, isPlainEmail } from '../utils/emailCheck.js';
 
 export async function handleRegister(req, res) {
-  const { first_name, last_name, email, password, confirm_password, company_name, zip_code, description, street_address, city, state_code, url } = req.body;
+  const { first_name, last_name, password, confirm_password, company_name, zip_code, description, street_address, city, state_code, url } = req.body;
+  const email = normalizeEmail(req.body.email);
 
   logger.info('[api] Request', {
     path: '/api/auth/register',
@@ -13,6 +15,10 @@ export async function handleRegister(req, res) {
   // Validation
   if (!first_name || !last_name || !email || !password || !company_name || !zip_code) {
     return res.status(400).json({ success: false, message: 'All fields are required' });
+  }
+
+  if (!isPlainEmail(email)) {
+    return res.status(400).json({ success: false, message: 'Please enter a valid email address' });
   }
 
   if (password !== confirm_password) {

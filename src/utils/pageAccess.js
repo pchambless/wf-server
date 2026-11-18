@@ -28,6 +28,9 @@ export async function pageAllowed(email, pageId) {
 // A lookup failure throws, so callers fail closed.
 export async function templateAllowed(email, templateName) {
   if (!templateName) return true;
+  // Template names are identifiers (every studio.html_templates name is). Anything else, '*' included, is
+  // refused before it reaches a workflow (task 783).
+  if (typeof templateName !== 'string' || !/^[A-Za-z0-9_-]+$/.test(templateName)) return false;
   let names = null;
   try {
     names = await restrictedTemplates();
