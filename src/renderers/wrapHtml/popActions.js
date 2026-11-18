@@ -70,6 +70,9 @@ export const popActionsCode = `
             modalTitle.textContent = title;
           }
 
+          // Opened from inside the report modal (task 889), it must sit above it: both overlays share z-index 1000
+          // and the report modal can come later in the DOM.
+          modal.style.zIndex = "1100";
           modal.classList.remove("hidden");
         },
 
@@ -234,6 +237,8 @@ export const popActionsCode = `
               await popModal.refreshTargets(popModal._refreshTargets);
             }
             popModal.close();
+            // A form opened over a report (Add shipment in the Recall report, task 889): show the saved row.
+            if (window.reportModal && window.reportModal.reload) await window.reportModal.reload();
           } else {
             const errMsg = typeof result.error === "object" ? JSON.stringify(result.error) : (result.error || "Save failed");
             alert(errMsg);

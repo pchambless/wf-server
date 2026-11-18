@@ -35,7 +35,11 @@ export const reportActionsCode = `
       };
 
       window.reportModal = {
+        // Last report opened, so a pop-up form saved on top of it can reload it (task 889: Add shipment in the Recall report).
+        _last: null,
+
         open: async (templates, contextData) => {
+          window.reportModal._last = { templates, contextData };
           const modal = ensureReportModal();
           const body = document.getElementById('report_modal_body');
           const titleEl = document.getElementById('report_modal_title');
@@ -59,6 +63,17 @@ export const reportActionsCode = `
             body.innerHTML = '<div style="color:#dc2626;padding:12px;">Failed to load report.</div>';
             if (titleEl) titleEl.textContent = 'Error';
           }
+        },
+
+        // Re-run the open report in place, keeping the scroll position. No-op when no report is showing.
+        reload: async () => {
+          const modal = document.getElementById('report_modal');
+          const last = window.reportModal._last;
+          if (!modal || modal.classList.contains('hidden') || !last) return;
+          const body = document.getElementById('report_modal_body');
+          const scrollTop = body ? body.scrollTop : 0;
+          await window.reportModal.open(last.templates, last.contextData);
+          if (body) body.scrollTop = scrollTop;
         },
 
         close: () => {
