@@ -56,7 +56,8 @@ export async function handleLogin(req, res) {
         await callWorkflow('setvals', { email, vals: contextVals });
       }
 
-      req.session.current_user_email = email;
+      // The stored email, not the typed one: it is pasted into workflows on every page load (task 783).
+      req.session.current_user_email = user.email || email;
       req.session.user = result.user || { email };
       req.session.account_id = defaultAccountId;
 
