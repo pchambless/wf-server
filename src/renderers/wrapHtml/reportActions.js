@@ -34,6 +34,23 @@ export const reportActionsCode = `
         return modal;
       };
 
+      // Save as PDF names the file after the page title. A report that carries data-file-name (task 890: the Recall
+      // report, "<ingredient> <batch_number> Recall") gets that title while printing, by the Print button or Ctrl+P.
+      let titleBeforePrint = null;
+      window.addEventListener('beforeprint', () => {
+        const modal = document.getElementById('report_modal');
+        const named = modal && !modal.classList.contains('hidden') ? modal.querySelector('[data-file-name]') : null;
+        const name = named ? named.getAttribute('data-file-name').replace(/[\\\\/:*?"<>|\\u0000-\\u001f]+/g, ' ').replace(/\\s+/g, ' ').trim() : '';
+        if (!name) return;
+        titleBeforePrint = document.title;
+        document.title = name;
+      });
+      window.addEventListener('afterprint', () => {
+        if (titleBeforePrint === null) return;
+        document.title = titleBeforePrint;
+        titleBeforePrint = null;
+      });
+
       window.reportModal = {
         // Last report opened, so a pop-up form saved on top of it can reload it (task 889: Add shipment in the Recall report).
         _last: null,
