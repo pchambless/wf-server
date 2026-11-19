@@ -180,11 +180,24 @@ export const popActionsCode = `
             temp.innerHTML = newHtml;
             const newSelect = temp.querySelector("select");
             if (newSelect) {
-              selectEl.replaceWith(newSelect);
+              // Keep the form's own select (its name, id, required, and the Tom Select bound to it) and swap
+              // only its options. The standalone render has no name attribute, so replacing the element made
+              // Save leave the field out ("Shipment customer <NULL>", task 893). A leading blank option
+              // (data-blank-default) is kept.
+              const blankOpt = Array.from(selectEl.options).find((o) => o.value === "");
+              selectEl.innerHTML = newSelect.innerHTML;
+              if (blankOpt && !Array.from(selectEl.options).some((o) => o.value === "")) {
+                selectEl.insertBefore(blankOpt, selectEl.firstChild);
+              }
               // Auto-select the new item
               if (newId) {
-                newSelect.value = String(newId);
+                selectEl.value = String(newId);
               }
+              if (selectEl.tomselect) {
+                selectEl.tomselect.clearOptions();
+                selectEl.tomselect.sync();
+              }
+              selectEl.dispatchEvent(new Event("change", { bubbles: true }));
             }
           } else {
             // No existing select, just inject before the button
