@@ -20,5 +20,11 @@ export const formHydrationCode = `
         nameEl.className = 'form-title-name';
         nameEl.textContent = name;
         titleEl.appendChild(nameEl);
+        // Task 891: the panel's Delete acts on the loaded record only, so it is hidden while adding a new one.
+        // Every way into the inline form (row click, Add New, stay-open save) sets the title here.
+        if (titleEl.id === 'inline_form_title') {
+          const delBtn = document.getElementById('inline_form_delete');
+          if (delBtn) delBtn.hidden = String(mode || '').toUpperCase() === 'INSERT';
+        }
       };
 `;
