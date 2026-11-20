@@ -121,6 +121,25 @@
       "parameters": {
         "errorMessage": "wf-prod-to-dev-data failed - see the Slack post in #development (task 895)"
       }
+    },
+    {
+      "id": "b3f1c2d4-8950-4e1a-9c1d-895000000002",
+      "name": "Notify Slack (app webhook)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [
+        672,
+        256
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/PASTE_DEVELOPMENT_WEBHOOK_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: \":rotating_light: wf-prod-to-dev-data FAILED: \" + ($json.error?.message ?? JSON.stringify($json.error ?? $json)) + \"\\n<https://n8n.whatsfresh.app/workflow/\" + $workflow.id + \"/executions/\" + $execution.id + \"|View execution>\" }) }}",
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -138,6 +157,11 @@
             "node": "Notify Slack",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Notify Slack (app webhook)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -148,6 +172,11 @@
         [
           {
             "node": "Notify Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack (app webhook)",
             "type": "main",
             "index": 0
           }
@@ -176,7 +205,7 @@
         ]
       ]
     },
-    "Notify Slack": {
+    "Notify Slack (app webhook)": {
       "main": [
         [
           {
