@@ -30,7 +30,7 @@ export const popActionsCode = `
         _dropdownSlot: null,
         _refreshTargets: null,
 
-        open: async (templateName, dropdownSlot, refreshTargets) => {
+        open: async (templateName, dropdownSlot, refreshTargets, customTitle) => {
           const scaffold = await ensurePopModalScaffold();
           const container = scaffold.container;
           const modal = scaffold.modal;
@@ -64,7 +64,8 @@ export const popActionsCode = `
           }
 
           const entityName = templateName.replace(/_form$/, "").replace(/_/g, " ");
-          const title = "Add " + entityName;
+          // An edit form (task 898: Recall plan answers) names itself; quick-adds keep "Add <entity>".
+          const title = customTitle || ("Add " + entityName);
           const modalTitle = document.getElementById("pop_modal_title");
           if (modalTitle) {
             modalTitle.textContent = title;
