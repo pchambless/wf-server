@@ -85,7 +85,7 @@ export const actionHandlersCode = `
           const formTemplate = resolvedAction.form_template;
           if (window.popModal && formTemplate) {
             window.__popPageId = resolvedAction.page_id;
-            await window.popModal.open(formTemplate, resolvedAction.dropdown_slot || null, resolvedAction.refresh || null);
+            await window.popModal.open(formTemplate, resolvedAction.dropdown_slot || null, resolvedAction.refresh || null, resolvedAction.title || null);
           }
           return 'handled';
         }

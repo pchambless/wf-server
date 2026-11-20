@@ -170,6 +170,11 @@ BEGIN
           FROM jsonb_each(p_data)
          WHERE key !~ '^(id|created_.*)\Z';
 
+        -- Task 898: account_settings is written only by the Recall Plan merge (special case below), never by UPDATE/DELETE.
+        IF v_table = 'account_settings' AND p_mode <> 'INSERT' THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Not allowed');
+        END IF;
+
         v_has_acct := EXISTS (SELECT 1 FROM information_schema.columns c
                                WHERE c.table_schema = v_schema AND c.table_name = v_table AND c.column_name = 'account_id');
 
@@ -263,6 +268,16 @@ BEGIN
 
         SELECT to_jsonb(u.*) - 'password' INTO v_result FROM whatsfresh.users u WHERE u.id = v_cu_user_id;
         RETURN jsonb_build_object('success', true, 'mode', 'insert', 'data', v_result);
+    END IF;
+
+    -- ===================
+    -- SPECIAL CASE (task 898): account_settings holds one jsonb per account. The only write through here is the
+    -- Recall Plan pop-up, which must MERGE the recall_plan key (and insert the row when missing); a column write
+    -- would replace the whole settings field. UPDATE/DELETE were refused above; the account was forced and checked
+    -- above; owners only (in the function).
+    -- ===================
+    IF v_schema = 'whatsfresh' AND v_table = 'account_settings' THEN
+        RETURN whatsfresh.f_recall_plan_save(v_target_account, v_caller_email, p_data - 'account_id', p_user);
     END IF;
 
     IF p_mode = 'DELETE' THEN
