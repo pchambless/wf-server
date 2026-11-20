@@ -1,8 +1,16 @@
 {
   "name": "wf-prod-to-dev-data",
-  "active": false,
+  "active": true,
   "nodes": [
     {
+      "id": "8c588113-565a-4a7a-8f7f-774232c2eba4",
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -12,31 +20,23 @@
             }
           ]
         }
-      },
-      "id": "8c588113-565a-4a7a-8f7f-774232c2eba4",
-      "name": "Schedule",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.4,
-      "position": [
-        0,
-        0
-      ]
+      }
     },
     {
+      "id": "d27b9138-e277-411c-a390-0d990825d66b",
+      "name": "Pull from prod",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "onError": "continueErrorOutput",
+      "position": [
+        224,
+        96
+      ],
       "parameters": {
         "resource": "database",
         "operation": "executeQuery",
         "query": "select count(*) as tables_staged, sum(staged) as rows_staged from mirror.pull()"
       },
-      "id": "d27b9138-e277-411c-a390-0d990825d66b",
-      "name": "Pull from prod",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        224,
-        96
-      ],
-      "onError": "continueErrorOutput",
       "credentials": {
         "postgres": {
           "id": "V5lXvMgDf3cob0Bs",
@@ -45,20 +45,20 @@
       }
     },
     {
+      "id": "b40c84d5-fd75-4038-9a8d-ff92fbace1af",
+      "name": "Mirror run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "onError": "continueErrorOutput",
+      "position": [
+        448,
+        32
+      ],
       "parameters": {
         "resource": "database",
         "operation": "executeQuery",
         "query": "select * from mirror.run()"
       },
-      "id": "b40c84d5-fd75-4038-9a8d-ff92fbace1af",
-      "name": "Mirror run",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.7,
-      "position": [
-        448,
-        32
-      ],
-      "onError": "continueErrorOutput",
       "credentials": {
         "postgres": {
           "id": "V5lXvMgDf3cob0Bs",
@@ -67,6 +67,15 @@
       }
     },
     {
+      "id": "bb889276-cdd3-4dc7-a3c1-ec9479425ec0",
+      "name": "Notify Slack",
+      "webhookId": "fe935de2-fe85-4e2f-a325-8f02bf785175",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        96
+      ],
       "parameters": {
         "resource": "message",
         "operation": "post",
@@ -82,15 +91,6 @@
         "text": "=wf-prod-to-dev-data FAILED: {{ $json.error?.message ?? JSON.stringify($json.error ?? $json) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
         "otherOptions": {}
       },
-      "id": "bb889276-cdd3-4dc7-a3c1-ec9479425ec0",
-      "name": "Notify Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.7,
-      "position": [
-        672,
-        96
-      ],
-      "webhookId": "fe935de2-fe85-4e2f-a325-8f02bf785175",
       "credentials": {
         "slackOAuth2Api": {
           "id": "tRuM5DU9yKZPXkfk",
@@ -99,7 +99,6 @@
       }
     },
     {
-      "parameters": {},
       "id": "405eac5e-03bd-4105-808a-c7674814a1cc",
       "name": "Run now",
       "type": "n8n-nodes-base.manualTrigger",
@@ -107,7 +106,21 @@
       "position": [
         0,
         192
-      ]
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "b3f1c2d4-8950-4e1a-9c1d-895000000001",
+      "name": "Fail the run",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "errorMessage": "wf-prod-to-dev-data failed - see the Slack post in #development (task 895)"
+      }
     }
   ],
   "connections": {
@@ -157,6 +170,17 @@
         [
           {
             "node": "Pull from prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack": {
+      "main": [
+        [
+          {
+            "node": "Fail the run",
             "type": "main",
             "index": 0
           }

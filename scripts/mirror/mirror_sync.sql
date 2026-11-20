@@ -6,7 +6,9 @@
 --   mirror.stage_plan()  -> what to pull: one row per mirrored table + its column list
 --   mirror.prepare_staging()  -> (re)creates empty staging tables mirror_stg.<t>
 --   (caller COPYs prod rows into mirror_stg.<t>)
---   mirror.run()         -> guards, clear secondary-unique-key conflicts, upsert (parents first), delete-missing (children first),
+--   mirror.run()         -> guards (tables of 100+ rows), clear secondary-unique-key conflicts, upsert (parents first,
+--                           OVERRIDING SYSTEM VALUE for identity ids), clear dev-only references (mirror.clear_refs),
+--                           delete-missing (children first),
 --                           sequence reset; returns per-table counts. One transaction:
 --                           any error rolls the whole run back.
 
@@ -143,6 +145,50 @@ begin
     return total;
 end $$;
 
+-- Rows in tables the mirror does not copy (dev-only tables, e.g. a feature table before it ships) can reference
+-- target rows that delete-missing is about to remove (2026-11-19: shipments -> dev-only location 807). Without this
+-- the delete fails and rolls the whole run back. This deletes those referencing rows first, recursively (their own
+-- dev-only children before them). Catalog-driven from pg_constraint. Scope: same schema only, NO ACTION / RESTRICT
+-- FKs only (CASCADE / SET NULL handle themselves). References from other schemas (intake, wf_api) are not touched:
+-- those still fail the run loudly. p_doomed is a query returning the p_tbl rows about to be deleted (all columns).
+CREATE OR REPLACE FUNCTION mirror.clear_refs(p_schema text, p_tbl text, p_doomed text, p_mirrored text[], p_depth integer DEFAULT 0)
+ RETURNS TABLE(tbl text, n bigint)
+ LANGUAGE plpgsql
+AS $function$
+declare
+    k record; v bigint;
+begin
+    if p_depth > 10 then
+        raise exception 'mirror.clear_refs: reference chain deeper than 10 at %', p_tbl;
+    end if;
+    for k in
+        select c.relname as child,
+               (select string_agg(format('c.%I', a.attname), ',' order by u.o)
+                  from unnest(fk.conkey) with ordinality u(num, o)
+                  join pg_attribute a on a.attrelid = fk.conrelid and a.attnum = u.num) as ccols,
+               (select string_agg(format('d.%I', a.attname), ',' order by u.o)
+                  from unnest(fk.confkey) with ordinality u(num, o)
+                  join pg_attribute a on a.attrelid = fk.confrelid and a.attnum = u.num) as pcols
+        from pg_constraint fk
+        join pg_class c on c.oid = fk.conrelid
+        join pg_namespace ns on ns.oid = c.relnamespace
+        where fk.contype = 'f' and fk.confrelid = format('%I.%I', p_schema, p_tbl)::regclass
+          and ns.nspname = p_schema and fk.conrelid <> fk.confrelid
+          and c.relname <> all (p_mirrored)
+          and fk.confdeltype in ('a', 'r')
+        order by c.relname
+    loop
+        -- grandchildren first
+        return query select * from mirror.clear_refs(p_schema, k.child,
+            format('select c.* from %I.%I c where (%s) in (select %s from (%s) d)',
+                   p_schema, k.child, k.ccols, k.pcols, p_doomed),
+            p_mirrored, p_depth + 1);
+        execute format('with x as (delete from %I.%I c where (%s) in (select %s from (%s) d) returning 1) select count(*) from x',
+                       p_schema, k.child, k.ccols, k.pcols, p_doomed) into v;
+        tbl := k.child; n := v; return next;
+    end loop;
+end $function$;
+
 CREATE OR REPLACE FUNCTION mirror.run(p_schema text DEFAULT 'whatsfresh'::text, p_min_ratio numeric DEFAULT 0.5)
  RETURNS TABLE(tbl text, source_rows bigint, inserted bigint, updated bigint, deleted bigint)
  LANGUAGE plpgsql
@@ -153,7 +199,10 @@ declare
     pk text[]; allc text[]; updc text[]; secret text[];
     ins_list text; sel_list text; set_list text; old_list text; new_list text; on_list text; join_list text;
     v_ins bigint; v_upd bigint; v_del bigint;
-    seq text;
+    seq record; ovr text; mirrored text[]; cr record;
+    -- Task 895: tables this small skip the ratio guards; a new prod table (Release 28: shipments, recalls,
+    -- location_sources) starts empty while dev still holds test rows. A broken pull still trips the big tables.
+    c_guard_min constant bigint := 100;
 begin
     -- Task 877: whatsfresh triggers that judge new data (e.g. duplicate batch numbers) skip copies of rows prod already accepted.
     perform set_config('whatsfresh.copying_prod', 'on', true);
@@ -166,10 +215,10 @@ begin
         end if;
         execute format('select count(*) from mirror_stg.%I', r.tbl) into s_cnt;
         execute format('select count(*) from %I.%I', p_schema, r.tbl) into d_cnt;
-        if d_cnt > 0 and s_cnt = 0 then
+        if d_cnt >= c_guard_min and s_cnt = 0 then
             raise exception 'mirror guard: % staged 0 rows but target has % - refusing', r.tbl, d_cnt;
         end if;
-        if d_cnt > 0 and s_cnt < d_cnt * p_min_ratio then
+        if d_cnt >= c_guard_min and s_cnt < d_cnt * p_min_ratio then
             raise exception 'mirror guard: % staged % rows vs % in target (< % ratio) - refusing',
                 r.tbl, s_cnt, d_cnt, p_min_ratio;
         end if;
@@ -203,20 +252,24 @@ begin
                            then quote_literal('*') else 'null' end
                       else format('s.%I', c) end, ',') into sel_list from unnest(allc) c;
         select string_agg(quote_ident(c), ',') into on_list from unnest(pk) c;
+        -- Task 895: GENERATED ALWAYS identity columns (Release 28 tables) refuse prod's ids without OVERRIDING SYSTEM VALUE
+        select case when exists (select 1 from pg_attribute a where a.attrelid = format('%I.%I', p_schema, r.tbl)::regclass
+                                   and a.attnum > 0 and not a.attisdropped and a.attidentity = 'a')
+                    then ' overriding system value' else '' end into ovr;
 
         if updc is null then   -- table is only its key
-            execute format('insert into %I.%I (%s) select %s from mirror_stg.%I s on conflict (%s) do nothing',
-                           p_schema, r.tbl, ins_list, sel_list, r.tbl, on_list);
+            execute format('insert into %I.%I (%s)%s select %s from mirror_stg.%I s on conflict (%s) do nothing',
+                           p_schema, r.tbl, ins_list, ovr, sel_list, r.tbl, on_list);
             v_ins := 0; v_upd := 0;
         else
             select string_agg(format('%I = excluded.%I', c, c), ', ') into set_list from unnest(updc) c;
             select string_agg(format('%I.%I', r.tbl, c), ',') into old_list from unnest(updc) c;
             select string_agg(format('excluded.%I', c), ',') into new_list from unnest(updc) c;
             execute format(
-              'with up as (insert into %1$I.%2$I (%3$s) select %4$s from mirror_stg.%2$I s '
+              'with up as (insert into %1$I.%2$I (%3$s)%9$s select %4$s from mirror_stg.%2$I s '
               ' on conflict (%5$s) do update set %6$s where (%7$s) is distinct from (%8$s) returning (xmax = 0) as ins) '
               'select count(*) filter (where ins), count(*) filter (where not ins) from up',
-              p_schema, r.tbl, ins_list, sel_list, on_list, set_list, old_list, new_list)
+              p_schema, r.tbl, ins_list, sel_list, on_list, set_list, old_list, new_list, ovr)
               into v_ins, v_upd;
         end if;
 
@@ -224,12 +277,20 @@ begin
         insert into _mirror_report values (r.tbl, s_cnt, v_ins, v_upd, 0);
     end loop;
 
-    -- 3. Delete-missing, children first
+    -- 3. Delete-missing, children first. Task 895: rows in tables the mirror does not copy that reference a doomed
+    --    row are deleted first (mirror.clear_refs), reported as 'dev-only refs: <table>'.
+    select array_agg(o.tbl) into mirrored from mirror.table_order(p_schema) o;
     for r in select o.tbl from mirror.table_order(p_schema) o order by o.lvl desc, o.tbl loop
         select array_agg(a.attname order by a.attnum) into pk
         from pg_index i join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any (i.indkey)
         where i.indrelid = format('%I.%I', p_schema, r.tbl)::regclass and i.indisprimary;
         select string_agg(format('s.%I = x.%I', c, c), ' and ') into join_list from unnest(pk) c;
+        for cr in select * from mirror.clear_refs(p_schema, r.tbl,
+                     format('select x.* from %I.%I x where not exists (select 1 from mirror_stg.%I s where %s)',
+                            p_schema, r.tbl, r.tbl, join_list), mirrored) loop
+            insert into _mirror_report values ('dev-only refs: ' || cr.tbl, null, 0, 0, cr.n)
+            on conflict on constraint _mirror_report_pkey do update set deleted = _mirror_report.deleted + excluded.deleted;
+        end loop;
         execute format('with d as (delete from %I.%I x where not exists (select 1 from mirror_stg.%I s where %s) returning 1) select count(*) from d',
                        p_schema, r.tbl, r.tbl, join_list) into v_del;
         -- patch the row already emitted for this table
@@ -239,18 +300,19 @@ begin
 
     -- 4. Sequences: move past the highest mirrored id so a stray dev insert cannot collide
     for r in select o.tbl from mirror.table_order(p_schema) o loop
-        for seq in select pg_get_serial_sequence(format('%I.%I', p_schema, r.tbl), a.attname)
+        for seq in select a.attname, pg_get_serial_sequence(format('%I.%I', p_schema, r.tbl), a.attname) as s
                    from pg_attribute a where a.attrelid = format('%I.%I', p_schema, r.tbl)::regclass
                      and a.attnum > 0 and not a.attisdropped
                      and pg_get_serial_sequence(format('%I.%I', p_schema, r.tbl), a.attname) is not null
         loop
-            execute format('select setval(%L, greatest((select coalesce(max(id),0) from %I.%I), 1))',
-                           seq, p_schema, r.tbl);
+            execute format('select setval(%L, greatest((select coalesce(max(%I),0) from %I.%I), 1))',
+                           seq.s, seq.attname, p_schema, r.tbl);
         end loop;
     end loop;
 
     return query select m.tbl, m.source_rows, m.inserted, m.updated, m.deleted from _mirror_report m order by m.tbl;
-end $function$;
+end $function$
+;
 
 -- Stage prod rows over dblink (replaces mirror-pull.sh). Read-only on the source.
 -- p_server is a dblink/FDW server name with a user mapping (dev: pg_prod_server).
