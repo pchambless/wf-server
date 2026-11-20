@@ -67,38 +67,6 @@
       }
     },
     {
-      "id": "bb889276-cdd3-4dc7-a3c1-ec9479425ec0",
-      "name": "Notify Slack",
-      "webhookId": "fe935de2-fe85-4e2f-a325-8f02bf785175",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.7,
-      "position": [
-        672,
-        96
-      ],
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "authentication": "oAuth2",
-        "select": "channel",
-        "channelId": {
-          "__rl": true,
-          "mode": "list",
-          "value": "C9XQZL07N",
-          "cachedResultName": "development"
-        },
-        "messageType": "text",
-        "text": "=wf-prod-to-dev-data FAILED: {{ $json.error?.message ?? JSON.stringify($json.error ?? $json) }}\n<https://n8n.whatsfresh.app/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}|View execution>",
-        "otherOptions": {}
-      },
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "tRuM5DU9yKZPXkfk",
-          "name": "Slack account"
-        }
-      }
-    },
-    {
       "id": "405eac5e-03bd-4105-808a-c7674814a1cc",
       "name": "Run now",
       "type": "n8n-nodes-base.manualTrigger",
@@ -134,7 +102,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "https://hooks.slack.com/services/PASTE_DEVELOPMENT_WEBHOOK_HERE",
+        "url": "https://hooks.slack.com/services/REPLACE_WITH_SECRET_PATH__set_only_in_live_n8n",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ text: \":rotating_light: wf-prod-to-dev-data FAILED: \" + ($json.error?.message ?? JSON.stringify($json.error ?? $json)) + \"\\n<https://n8n.whatsfresh.app/workflow/\" + $workflow.id + \"/executions/\" + $execution.id + \"|View execution>\" }) }}",
@@ -154,11 +122,6 @@
         ],
         [
           {
-            "node": "Notify Slack",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Notify Slack (app webhook)",
             "type": "main",
             "index": 0
@@ -170,11 +133,6 @@
       "main": [
         [],
         [
-          {
-            "node": "Notify Slack",
-            "type": "main",
-            "index": 0
-          },
           {
             "node": "Notify Slack (app webhook)",
             "type": "main",
