@@ -176,7 +176,9 @@ begin
     if p_depth > 20 then
         raise exception 'mirror.clear_refs: reference chain deeper than 20 at %.%', p_schema, p_tbl;
     end if;
-    create temp table if not exists _mirror_refs (tbl text, phase text, n bigint) on commit drop;
+    if to_regclass('pg_temp._mirror_refs') is null then
+        create temp table _mirror_refs (tbl text, phase text, n bigint) on commit drop;
+    end if;
     for k in
         select ns.nspname as cschema, c.relname as child,
                (select string_agg(format('c.%I', a.attname), ',' order by u.o)
@@ -224,7 +226,9 @@ begin
     -- Task 877: whatsfresh triggers that judge new data (e.g. duplicate batch numbers) skip copies of rows prod already accepted.
     perform set_config('whatsfresh.copying_prod', 'on', true);
     create temp table _mirror_report (tbl text primary key, source_rows bigint, inserted bigint, updated bigint, deleted bigint) on commit drop;
-    create temp table if not exists _mirror_refs (tbl text, phase text, n bigint) on commit drop;
+    if to_regclass('pg_temp._mirror_refs') is null then
+        create temp table _mirror_refs (tbl text, phase text, n bigint) on commit drop;
+    end if;
 
     -- 1. Guards, before anything is changed
     for r in select o.tbl from mirror.table_order(p_schema) o loop
