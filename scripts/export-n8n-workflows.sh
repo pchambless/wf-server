@@ -106,7 +106,7 @@ for WF_ID in $IDS; do
   fi
 
   echo "$WF_JSON" | jq '{name, nodes, connections, settings, active}' \
-    | jq 'walk(if type == "string" and (test("AIza[A-Za-z0-9_-]{35}") or test("ya29\\.[A-Za-z0-9_-]+") or test("sk-[A-Za-z0-9]{40,}") or test("xox[bpras]-[A-Za-z0-9-]+")) then "REDACTED_BY_EXPORT" else . end)' \
+    | jq 'walk(if type == "string" and (test("AIza[A-Za-z0-9_-]{35}") or test("ya29\\.[A-Za-z0-9_-]+") or test("sk-[A-Za-z0-9]{40,}") or test("xox[bpras]-[A-Za-z0-9-]+") or test("hooks\\.slack\\.com/services/[A-Za-z0-9/]+")) then "REDACTED_BY_EXPORT" else . end)' \
     > "$OUTPUT_DIR/${WF_NAME}.json"
 
   if grep -q "REDACTED_BY_EXPORT" "$OUTPUT_DIR/${WF_NAME}.json"; then
@@ -121,4 +121,11 @@ done
 echo ""
 echo "[export] Done. Exported: $EXPORTED (from workflow_history: $FROM_HISTORY), Failed: $FAILED, Redacted: $REDACTED"
 echo "[export] Output: $OUTPUT_DIR/"
-echo "[export] Review the diff, then commit - this is the record import-n8n-workflows.sh deploys from."
+# Auto-commit the export (only n8n/workflows/) unless something failed: a failed fetch leaves its file
+# deleted by the rm above, and committing that would record a workflow as removed when it is not.
+if [ "$FAILED" -gt 0 ]; then
+  echo "[export] NOT committed: $FAILED workflow(s) failed to export. Fix and re-run, or review the diff by hand."
+  exit 1
+fi
+[ "$REDACTED" -gt 0 ] && echo "[export] Note: redacted files deploy WITHOUT their secret - re-add it in live n8n after any import."
+bash "$SCRIPT_DIR/deploy-lib/commit-export.sh" "$OUTPUT_DIR" "Sync n8n workflow exports with dev (export-n8n-workflows)"

@@ -72,3 +72,4 @@ mkdir -p "$OUT_DIR"
 rm -f "$OUT_DIR"/*.sql
 cp "$TMP"/*.sql "$OUT_DIR"/
 echo "[export-db-functions] exported $(ls "$OUT_DIR" | wc -l) $SCHEMA functions to $OUT_DIR"
+bash "$SCRIPT_DIR/deploy-lib/commit-export.sh" "$OUT_DIR" "Sync $SCHEMA function files with dev (export-db-functions)"

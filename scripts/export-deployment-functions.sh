@@ -70,3 +70,4 @@ mkdir -p "$OUT_DIR"
 rm -f "$OUT_DIR"/*.sql
 cp "$TMP"/*.sql "$OUT_DIR"/
 echo "[export-deploy-sql] exported $(ls "$OUT_DIR" | wc -l) functions to $OUT_DIR"
+bash "$SCRIPT_DIR/deploy-lib/commit-export.sh" "$OUT_DIR" "Sync deployment function files with dev (export-deployment-functions)"
