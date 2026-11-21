@@ -116,6 +116,28 @@
         192
       ],
       "parameters": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT deployment.f_sys_refresh_db() AS db, deployment.f_sys_refresh_infra() AS infra, deployment.f_sys_refresh_n8n() AS n8n",
+        "options": {}
+      },
+      "id": "966bda81-7908-43c4-a2c2-ff0e6bb124dc",
+      "name": "Refresh system map",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "V5lXvMgDf3cob0Bs",
+          "name": "Postgres Dev2"
+        }
+      },
+      "notes": "Rebuilds deployment.sys_node/sys_edge (db, infra, n8n layers) after infra_node is written. The wf-server layer refreshes on deploy (scripts/sys-map-refresh.sh)."
     }
   ],
   "connections": {
@@ -168,6 +190,17 @@
         [
           {
             "node": "Probe Dev",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write infra_node": {
+      "main": [
+        [
+          {
+            "node": "Refresh system map",
             "type": "main",
             "index": 0
           }

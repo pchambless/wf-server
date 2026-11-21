@@ -104,4 +104,10 @@ done
 log "Syncing git commits to database..."
 bash "$REPO_DIR/scripts/sync-git-commits.sh" 2>&1 | tee -a "$LOG_FILE"
 
+# 5. Refresh the system map (deployment.sys_node/sys_edge). Never fails the deploy.
+log "Refreshing system map..."
+if ! bash "$REPO_DIR/scripts/sys-map-refresh.sh" >>"$LOG_FILE" 2>&1; then
+  log "WARNING: system map refresh failed (see log above); deploy itself is fine"
+fi
+
 log "=== Deploy complete ==="
