@@ -19,10 +19,8 @@ BEGIN
 
     RETURN QUERY
     WITH manifest AS (
-        SELECT split_part(o.schema_path, '.', 2) AS wf_name
-          FROM knowledge_base.objects o
-         WHERE o.platform = 'n8n' AND o.status <> 'obsolete'
-           AND coalesce(o.notes ->> 'dev_only', '') <> 'true' -- dev-only workflows (support app engine) never go to prod
+        -- ship by default: every live workflow in the system map, minus deployment.object_policy skips
+        SELECT m.name AS wf_name FROM deployment.vw_manifest m WHERE m.platform = 'n8n'
     ),
     dev_wf AS (
         -- active=true only: dev has dead workflows sharing a name with a live one.

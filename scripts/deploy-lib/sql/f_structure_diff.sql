@@ -35,8 +35,7 @@ BEGIN
            CASE WHEN t.name IS NOT NULL THEN 'exists' END
     FROM dev_tables d FULL OUTER JOIN target_tables t ON t.name=d.name
     WHERE (d.name IS NULL OR t.name IS NULL)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.structure = 'skip');
 
     -- VIEWS
     RETURN QUERY
@@ -56,8 +55,7 @@ BEGIN
            CASE WHEN t.name IS NOT NULL THEN 'exists' END
     FROM dev_views d FULL OUTER JOIN target_views t ON t.name=d.name
     WHERE (d.name IS NULL OR t.name IS NULL)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.structure = 'skip');
 
     -- COLUMNS (tables present in both, column existence + type)
     RETURN QUERY
@@ -80,8 +78,7 @@ BEGIN
            d.typ, t.typ
     FROM dev_cols d FULL OUTER JOIN target_cols t ON t.tbl=d.tbl AND t.col=d.col
     WHERE (d.col IS NULL OR t.col IS NULL OR d.typ != t.typ)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.structure = 'skip');
 
     -- CONSTRAINTS (by name + type, not DDL text - avoids PG-version cosmetic rendering differences)
     RETURN QUERY
@@ -102,8 +99,7 @@ BEGIN
            d.typ, t.typ
     FROM dev_cons d FULL OUTER JOIN target_cons t ON t.name=d.name AND t.tbl=d.tbl
     WHERE (d.name IS NULL OR t.name IS NULL)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.structure = 'skip');
 
     -- FUNCTIONS/PROCEDURES (existence + literal body text diff - prosrc is stored verbatim, not reconstructed,
     -- so unlike constraints/views this comparison is reliable across PG versions)
@@ -125,8 +121,7 @@ BEGIN
            left(d.src, 80), left(t.src, 80)
     FROM dev_fns d FULL OUTER JOIN target_fns t ON t.name=d.name AND t.args=d.args
     WHERE (d.name IS NULL OR t.name IS NULL OR d.src != t.src)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.name, t.name) AND ko.structure = 'skip');
 
     -- INDEXES (by table + name; constraint-backed indexes are covered by CONSTRAINTS above, and
     -- the definition text is not compared for the same PG-version reason). f_table_ddl replays
@@ -152,8 +147,7 @@ BEGIN
            CASE WHEN t.name IS NOT NULL THEN 'exists' END
     FROM dev_idx d FULL OUTER JOIN target_idx t ON t.name = d.name AND t.tbl = d.tbl
     WHERE (d.name IS NULL OR t.name IS NULL)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.structure = 'skip');
 
     -- TRIGGERS (by table + name). Triggers whose function lives in the deployment schema are dev-only
     -- tooling (that schema is not on prod) and are ignored here and by f_trigger_ddl.
@@ -178,8 +172,7 @@ BEGIN
            CASE WHEN t.name IS NOT NULL THEN 'exists' END
     FROM dev_trg d FULL OUTER JOIN target_trg t ON t.name = d.name AND t.tbl = d.tbl
     WHERE (d.name IS NULL OR t.name IS NULL)
-      AND NOT EXISTS (SELECT 1 FROM knowledge_base.objects ko
-                       WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.status = 'obsolete');
+      AND NOT EXISTS (SELECT 1 FROM deployment.object_policy ko WHERE ko.schema_path = p_schema || '.' || COALESCE(d.tbl, t.tbl) AND ko.structure = 'skip');
 
     PERFORM dblink_disconnect(v_conn);
 END;
