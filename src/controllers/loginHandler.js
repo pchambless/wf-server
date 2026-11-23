@@ -16,6 +16,38 @@ function getDefaultAccountId(result) {
     ?? null;
 }
 
+// Starts a signed-in session for a verified user: shared by password login and Google sign-in, so both leave the
+// session and context in the same state.
+export async function startSession(req, res, { email, user, defaultAccountId, path, activity }) {
+  // These context values used to be written by the login workflow's own
+  // L03-setvals node, which called this instance's /webhook/setvals by
+  // absolute URL. That baked the hostname into the workflow, so every
+  // dev -> prod import had to rewrite it. Setting them here keeps login
+  // portable across n8n instances and drops an HTTP hop. The same list restores identity after a
+  // browser-requested clear_all (task 845).
+  const contextVals = identityContextVals(email, user, defaultAccountId);
+
+  if (contextVals.length) {
+    await callWorkflow('setvals', { email, vals: contextVals });
+  }
+
+  // The stored email, not the typed one: it is pasted into workflows on every page load (task 783).
+  req.session.current_user_email = user.email || email;
+  req.session.user = Object.keys(user).length ? user : { email };
+  req.session.account_id = defaultAccountId;
+
+  return req.session.save((err) => {
+    if (err) {
+      logger.error('[api] Response', { path, success: false, status: 500, reason: 'session_error' });
+      return res.status(500).json({ success: false, message: 'Session error' });
+    }
+
+    notifyActivity(activity, email, req.get('user-agent'));
+    logger.info('[api] Response', { path, success: true, status: 200, redirectTo: '/dashboard' });
+    return res.json({ success: true, redirectTo: '/dashboard' });
+  });
+}
+
 export async function handleLogin(req, res) {
   const { email, password } = req.body;
 
@@ -44,43 +76,7 @@ export async function handleLogin(req, res) {
       const user = result.user || {};
       const defaultAccountId = getDefaultAccountId(result);
 
-      // These context values used to be written by the login workflow's own
-      // L03-setvals node, which called this instance's /webhook/setvals by
-      // absolute URL. That baked the hostname into the workflow, so every
-      // dev -> prod import had to rewrite it. Setting them here keeps login
-      // portable across n8n instances and drops an HTTP hop. The same list restores identity after a
-      // browser-requested clear_all (task 845).
-      const contextVals = identityContextVals(email, user, defaultAccountId);
-
-      if (contextVals.length) {
-        await callWorkflow('setvals', { email, vals: contextVals });
-      }
-
-      // The stored email, not the typed one: it is pasted into workflows on every page load (task 783).
-      req.session.current_user_email = user.email || email;
-      req.session.user = result.user || { email };
-      req.session.account_id = defaultAccountId;
-
-      return req.session.save((err) => {
-        if (err) {
-          logger.error('[api] Response', {
-            path: '/api/auth/login',
-            success: false,
-            status: 500,
-            reason: 'session_error'
-          });
-          return res.status(500).json({ success: false, message: 'Session error' });
-        }
-
-        notifyActivity('login', email, req.get('user-agent'));
-        logger.info('[api] Response', {
-          path: '/api/auth/login',
-          success: true,
-          status: 200,
-          redirectTo: '/dashboard'
-        });
-        return res.json({ success: true, redirectTo: '/dashboard' });
-      });
+      return startSession(req, res, { email, user, defaultAccountId, path: '/api/auth/login', activity: 'login' });
     }
 
     notifyActivity('login_failed', email, req.get('user-agent'));

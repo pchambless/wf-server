@@ -22,12 +22,18 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      // accounts.google.com/gsi: the "Sign in with Google" button on /login (script, its iframe, styles, calls).
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com", "https://accounts.google.com/gsi/client"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com/gsi/style"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'", process.env.N8N_BASE_URL || "https://n8n.whatsfresh.app"]
+      frameSrc: ["https://accounts.google.com/gsi/"],
+      connectSrc: ["'self'", process.env.N8N_BASE_URL || "https://n8n.whatsfresh.app", "https://accounts.google.com/gsi/"]
     }
-  }
+  },
+  // Google sign-in needs its popup to report back (helmet's default 'same-origin' cuts it off) and needs to see
+  // which site the button is on (helmet's default 'no-referrer' hides it, and Google then rejects the origin).
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500 }));
 
