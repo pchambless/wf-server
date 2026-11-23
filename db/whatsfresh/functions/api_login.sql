@@ -13,7 +13,7 @@ BEGIN
         a.role::int,
         a.default_account_id::int
     FROM whatsfresh.users a
-    WHERE a.email = p_email
+    WHERE lower(a.email::text) = lower(p_email)
     AND a.deleted_at IS NULL
     LIMIT 1;
 END;

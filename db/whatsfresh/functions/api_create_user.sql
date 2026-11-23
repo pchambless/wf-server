@@ -12,7 +12,7 @@ BEGIN
     RETURN;
   END IF;
 
-  IF EXISTS (SELECT 1 FROM whatsfresh.users WHERE email = p_email) THEN
+  IF EXISTS (SELECT 1 FROM whatsfresh.users WHERE lower(email::text) = lower(p_email)) THEN
     RETURN QUERY SELECT false, NULL::integer, 'Email already registered'::text;
     RETURN;
   END IF;

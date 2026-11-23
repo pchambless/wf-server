@@ -12,7 +12,7 @@ AS $function$
     a.default_account_id,
    crypt(p_password, a.password) = a.password
   FROM whatsfresh.users a
-  WHERE a.email::text = p_email::text
+  WHERE lower(a.email::text) = lower(p_email::text)
     AND a.deleted_at IS NULL
   LIMIT 1;
 $function$
