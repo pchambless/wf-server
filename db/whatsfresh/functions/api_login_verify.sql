@@ -13,6 +13,7 @@ AS $function$
    crypt(p_password, a.password) = a.password
   FROM whatsfresh.users a
   WHERE a.email::text = p_email::text
+    AND a.deleted_at IS NULL
   LIMIT 1;
 $function$
 ;
