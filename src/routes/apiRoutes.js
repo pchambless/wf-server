@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { handleLogin } from '../controllers/loginHandler.js';
+import { handleGoogleLogin } from '../controllers/googleLoginHandler.js';
 import { handleRegister } from '../controllers/registerHandler.js';
 import { handleChangePassword } from '../controllers/changePasswordHandler.js';
 import { handleAdminResetPassword } from '../controllers/adminResetPasswordHandler.js';
@@ -12,6 +13,7 @@ import whatsNewRoutes from './whatsNewRoutes.js';
 const router = Router();
 
 router.post('/auth/login', handleLogin);
+router.post('/auth/google', handleGoogleLogin);
 router.post('/auth/register', handleRegister);
 router.post('/auth/change-password', handleChangePassword);
 router.post('/admin/reset-password', handleAdminResetPassword);

@@ -3,8 +3,8 @@ import logger from './logger.js';
 // Posts "who logged in / out" to a Slack incoming webhook. Does nothing unless SLACK_ACTIVITY_WEBHOOK is set,
 // so local runs stay quiet. Fire-and-forget: callers must not await it, and a Slack failure never reaches the user.
 // Env vars are read per call, not at import, so the dotenv load order (src/env.js) can't bite.
-const ICONS = { login: ':large_green_circle:', logout: ':white_circle:', login_failed: ':warning:' };
-const WORDS = { login: 'logged in', logout: 'logged out', login_failed: 'failed login' };
+const ICONS = { login: ':large_green_circle:', login_google: ':large_green_circle:', logout: ':white_circle:', login_failed: ':warning:' };
+const WORDS = { login: 'logged in', login_google: 'logged in with Google', logout: 'logged out', login_failed: 'failed login' };
 
 // Slack hides the time on messages posted close together, so the time goes in the text (Central, like the reports).
 const CLOCK = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });

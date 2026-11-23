@@ -23,6 +23,43 @@ function joinClasses(...parts) {
 
 
 
+// "Sign in with Google" above the password form on /login, only when GOOGLE_CLIENT_ID is set for this environment.
+// The password form stays for anyone without a Google account. The client ID is public (it identifies the app to Google).
+function googleSignInHtml() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return '';
+  return `<style>
+  .google-signin { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .google-signin-divider { display: flex; align-items: center; gap: 0.75rem; width: 100%; color: #6b7280; font-size: 0.85rem; }
+  .google-signin-divider::before, .google-signin-divider::after { content: ''; flex: 1; border-top: 1px solid #d1d5db; }
+</style>
+<div class="google-signin">
+  <div id="g_id_onload" data-client_id="${escapeAttr(clientId)}" data-callback="wfGoogleSignIn"
+       data-auto_prompt="false" data-ux_mode="popup"></div>
+  <div class="g_id_signin" data-type="standard" data-theme="outline" data-size="large"
+       data-text="signin_with" data-shape="rectangular" data-logo_alignment="left"></div>
+  <div class="google-signin-divider">or sign in with email</div>
+</div>
+<script>
+window.wfGoogleSignIn = async (response) => {
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const data = await res.json();
+    if (data.success) window.location.href = data.redirectTo || '/dashboard';
+    else alert(data.message || 'Google sign-in failed');
+  } catch (e) {
+    alert('Google sign-in failed. Please try again or use your password.');
+  }
+};
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+`;
+}
+
 export async function renderPage(req, res, next) {
   const email = req.session?.current_user_email;
   const route = req.path;
@@ -49,10 +86,11 @@ export async function renderPage(req, res, next) {
     const title = Array.isArray(titleResult) ? titleResult[0]?.title || '' : '';
 
     const shellHtml = normalizeHtml(shell);
-    const formHtml = normalizeHtml(form);
+    let formHtml = normalizeHtml(form);
+    if (routeInfo.page_name === 'login') formHtml = googleSignInHtml() + formHtml;
     const combined = shellHtml
       .replace('{{slot:title}}', title)
-      .replace('{{slot:form}}', formHtml);
+      .replace('{{slot:form}}', () => formHtml);
     return res.send(wrapHtml(routeInfo.page_name, combined));
   }
 
