@@ -36,7 +36,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH _ctx AS (SELECT set_config('app.current_email', $1, true))\nSELECT whatsfresh.f_account(whatsfresh.c_getval('account_id')::int) as account_name,\n       whatsfresh.c_getval('firstName') as first_name,\n       vp.page_title,\n       vp.help_text\nFROM _ctx, studio.vw_pages vp\nWHERE page_id = whatsfresh.c_getval('page_id')::int",
+        "query": "WITH _ctx AS (SELECT set_config('app.current_email', $1, true) AS e)\nSELECT c.account_name, c.first_name, c.page_title, c.help_text\n-- LATERAL + OFFSET 0: c_getval runs only after _ctx has set the caller's email.\nFROM _ctx CROSS JOIN LATERAL (\n  SELECT whatsfresh.f_account(whatsfresh.c_getval('account_id')::int) as account_name,\n         whatsfresh.c_getval('firstName') as first_name,\n         vp.page_title,\n         vp.help_text\n    FROM studio.vw_pages vp\n   WHERE vp.page_id = whatsfresh.c_getval('page_id')::int AND _ctx.e IS NOT NULL\n  OFFSET 0) c",
         "options": {
           "queryReplacement": "={{ [$json.body.email ?? ''] }}"
         }

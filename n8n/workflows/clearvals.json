@@ -2,6 +2,15 @@
   "name": "clearvals",
   "nodes": [
     {
+      "id": "e6fe751e-c37a-42b9-9bf4-b99c0b4c1aa7",
+      "name": "Webhook",
+      "webhookId": "e8d06646-4606-48f8-b872-3cc8c4ad9710",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -352,
+        0
+      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "clearvals",
@@ -9,15 +18,6 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        -352,
-        0
-      ],
-      "id": "e6fe751e-c37a-42b9-9bf4-b99c0b4c1aa7",
-      "name": "Webhook",
-      "webhookId": "e8d06646-4606-48f8-b872-3cc8c4ad9710",
       "credentials": {
         "httpHeaderAuth": {
           "id": "Cr5FofBlVGzpKoKv",
@@ -26,34 +26,44 @@
       }
     },
     {
-      "parameters": {
-        "options": {}
-      },
+      "id": "7a55d75e-94e2-49d3-a43f-3a24973d394b",
+      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
         272,
         0
       ],
-      "id": "7a55d75e-94e2-49d3-a43f-3a24973d394b",
-      "name": "Respond to Webhook"
+      "parameters": {
+        "options": {}
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const { email, params, clear_all } = $input.first().json.body;\n// Bound parameters only (task 779): names are never spliced into SQL text.\nreturn [{ json: {\n  email,\n  params_json: JSON.stringify(Array.isArray(params) ? params.map(String) : []),\n  clear_all: !!clear_all\n} }];\n"
-      },
+      "id": "3df3cd7d-2096-4dc6-9f6d-426f7010dc50",
+      "name": "L01",
+      "notesInFlow": true,
+      "notes": "Build clearvals SQL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         -144,
         0
       ],
-      "id": "3df3cd7d-2096-4dc6-9f6d-426f7010dc50",
-      "name": "L01",
-      "notesInFlow": true,
-      "notes": "Build clearvals SQL"
+      "parameters": {
+        "jsCode": "const { email, params, clear_all } = $input.first().json.body;\n// Bound parameters only (task 779): names are never spliced into SQL text.\nreturn [{ json: {\n  email,\n  params_json: JSON.stringify(Array.isArray(params) ? params.map(String) : []),\n  clear_all: !!clear_all\n} }];\n"
+      }
     },
     {
+      "id": "a1514d75-db0c-4cda-a357-19e913fa72c3",
+      "name": "L02",
+      "notesInFlow": true,
+      "notes": "upsert param_vals",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        64,
+        0
+      ],
       "parameters": {
         "operation": "executeQuery",
         "query": "UPDATE whatsfresh.context_store\n   SET param_val = NULL, updates = updates + 1, updated_at = now()\n WHERE email = $1::text\n   AND ($3::boolean OR param_name IN (SELECT jsonb_array_elements_text($2::jsonb)))",
@@ -61,27 +71,14 @@
           "queryReplacement": "={{ [$json.email, $json.params_json, $json.clear_all] }}"
         }
       },
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.6,
-      "position": [
-        64,
-        0
-      ],
-      "id": "a1514d75-db0c-4cda-a357-19e913fa72c3",
-      "name": "L02",
-      "notesInFlow": true,
       "credentials": {
         "postgres": {
           "id": "V5lXvMgDf3cob0Bs",
           "name": "Postgres Dev2"
         }
-      },
-      "notes": "upsert param_vals"
+      }
     },
     {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
       "id": "ae9ea2ef-d7c5-4be7-b8af-20ccf426fddb",
       "name": "When Called by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
@@ -89,7 +86,10 @@
       "position": [
         -352,
         -192
-      ]
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
     }
   ],
   "connections": {
