@@ -6,7 +6,7 @@ DECLARE
   v_user_id integer;
   v_account_id integer;
 BEGIN
-  IF EXISTS (SELECT 1 FROM whatsfresh.users WHERE email = p_email) THEN
+  IF EXISTS (SELECT 1 FROM whatsfresh.users WHERE lower(email::text) = lower(p_email)) THEN
     RETURN QUERY SELECT false, NULL::integer, NULL::integer, 'Email already registered'::text;
     RETURN;
   END IF;

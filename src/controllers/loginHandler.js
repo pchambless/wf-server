@@ -18,7 +18,11 @@ function getDefaultAccountId(result) {
 
 // Starts a signed-in session for a verified user: shared by password login and Google sign-in, so both leave the
 // session and context in the same state.
-export async function startSession(req, res, { email, user, defaultAccountId, path, activity }) {
+export async function startSession(req, res, { email: typedEmail, user, defaultAccountId, path, activity }) {
+  // The stored email, not the typed one, everywhere below: sign-in matches email ignoring case (task 836), and the
+  // context store is keyed by exact email, so writing context under "matthew@..." while the session says
+  // "Matthew@..." would leave the session without its identity context.
+  const email = user.email || typedEmail;
   // These context values used to be written by the login workflow's own
   // L03-setvals node, which called this instance's /webhook/setvals by
   // absolute URL. That baked the hostname into the workflow, so every
@@ -32,7 +36,7 @@ export async function startSession(req, res, { email, user, defaultAccountId, pa
   }
 
   // The stored email, not the typed one: it is pasted into workflows on every page load (task 783).
-  req.session.current_user_email = user.email || email;
+  req.session.current_user_email = email;
   req.session.user = Object.keys(user).length ? user : { email };
   req.session.account_id = defaultAccountId;
 
