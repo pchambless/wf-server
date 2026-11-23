@@ -285,11 +285,12 @@ BEGIN
             RETURN jsonb_build_object('success', false, 'error', 'DELETE requires p_pk_val');
         END IF;
 
+        -- Soft deletes below keep an inactive row's original deleted_at/deleted_by (task 703).
         -- History that depends on a row without a foreign key (e.g. a recipe row used by batches):
         -- deactivate, never hard-delete (task 622). whatsfresh.f_row_in_use lists the tables affected.
         IF v_schema = 'whatsfresh' AND whatsfresh.f_row_in_use(v_table, p_pk_val) THEN
             v_sql := format(
-                'UPDATE %I.%I SET deleted_at = now(), deleted_by = %L, updated_at = now() WHERE %I = %s RETURNING to_jsonb(%I.*)',
+                'UPDATE %I.%I SET deleted_at = coalesce(deleted_at, now()), deleted_by = CASE WHEN deleted_at IS NULL THEN %L ELSE deleted_by END, updated_at = now() WHERE %I = %s RETURNING to_jsonb(%I.*)',
                 v_schema, v_table, p_user, v_pk_col, p_pk_val, v_table
             );
             EXECUTE v_sql INTO v_result;
@@ -316,7 +317,7 @@ BEGIN
         EXCEPTION
             WHEN foreign_key_violation THEN
                 v_sql := format(
-                    'UPDATE %I.%I SET deleted_at = now(), deleted_by = %L, updated_at = now() WHERE %I = %s RETURNING to_jsonb(%I.*)',
+                    'UPDATE %I.%I SET deleted_at = coalesce(deleted_at, now()), deleted_by = CASE WHEN deleted_at IS NULL THEN %L ELSE deleted_by END, updated_at = now() WHERE %I = %s RETURNING to_jsonb(%I.*)',
                     v_schema, v_table, p_user, v_pk_col, p_pk_val, v_table
                 );
                 EXECUTE v_sql INTO v_result;
