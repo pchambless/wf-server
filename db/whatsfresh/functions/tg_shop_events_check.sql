@@ -7,6 +7,7 @@ AS $function$
 -- - The store is one of the account's locations, or a shared one (account 0, e.g. Kitchen Hub).
 -- - Moving a trip onto a store+day that already has a live trip is refused with a readable message.
 -- - A trip that still has live lots cannot be deleted: the lots are the traceability record.
+-- Errors use P0001 so studio.dml shows the message itself (it rewrites unique_violation to a generic one).
 -- whatsfresh.copying_prod = 'on' (dev mirror) skips the checks: prod already accepted those rows.
 DECLARE
   v_name text;
@@ -25,9 +26,9 @@ BEGIN
          AND e.event_date = NEW.event_date AND e.deleted_at IS NULL
          AND e.id IS DISTINCT FROM NEW.id) THEN
     SELECT l.name INTO v_name FROM whatsfresh.locations l WHERE l.id = NEW.location_id;
-    RAISE EXCEPTION 'There is already a shopping trip to % on %. Open that trip instead.',
+    RAISE EXCEPTION 'There is already a shopping trip to % on %. Pick it from the Trip list.',
       coalesce(v_name, 'that store'), to_char(NEW.event_date, 'YYYY-MM-DD')
-      USING ERRCODE = 'unique_violation', HINT = 'duplicate_shop_event';
+      USING ERRCODE = 'P0001', HINT = 'duplicate_shop_event';
   END IF;
 
   IF TG_OP = 'UPDATE' AND NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL

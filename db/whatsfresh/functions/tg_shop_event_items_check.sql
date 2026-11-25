@@ -5,6 +5,7 @@ CREATE OR REPLACE FUNCTION whatsfresh.tg_shop_event_items_check()
 AS $function$
 -- Task 931. BEFORE INSERT/UPDATE on shop_event_items (the trip plan):
 -- the trip and the ingredient both belong to the item's account, and the ingredient is an ingredient (Shop entity).
+-- Errors use P0001 so studio.dml shows the message itself (it rewrites unique_violation to a generic one).
 -- whatsfresh.copying_prod = 'on' (dev mirror) skips the checks: prod already accepted those rows.
 BEGIN
   IF current_setting('whatsfresh.copying_prod', true) = 'on' THEN RETURN NEW; END IF;
@@ -24,7 +25,7 @@ BEGIN
        WHERE x.shop_event_id = NEW.shop_event_id AND x.ingredient_id = NEW.ingredient_id
          AND x.deleted_at IS NULL AND x.id IS DISTINCT FROM NEW.id) THEN
     RAISE EXCEPTION 'That ingredient is already on this trip''s list'
-      USING ERRCODE = 'unique_violation', HINT = 'duplicate_shop_event_item';
+      USING ERRCODE = 'P0001', HINT = 'duplicate_shop_event_item';
   END IF;
   RETURN NEW;
 END;
