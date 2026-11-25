@@ -142,7 +142,9 @@ export const actionEngineCode = `
         if (source?.closest('.grid-row')) {
           return event.type === 'dblclick' ? 'row_dblclick' : 'row_click';
         }
-        if (source?.matches('select')) return 'select_change';
+        // A select fires both 'input' and 'change' for one pick; answering both ran every select_change twice
+        // (harmless for setVals, a duplicate insert for the Shopping Trips list picker, task 613).
+        if (source?.matches('select')) return event.type === 'change' ? 'select_change' : null;
         if (source?.matches('input, textarea')) return 'input';
         if (event.type === 'submit') return 'submit';
         return 'click';
