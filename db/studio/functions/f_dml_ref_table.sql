@@ -18,6 +18,9 @@ AS $function$
     ('product_recipes', 'product_id', 'entities'),
     ('product_recipes', 'ingredient_id', 'entities'),
     ('product_recipes', 'measure_id', 'measures'),
+    ('shop_event_items', 'shop_event_id', 'shop_events'),
+    ('shop_event_items', 'ingredient_id', 'entities'),
+    ('shop_events', 'location_id', 'locations'),
     ('tasks', 'product_type_id', 'entity_types')
   ) r(tbl, col, ref)
   WHERE r.tbl = p_table AND r.col = p_col
