@@ -4,9 +4,12 @@
 # data, n8n, code, verify), shows a short summary after each, and stops at the first problem.
 # Stopgap until the Deploy Monitor can do this from the page (task 831).
 #
-# Usage: run_release.sh <release_id> [--dry | --run <run_id>]
-#   --dry         opens a dry run: runs the five compares only, then closes the run as aborted.
-#   --run <id>    carry on with a live run you already started (start_run.sh) instead of opening a new one.
+# Usage: run_release.sh <release_id> [--dry | --run <run_id>] [--allow-deletes]
+#   --dry            opens a dry run: runs the five compares only, then closes the run as aborted.
+#   --run <id>       carry on with a live run you already started (start_run.sh) instead of opening a new one.
+#   --allow-deletes  the data step also deletes prod config rows that dev no longer has (studio rows removed
+#                    on purpose). Without it a pending delete stops the run at compare_data. Use it only when
+#                    the release means to remove rows; the compare lists them first and you confirm.
 # Run it from anywhere; it cd's into wf-server. You answer y/n at each pause. Never Ctrl-C a live run:
 # a stopped run is left open and the message says how to close it (finish_run.sh RUN aborted).
 #
@@ -19,13 +22,18 @@ PROD=root@142.93.113.124
 # shellcheck source=pg-query.sh
 source "$LIB/pg-query.sh"
 
-REL="${1:?usage: run_release.sh <release_id> [--dry | --run <run_id>]}"
-DRY=""; RUN=""
-case "${2:-}" in
-  --dry) DRY="dry" ;;
-  --run) RUN="${3:?--run needs a run id}"; JOINED=1 ;;
-esac
-JOINED="${JOINED:-}"
+REL="${1:?usage: run_release.sh <release_id> [--dry | --run <run_id>] [--allow-deletes]}"
+shift
+DRY=""; RUN=""; JOINED=""; ALLOW_DEL=false
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry) DRY="dry" ;;
+    --run) RUN="${2:?--run needs a run id}"; JOINED=1; shift ;;
+    --allow-deletes) ALLOW_DEL=true ;;
+    *) echo "unknown option: $1 (usage: run_release.sh <release_id> [--dry | --run <run_id>] [--allow-deletes])" >&2; exit 2 ;;
+  esac
+  shift
+done
 
 say()  { printf '\n== %s\n' "$*"; }
 ask()  { local a; read -r -p "$1 [y/N] " a; [ "$a" = "y" ]; }
@@ -73,7 +81,11 @@ echo "$OUT" | jq -r '.[] | select(.needs_deploy) | "   - " + .workflow_name + " 
 step compare_data '{"env":"prod"}'
 echo "compare_data:"
 echo "$OUT" | jq -r '.[] | select(.status != "in sync") | "   - \(.schema_path): +\(.rows_added) added, \(.rows_modified) modified, \(.rows_deleted) deleted"'
-[ "$(echo "$OUT" | jq '[.[].rows_deleted] | add')" = "0" ] || stop "compare_data would delete rows"
+DELS=$(echo "$OUT" | jq '[.[].rows_deleted] | add // 0')
+if [ "$DELS" != "0" ]; then
+  [ "$ALLOW_DEL" = true ] || stop "compare_data would delete $DELS row(s); rerun with --allow-deletes if this release removes rows on purpose"
+  echo "--allow-deletes: the data step will delete $DELS prod row(s) listed above"
+fi
 
 if [ -n "$DRY" ]; then
   "$LIB/finish_run.sh" "$RUN" aborted
@@ -93,7 +105,7 @@ echo "structure: $(echo "$OUT" | jq length) object(s), $BAD failed"
 [ "$BAD" = "0" ] || { echo "$OUT" | jq -r '.[] | select(.status != "succeeded" or .error != null) | "   FAILED \(.schema_path): \(.error)"'; stop "structure has failed objects (the step label can still say success)"; }
 
 say "Data"
-step data "{\"run_id\": $RUN, \"dry_run\": false, \"force_refresh\": false, \"allow_deletes\": false}"
+step data "{\"run_id\": $RUN, \"dry_run\": false, \"force_refresh\": false, \"allow_deletes\": $ALLOW_DEL}"
 BAD=$(echo "$OUT" | jq '[.[] | select(.error != null)] | length')
 echo "data: $(echo "$OUT" | jq '[.[] | select(.status == "succeeded")] | length') table(s) refreshed, $(echo "$OUT" | jq '[.[].rows_affected] | add') row(s), $BAD error(s)"
 [ "$BAD" = "0" ] || stop "data step has errors"
